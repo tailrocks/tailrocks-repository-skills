@@ -1,0 +1,50 @@
+[
+  {
+    "name": "tailrocks-create-pr",
+    "description": ">-",
+    "argumentHint": "[--branch <name>|--auto-branch] [--title <msg>] [--base <branch>] [--draft]",
+    "overview": "skills/tailrocks-create-pr/index.md",
+    "definition": "skills/tailrocks-create-pr/definition.md",
+    "source": "https://github.com/tailrocks/tailrocks-pull-request-skills/blob/main/skills/tailrocks-create-pr/SKILL.md"
+  },
+  {
+    "name": "tailrocks-document",
+    "description": ">-",
+    "argumentHint": "[PR] [--check]",
+    "overview": "skills/tailrocks-document/index.md",
+    "definition": "skills/tailrocks-document/definition.md",
+    "source": "https://github.com/tailrocks/tailrocks-pull-request-skills/blob/main/skills/tailrocks-document/SKILL.md"
+  },
+  {
+    "name": "tailrocks-merge-pr",
+    "description": ">-",
+    "argumentHint": "[PR] [--no-poll] [--admin <check>]",
+    "overview": "skills/tailrocks-merge-pr/index.md",
+    "definition": "skills/tailrocks-merge-pr/definition.md",
+    "source": "https://github.com/tailrocks/tailrocks-pull-request-skills/blob/main/skills/tailrocks-merge-pr/SKILL.md"
+  },
+  {
+    "name": "tailrocks-pr-template",
+    "description": ">-",
+    "argumentHint": "[repo path]",
+    "overview": "skills/tailrocks-pr-template/index.md",
+    "definition": "skills/tailrocks-pr-template/definition.md",
+    "source": "https://github.com/tailrocks/tailrocks-pull-request-skills/blob/main/skills/tailrocks-pr-template/SKILL.md"
+  },
+  {
+    "name": "tailrocks-refresh-pr",
+    "description": ">-",
+    "argumentHint": "[PR]",
+    "overview": "skills/tailrocks-refresh-pr/index.md",
+    "definition": "skills/tailrocks-refresh-pr/definition.md",
+    "source": "https://github.com/tailrocks/tailrocks-pull-request-skills/blob/main/skills/tailrocks-refresh-pr/SKILL.md"
+  },
+  {
+    "name": "tailrocks-review-pr",
+    "description": ">-",
+    "argumentHint": "[PR | branch | range] [category | aspects] [--deep] [--batch]",
+    "overview": "skills/tailrocks-review-pr/index.md",
+    "definition": "skills/tailrocks-review-pr/definition.md",
+    "source": "https://github.com/tailrocks/tailrocks-pull-request-skills/blob/main/skills/tailrocks-review-pr/SKILL.md"
+  }
+]
