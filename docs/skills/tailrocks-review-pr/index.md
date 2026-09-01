@@ -1,11 +1,11 @@
 ---
 title: "Tailrocks: tailrocks-review-pr"
-description: ">-"
+description: " Use only when the user explicitly requests this skill. Review a pull request, branch, or diff and report verified findings: adversarially validated bugs, structural regressions, triggered specialist lanes, and fixer routes. Always read-only; never posts, merges, or approves."
 ---
 
 Generated from [tailrocks-review-pr/SKILL.md](https://github.com/tailrocks/tailrocks-pull-request-skills/blob/main/skills/tailrocks-review-pr/SKILL.md).
 
->-
+ Use only when the user explicitly requests this skill. Review a pull request, branch, or diff and report verified findings: adversarially validated bugs, structural regressions, triggered specialist lanes, and fixer routes. Always read-only; never posts, merges, or approves.
 
 [Read the complete skill definition](definition.md).
 

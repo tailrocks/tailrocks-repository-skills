@@ -12,10 +12,18 @@ function parseSkill(raw: string, expected: string): { description: string; argum
   const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) throw new Error(expected + ": missing frontmatter");
   const values: Record<string, string> = {};
+  let active: string | null = null;
   for (const line of match[1].split("\n")) {
+    if (active && /^\s+/.test(line)) {
+      values[active] += " " + line.trim();
+      continue;
+    }
     const at = line.indexOf(":");
     if (at < 0) continue;
-    values[line.slice(0, at).trim()] = line.slice(at + 1).trim().replace(/^['"]|['"]$/g, "");
+    const key = line.slice(0, at).trim();
+    const value = line.slice(at + 1).trim();
+    active = value === ">-" || value === ">" ? key : null;
+    values[key] = active ? "" : value.replace(/^['"]|['"]$/g, "");
   }
   if (values.name !== expected || !values.description) throw new Error(expected + ": invalid frontmatter");
   return { description: values.description, argumentHint: values["argument-hint"] ?? null, body: match[2].trim() };

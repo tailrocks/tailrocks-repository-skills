@@ -1,11 +1,11 @@
 ---
 title: "Tailrocks: tailrocks-create-pr"
-description: ">-"
+description: " Use only when the user explicitly requests this skill. Open a pull request for the current change in any repository: branch, commit in the repo's convention, body from its template, render check. Extended by .tailrocks/pr.md. Do not use to refresh or merge an existing PR."
 ---
 
 Generated from [tailrocks-create-pr/SKILL.md](https://github.com/tailrocks/tailrocks-pull-request-skills/blob/main/skills/tailrocks-create-pr/SKILL.md).
 
->-
+ Use only when the user explicitly requests this skill. Open a pull request for the current change in any repository: branch, commit in the repo's convention, body from its template, render check. Extended by .tailrocks/pr.md. Do not use to refresh or merge an existing PR.
 
 [Read the complete skill definition](definition.md).
 
