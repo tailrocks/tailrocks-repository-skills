@@ -11,9 +11,9 @@
     {
       "name": "tailrocks-pull-request-skills",
       "source": "./",
-      "description": "Cross-agent Tailrocks skills for strict Rust, Axum, TypeScript, TanStack, native macOS Swift with Liquid Glass, code-health ratchets, and the roadmap delivery pipeline (idea, brainstorm, research, record-decision, finalize, plan, reconcile, portable goal handoff)",
+      "description": "Fail-closed pull-request workflows for creation, review, documentation, refresh, merge, and repository-native templates.",
       "version": "0.28.0",
-      "category": "workflow"
+      "category": "Pull Request Skills"
     }
   ]
 }

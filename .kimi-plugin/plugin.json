@@ -1,39 +1,16 @@
 {
   "name": "tailrocks-pull-request-skills",
   "version": "0.28.0",
-  "description": "Cross-agent Tailrocks skills for strict Rust, Axum, TypeScript, TanStack, native macOS Swift with Liquid Glass, code-health ratchets, and the roadmap delivery pipeline (idea, brainstorm, research, record-decision, finalize, plan, reconcile, portable goal handoff)",
+  "description": "Fail-closed pull-request workflows for creation, review, documentation, refresh, merge, and repository-native templates.",
   "keywords": [
-    "tailrocks",
-    "rust",
-    "edition-2024",
-    "skills",
-    "best-practices",
-    "clippy",
-    "rustfmt",
-    "axum",
-    "typescript",
-    "bun",
-    "tanstack",
-    "cargo-deny",
-    "nextest",
-    "mise",
-    "workspace",
+    "pull-request",
+    "github",
     "code-review",
-    "root-cause",
-    "architecture",
-    "redesign",
-    "first-principles",
-    "correctness",
-    "research",
-    "roadmap",
-    "planning",
-    "goal",
-    "swift",
-    "swiftui",
-    "appkit",
-    "macos",
-    "liquid-glass",
-    "accessibility"
+    "merge",
+    "ci",
+    "documentation",
+    "pr-template",
+    "release-gates"
   ],
   "author": {
     "name": "tailrocks",
@@ -43,7 +20,22 @@
   "license": "Apache-2.0",
   "skills": "./skills/",
   "interface": {
-    "displayName": "Tailrocks Skills",
-    "shortDescription": "Strict Rust, TypeScript, and native macOS engineering workflows"
-  }
+    "displayName": "Pull Request Skills",
+    "shortDescription": "Fail-closed pull-request lifecycle workflows.",
+    "longDescription": "Fail-closed pull-request workflows for creation, review, documentation, refresh, merge, and repository-native templates.",
+    "capabilities": [
+      "Create",
+      "Review",
+      "Document",
+      "Refresh",
+      "Merge"
+    ],
+    "websiteURL": "https://github.com/tailrocks/tailrocks-pull-request-skills",
+    "defaultPrompt": [
+      "Review this pull request.",
+      "Create a pull request for this change.",
+      "Merge this PR after all gates pass."
+    ]
+  },
+  "repository": "https://github.com/tailrocks/tailrocks-pull-request-skills"
 }
