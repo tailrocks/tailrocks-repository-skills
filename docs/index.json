@@ -1,7 +1,7 @@
 [
   {
     "name": "tailrocks-create-pr",
-    "description": " Use only when the user explicitly requests this skill. Open a pull request for the current change in any repository: branch, commit in the repo's convention, body from its template, render check. Extended by .tailrocks/pr.md. Do not use to refresh or merge an existing PR.",
+    "description": "Use only when the user explicitly requests this skill. Open a pull request for the current change in any repository: branch, commit in the repo's convention, body from its template, render check. Extended by .tailrocks/pr.md. Do not use to refresh or merge an existing PR.",
     "argumentHint": "[--branch <name>|--auto-branch] [--title <msg>] [--base <branch>] [--draft]",
     "overview": "skills/tailrocks-create-pr/index.md",
     "definition": "skills/tailrocks-create-pr/definition.md",
@@ -9,7 +9,7 @@
   },
   {
     "name": "tailrocks-document",
-    "description": " Use only when the user explicitly requests this skill. Before a pull request merges, make the repository's own documentation the final source of truth for everything the diff changed — rewritten pages and new structures, never a changelog. Do not use to write a PR body or release notes.",
+    "description": "Use only when the user explicitly requests this skill. Before a pull request merges, make the repository's own documentation the final source of truth for everything the diff changed — rewritten pages and new structures, never a changelog. Do not use to write a PR body or release notes.",
     "argumentHint": "[PR] [--check]",
     "overview": "skills/tailrocks-document/index.md",
     "definition": "skills/tailrocks-document/definition.md",
@@ -17,7 +17,7 @@
   },
   {
     "name": "tailrocks-merge-pr",
-    "description": " Use only when the user explicitly requests this skill. Merge a pull request fail-closed in any repository: CI and documentation gates, blast-radius confirm, metadata reconcile, repo-selected merge method, the repo's pre-merge worklist from .tailrocks/pr.md. Do not use to open or iterate a PR.",
+    "description": "Use only when the user explicitly requests this skill. Merge a pull request fail-closed in any repository: CI and documentation gates, blast-radius confirm, metadata reconcile, repo-selected merge method, the repo's pre-merge worklist from .tailrocks/pr.md. Do not use to open or iterate a PR.",
     "argumentHint": "[PR] [--no-poll] [--admin <check>]",
     "overview": "skills/tailrocks-merge-pr/index.md",
     "definition": "skills/tailrocks-merge-pr/definition.md",
@@ -25,7 +25,7 @@
   },
   {
     "name": "tailrocks-pr-template",
-    "description": " Use only when the user explicitly requests this skill. Generate or reconcile a repository's sole GitHub-supported pull-request template. Preserve its exact existing target or create the standard target when absent; tailor sections and commands to repository evidence. Do not open, refresh, or merge a PR.",
+    "description": "Use only when the user explicitly requests this skill. Generate or reconcile a repository's sole GitHub-supported pull-request template. Preserve its exact existing target or create the standard target when absent; tailor sections and commands to repository evidence. Do not open, refresh, or merge a PR.",
     "argumentHint": "[repo path]",
     "overview": "skills/tailrocks-pr-template/index.md",
     "definition": "skills/tailrocks-pr-template/definition.md",
@@ -33,7 +33,7 @@
   },
   {
     "name": "tailrocks-refresh-pr",
-    "description": " Use only when the user explicitly requests this skill. Reconcile an open pull request's title and body against the current diff: drifted prose rewritten, accurate prose kept verbatim, template sections re-selected. Extended by .tailrocks/pr.md. Do not use to open or merge a PR.",
+    "description": "Use only when the user explicitly requests this skill. Reconcile an open pull request's title and body against the current diff: drifted prose rewritten, accurate prose kept verbatim, template sections re-selected. Extended by .tailrocks/pr.md. Do not use to open or merge a PR.",
     "argumentHint": "[PR]",
     "overview": "skills/tailrocks-refresh-pr/index.md",
     "definition": "skills/tailrocks-refresh-pr/definition.md",
@@ -41,7 +41,7 @@
   },
   {
     "name": "tailrocks-review-pr",
-    "description": " Use only when the user explicitly requests this skill. Review a pull request, branch, or diff and report verified findings: adversarially validated bugs, structural regressions, triggered specialist lanes, and fixer routes. Always read-only; never posts, merges, or approves.",
+    "description": "Use only when the user explicitly requests this skill. Review a pull request, branch, or diff and report verified findings: adversarially validated bugs, structural regressions, triggered specialist lanes, and fixer routes. Always read-only; never posts, merges, or approves.",
     "argumentHint": "[PR | branch | range] [category | aspects] [--deep] [--batch]",
     "overview": "skills/tailrocks-review-pr/index.md",
     "definition": "skills/tailrocks-review-pr/definition.md",
