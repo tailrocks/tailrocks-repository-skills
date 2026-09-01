@@ -995,7 +995,8 @@ export async function verifyContributionStageEntrypoint(
       throw new Error(`non-canonical installed contribution path: ${candidate}`);
   }
   const manifestValue = object(JSON.parse(await readFile(manifest, "utf8")) as unknown, "plugin manifest");
-  if (manifestValue.name !== "tailrocks-skills" || manifestValue.skills !== "./skills/")
+  const expectedPluginName = path.basename(plugin);
+  if (manifestValue.name !== expectedPluginName || manifestValue.skills !== "./skills/")
     throw new Error("installed contribution plugin manifest is invalid");
   const hashFile = async (file: string): Promise<string> => digest(await readFile(file));
   return {
