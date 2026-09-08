@@ -28,7 +28,6 @@ This skill owns the instructions in its definition and the repository-local refe
 ### References
 
 - [delivery-artifacts-policy.md](../../../skills/tailrocks-merge-pr/references/delivery-artifacts-policy.md)
-- [pr-conventions.md](../../../skills/tailrocks-merge-pr/references/pr-conventions.md)
 - [runtime-trust.md](../../../skills/tailrocks-merge-pr/references/runtime-trust.md)
 
 ### Templates

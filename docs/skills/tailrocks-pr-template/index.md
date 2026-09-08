@@ -28,7 +28,6 @@ This skill owns the instructions in its definition and the repository-local refe
 ### References
 
 - [PULL_REQUEST_TEMPLATE.md](../../../skills/tailrocks-pr-template/references/PULL_REQUEST_TEMPLATE.md)
-- [pr-conventions.md](../../../skills/tailrocks-pr-template/references/pr-conventions.md)
 - [runtime-trust.md](../../../skills/tailrocks-pr-template/references/runtime-trust.md)
 
 ### Templates

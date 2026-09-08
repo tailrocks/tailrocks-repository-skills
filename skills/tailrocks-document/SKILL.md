@@ -123,6 +123,10 @@ must be covered by a descendant `Tailrocks-Skill: tailrocks-document` commit or
 merge stops and routes here. A diff with nothing doc-worthy passes with the
 machine reason; repository waiver policy remains merge-owned.
 
+Repository waiver policy lives in `.tailrocks/pr.md` `## Before merge` (format
+and precedence: `tailrocks-create-pr`'s `references/repo-conventions.md`) and
+is applied by `tailrocks-merge-pr`, never here.
+
 ## Final gate
 
 Finish only when every surface's own validation passes, every diff-derived
