@@ -27,7 +27,6 @@ This skill owns the instructions in its definition and the repository-local refe
 
 ### References
 
-- [pr-conventions.md](../../../skills/tailrocks-refresh-pr/references/pr-conventions.md)
 - [runtime-trust.md](../../../skills/tailrocks-refresh-pr/references/runtime-trust.md)
 
 ### Templates

@@ -28,7 +28,6 @@ This skill owns the instructions in its definition and the repository-local refe
 ### References
 
 - [finding-bar.md](../../../skills/tailrocks-review-pr/references/finding-bar.md)
-- [pr-conventions.md](../../../skills/tailrocks-review-pr/references/pr-conventions.md)
 - [reporting.md](../../../skills/tailrocks-review-pr/references/reporting.md)
 - [runtime-trust.md](../../../skills/tailrocks-review-pr/references/runtime-trust.md)
 - [specialist-lanes.md](../../../skills/tailrocks-review-pr/references/specialist-lanes.md)

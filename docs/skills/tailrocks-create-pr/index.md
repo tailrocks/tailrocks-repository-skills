@@ -30,7 +30,6 @@ This skill owns the instructions in its definition and the repository-local refe
 - [pr-body.md](../../../skills/tailrocks-create-pr/references/pr-body.md)
 - [repo-conventions.md](../../../skills/tailrocks-create-pr/references/repo-conventions.md)
 - [runtime-trust.md](../../../skills/tailrocks-create-pr/references/runtime-trust.md)
-- [shared-pr-conventions.md](../../../skills/tailrocks-create-pr/references/shared-pr-conventions.md)
 
 ### Templates
 
