@@ -6,8 +6,8 @@
   https://github.com/tailrocks/tailrocks-repository-skills.git. Baseline CI
   run 35818512123 and hardening CI run 35826193979 passed. Hardening commit
   4809cf4c1cc91df6ff28cbf009fe3de83de96437 is released; cleanup proof landed
-  in 3c996a3ad9d87d2e438456280edc29f7b77eedbf; final main tip is
-  eeaf65cc2378ee9958ec60424677ac713a449396.
+  in 3c996a3ad9d87d2e438456280edc29f7b77eedbf; later main commits are
+  evidence-only record updates.
 - Rust helper exists under helper/; it is a typed boundary for argument parsing, exact target binding, campaign state, and local-state snapshots.
 - Helper tests cover literal hash transport, omitted-main semantics, selector deduplication/provenance, explicit numeric branches, mixed-repository rejection, list URL query preservation, no-selector rejection, and target-bound campaign creation.
 - Portable root manifest plus Codex and Claude compatibility manifests are present.
@@ -66,11 +66,9 @@ A delegated probe reused the shared workspace as temporary state and removed unc
 
 ## Blockers
 
-- Claude native execution is still blocked by the expired OAuth session; live
-  namespaced E2E needs refreshed credentials.
-- Live Claude model E2E remains blocked by the expired OAuth session. The
-  post-hardening real-agent retry also hit the sandbox's helper-build denial;
-  the wrapper failed without a completion receipt, as required.
+- Live Claude model E2E is blocked by the expired OAuth session. The
+  post-hardening Codex real-agent retry also hit the sandbox's helper-build
+  denial; the wrapper failed without a completion receipt, as required.
 
 ## Next
 
