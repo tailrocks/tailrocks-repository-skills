@@ -27,7 +27,7 @@
 | Codex and Claude invocation | README plus client contract test/evidence |
 | Jackin read-only | research record and no Jackin write commands |
 | Installable plugin | root, Codex, and Claude manifests; CI validation |
-| Release and umbrella registration | v0.1.0 release workflow 35826243801 and release page; umbrella merge commit 2b6d21c326e5febf889d280cb2c5f4a595775ff; v0.1.1 release pending |
+| Release and umbrella registration | v0.1.0 release workflow 35826243801; v0.1.1 commit `6c3b62b`, hosted CI `35834837262`, release workflow `35834905290`, canonical release assets, and fresh exact-tag installs in both clients; umbrella merge commit 2b6d21c326e5febf889d280cb2c5f4a595775ff |
 
 ## Unresolved full-spec evidence
 

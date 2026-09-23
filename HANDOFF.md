@@ -33,10 +33,10 @@ The helper writes campaign JSON and a create-new lease outside the repository. A
   35826243801; tag v0.1.0. The tag installed and validated in both native
   clients. Umbrella registration merged at
   2b6d21c326e5febf889d280cb2c5f4a595775ff.
-- Current patch release work is v0.1.1: prebuilt-helper host seam, corrected
-  real-agent harness, and fail-closed campaign-state mutation locking. Do not
-  call v0.1.1 shipped until its commit, CI, tag, release workflow, and fresh
-  install are verified.
+- v0.1.1 is shipped: commit `6c3b62b`, hosted CI `35834837262`, tag
+  `v0.1.1`, release workflow `35834905290`, and fresh exact-tag installs in
+  native Codex and Claude both passed. The release API exposes the canonical
+  `catalog.json` and `plugin.json` assets.
 - Cleanup proof landed in 3c996a3ad9d87d2e438456280edc29f7b77eedbf; later
   main commits only update evidence records. Hosted CI 35830543413 passed.
 

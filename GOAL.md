@@ -1,8 +1,7 @@
 # Tailrocks repository skills: delivery goal
 
-Status: active; v0.1.0 is shipped, v0.1.1 is ready for release after the
-recorded local gates, and Claude/hosted non-main evidence remains externally
-blocked as recorded below.
+Status: active; v0.1.1 is shipped, and Claude/hosted non-main evidence remains
+externally blocked as recorded below.
 
 Ship tailrocks/tailrocks-repository-skills as one installable plugin for Codex CLI and Claude Code. It owns repository audit, convergence, and eligible cleanup while composing the existing pull-request lifecycle skills.
 
@@ -21,8 +20,9 @@ Completion means the selected target contains the justified work and verificatio
 The full superseding specification is tailrocks-repository-skills-development-goal-v2.md.
 
 Delivery record: main contains the published implementation, hardening, and
-scoped-cleanup proof (3c996a3ad9d87d2e438456280edc29f7b77eedbf); subsequent
-evidence-only commits preserve the verification records.
+scoped-cleanup proof (3c996a3ad9d87d2e438456280edc29f7b77eedbf), plus the
+v0.1.1 helper and campaign-state hardening in `6c3b62b`; subsequent records
+preserve the verification evidence.
 v0.1.0 is released and registered in the Tailrocks umbrella. Native Codex and
 Claude installation was verified. The latest real Codex non-main acceptance
 completed campaign `campaign-5b4789d507dd56ba` at target OID
@@ -31,4 +31,6 @@ completed campaign `campaign-5b4789d507dd56ba` at target OID
 `ac92839d316618f5dfcfa40bbf213b22cc0028ca`. The run exercised the prebuilt
 helper seam and serialized campaign-state mutations. Live Claude execution and
 hosted PR-to-non-main landing remain blocked as recorded in PROGRESS.md; the
-broad v2 adversarial matrix is not yet complete.
+broad v2 adversarial matrix is not yet complete. v0.1.1 passed hosted CI
+`35834837262`, release workflow `35834905290`, and fresh native Codex and
+Claude installs from tag `v0.1.1`.

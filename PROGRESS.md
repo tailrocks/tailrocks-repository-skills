@@ -6,8 +6,8 @@
   https://github.com/tailrocks/tailrocks-repository-skills.git. Baseline CI
   run 35818512123 and hardening CI run 35826193979 passed. Hardening commit
   4809cf4c1cc91df6ff28cbf009fe3de83de96437 is released; cleanup proof landed
-  in 3c996a3ad9d87d2e438456280edc29f7b77eedbf; later main commits are
-  evidence-only record updates.
+  in 3c996a3ad9d87d2e438456280edc29f7b77eedbf. Patch hardening commit
+  6c3b62b is pushed and passed hosted CI 35834837262.
 - Rust helper exists under helper/; it is a typed boundary for argument parsing, exact target binding, campaign state, and local-state snapshots.
 - Helper tests cover literal hash transport, omitted-main semantics, selector deduplication/provenance, explicit numeric branches, mixed-repository rejection, list URL query preservation, no-selector rejection, and target-bound campaign creation.
 - Portable root manifest plus Codex and Claude compatibility manifests are present.
@@ -52,8 +52,10 @@
 - Final hosted CI run 35830543413 passed selector, main/non-main landing,
   scoped cleanup, recovery/resume, no-op, client-contract, manifest, and
   inventory checks.
-- v0.1.1 manifests and changelog are prepared; release evidence is pending the
-  commit, tag, hosted CI, release workflow, and fresh artifact install.
+- v0.1.1 is published. Release workflow 35834905290 passed; the release API
+  exposes catalog.json and plugin.json assets for tag v0.1.1. A fresh exact-tag
+  checkout installed as v0.1.1 in both native Codex and Claude marketplace
+  flows, and both temporary registrations were removed.
 
 ## Completed research
 
@@ -74,7 +76,7 @@ A delegated probe reused the shared workspace as temporary state and removed unc
 - Hosted PR-to-non-main landing is not proven because Jackin remains read-only
   and no authorized disposable hosted test repository was available.
 - The full v2 adversarial matrix remains incomplete: all-work live discovery,
-  complete remote API pagination, concurrent external writers, and every
+  complete remote API pagination, and every
   Git/LFS/submodule recovery mode still need authorized fixtures or runtime
   access. Local contracts cover the implemented seams.
 

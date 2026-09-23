@@ -19,7 +19,11 @@ Umbrella registration belongs in the Tailrocks skills catalog after the
 repository and release exist; it must be a separate reviewed registration
 change.
 
-Published receipt: commit 4809cf4c1cc91df6ff28cbf009fe3de83de96437 passed CI
-run 35826193979. Tag v0.1.0 passed release workflow 35826243801 and is
-available at https://github.com/tailrocks/tailrocks-repository-skills/releases/tag/v0.1.0.
-An isolated tag checkout installed and validated in both native clients.
+Published receipts: commit 4809cf4c1cc91df6ff28cbf009fe3de83de96437 passed CI
+run 35826193979. Tag v0.1.0 passed release workflow 35826243801. Patch commit
+6c3b62b passed hosted CI 35834837262; tag v0.1.1 passed release workflow
+35834905290 and is available at
+https://github.com/tailrocks/tailrocks-repository-skills/releases/tag/v0.1.1.
+The release API exposes the canonical catalog.json and plugin.json assets. An
+isolated exact-tag checkout installed and reported version 0.1.1 in both native
+Codex and Claude marketplace flows; strict Claude validation passed.

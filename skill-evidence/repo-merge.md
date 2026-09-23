@@ -57,3 +57,6 @@ Hardening and publication:
 - Campaign state read-modify-write operations now use a per-campaign OS lock;
   the helper unit test proves concurrent mutation fails closed, and the native
   acceptance completed its receipt and journal sequence without lost state.
+- v0.1.1 commit `6c3b62b` passed hosted CI `35834837262` and release workflow
+  `35834905290`. An exact-tag checkout installed and reported v0.1.1 in both
+  native Codex and Claude marketplace flows; strict Claude validation passed.

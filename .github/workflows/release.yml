@@ -30,6 +30,4 @@ jobs:
           generate_release_notes: true
           files: |
             plugin.json
-            .codex-plugin/plugin.json
-            .claude-plugin/plugin.json
             catalog.json
