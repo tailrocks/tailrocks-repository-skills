@@ -31,6 +31,8 @@ The helper writes campaign JSON and a create-new lease outside the repository. A
   35826243801; tag v0.1.0. The tag installed and validated in both native
   clients. Umbrella registration merged at
   2b6d21c326e5febf889d280cb2c5f4a595775ff.
+- Final main commit 3c996a3ad9d87d2e438456280edc29f7b77eedbf adds the
+  executable scoped-cleanup proof; hosted CI 35830458673 passed.
 
 ## Ownership
 

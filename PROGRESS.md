@@ -5,7 +5,8 @@
 - Repository is committed and pushed to the public remote at
   https://github.com/tailrocks/tailrocks-repository-skills.git. Baseline CI
   run 35818512123 and hardening CI run 35826193979 passed. Hardening commit
-  4809cf4c1cc91df6ff28cbf009fe3de83de96437 is on main.
+  4809cf4c1cc91df6ff28cbf009fe3de83de96437 is released; final main commit
+  3c996a3ad9d87d2e438456280edc29f7b77eedbf adds the scoped-cleanup contract.
 - Rust helper exists under helper/; it is a typed boundary for argument parsing, exact target binding, campaign state, and local-state snapshots.
 - Helper tests cover literal hash transport, omitted-main semantics, selector deduplication/provenance, explicit numeric branches, mixed-repository rejection, list URL query preservation, no-selector rejection, and target-bound campaign creation.
 - Portable root manifest plus Codex and Claude compatibility manifests are present.
@@ -46,6 +47,9 @@
 - The v0.1.0 tag was installed through native Codex and Claude marketplace
   flows in an isolated checkout; Codex and Claude both reported enabled
   version 0.1.0 and Claude strict validation passed.
+- Final hosted CI run 35830458673 passed selector, main/non-main landing,
+  scoped cleanup, recovery/resume, no-op, client-contract, manifest, and
+  inventory checks.
 
 ## Completed research
 
