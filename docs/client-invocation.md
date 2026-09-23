@@ -19,15 +19,26 @@ observed literal main target rejection for the unborn target. The temporary
 marketplace and install were then removed.
 
 Release proof: an isolated checkout of tag v0.1.0 was installed through the
-native Codex marketplace flow and reported enabled version 0.1.0.
+native Codex marketplace flow and reported enabled version 0.1.0. The current
+patch release is v0.1.1; its release workflow and fresh artifact install remain
+pending.
 
-The real-agent disposable acceptance run used Codex 0.155.1 with
-workspace-write sandbox and the installed local plugin. It invoked
-$repo-merge --local-only --cleanup=none --target-branch=release/next
-feature/auth, landed the source into the writable fixture clone, and verified
-the exact target OID 7db4735a0bcde9f42b083b30c5afbe9eac26b32e plus unchanged
-main 464cfbe245a3130d89caa89ac1bdfa1110ae4554. It did not use network or
-cleanup; campaign 15aed4ef4a09c941 reached complete.
+The latest real-agent disposable acceptance used Codex 0.155.1 with model
+gpt-5.6-luna, high reasoning, approval never, workspace-write sandbox, and
+the installed local plugin. It invoked `$repo-merge --local-only
+--cleanup=none --target-branch=release/next feature/auth`, recovered from an
+immutable checked-out Git metadata path into the prepared writable clone, and
+landed the source at target OID
+`ec1cb8d556ff0d2193f128364fed7579ba427efa`. It verified `auth.txt`, preserved
+`release.txt`, kept main at
+`ac92839d316618f5dfcfa40bbf213b22cc0028ca`, used no network, and skipped
+cleanup by policy. Campaign `campaign-5b4789d507dd56ba` reached
+`campaign-complete/complete` with audit, review, CI, landing, verification,
+and target-observation receipts. The initial target was
+`bc9a0feb9dcf0ee5d28c160001b60a7bf1e5b75c`; the source was
+`228f5550fd4e275479377068514e0235a2b31d2f`. The harness built the helper
+before agent start and passed it through `TAILROCKS_HELPER_BIN`; campaign state
+mutations were serialized by the helper's per-campaign OS lock.
 
 ## Claude Code
 

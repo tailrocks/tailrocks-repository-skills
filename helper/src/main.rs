@@ -1,3 +1,4 @@
+use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -27,6 +28,16 @@ impl std::fmt::Display for HelperError {
 impl std::error::Error for HelperError {}
 
 type Result<T> = std::result::Result<T, HelperError>;
+
+struct StateMutationLock {
+    file: std::fs::File,
+}
+
+impl Drop for StateMutationLock {
+    fn drop(&mut self) {
+        let _ = self.file.unlock();
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SourceSelector {
@@ -223,6 +234,7 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
             let campaign_id = required_string(&args[1..], "--campaign-id")?;
             let target_file = required_path(&args[1..], "--target-receipt")?;
             let state_path = state_dir.join(format!("{campaign_id}.json"));
+            let _mutation_lock = acquire_state_mutation_lock(&state_path)?;
             let mut state: CampaignState = read_json(&state_path)?;
             let target: TargetReceipt = read_json(&target_file)?;
             observe_campaign(&state_path, &mut state, target)?;
@@ -235,6 +247,7 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
             let phase = required_string(&args[1..], "--phase")?;
             let status = required_string(&args[1..], "--status")?;
             let state_path = state_dir.join(format!("{campaign_id}.json"));
+            let _mutation_lock = acquire_state_mutation_lock(&state_path)?;
             let mut state: CampaignState = read_json(&state_path)?;
             ensure_campaign_lease(&state)?;
             if event == "campaign-complete"
@@ -277,6 +290,7 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
             let campaign_id = required_string(&args[1..], "--campaign-id")?;
             let receipt_path = required_path(&args[1..], "--receipt")?;
             let state_path = state_dir.join(format!("{campaign_id}.json"));
+            let _mutation_lock = acquire_state_mutation_lock(&state_path)?;
             let mut state: CampaignState = read_json(&state_path)?;
             ensure_campaign_lease(&state)?;
             let receipt_path = fs::canonicalize(&receipt_path)
@@ -298,6 +312,7 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
             let state_dir = required_path(&args[1..], "--state-dir")?;
             let campaign_id = required_string(&args[1..], "--campaign-id")?;
             let state_path = state_dir.join(format!("{campaign_id}.json"));
+            let _mutation_lock = acquire_state_mutation_lock(&state_path)?;
             let state: CampaignState = read_json(&state_path)?;
             release_campaign_lease(&state)?;
             print_json(&state)
@@ -1083,6 +1098,24 @@ fn create_campaign_lease(path: &Path, lease: &CampaignLease) -> Result<()> {
         .map_err(|_| HelperError("cannot sync campaign lease".into()))
 }
 
+fn acquire_state_mutation_lock(state_path: &Path) -> Result<StateMutationLock> {
+    let lock_path = state_path.with_extension("state.lock");
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&lock_path)
+        .map_err(|_| HelperError("cannot open campaign state mutation lock".into()))?;
+    file.try_lock_exclusive().map_err(|_| {
+        HelperError(
+            "campaign state mutation already in progress; retry after the active writer exits"
+                .into(),
+        )
+    })?;
+    Ok(StateMutationLock { file })
+}
+
 fn ensure_campaign_lease(state: &CampaignState) -> Result<()> {
     let lease: CampaignLease = read_json(Path::new(&state.lock_path))?;
     if lease.schema != LEASE_SCHEMA
@@ -1677,5 +1710,16 @@ mod tests {
         let path = state_dir.join(format!("{}.json", state.campaign_id));
         let stored: CampaignState = read_json(&path).unwrap();
         assert_eq!(stored.campaign_id, state.campaign_id);
+    }
+
+    #[test]
+    fn concurrent_campaign_state_mutation_fails_closed() {
+        let temp = TempDir::new().unwrap();
+        let state_path = temp.path().join("campaign.json");
+        let first = acquire_state_mutation_lock(&state_path).unwrap();
+        let second = acquire_state_mutation_lock(&state_path);
+        assert!(second.is_err());
+        drop(first);
+        assert!(acquire_state_mutation_lock(&state_path).is_ok());
     }
 }

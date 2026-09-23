@@ -6,10 +6,10 @@ description = "Deterministic mechanics for target-aware Tailrocks repository cam
 license = "Apache-2.0"
 
 [dependencies]
+fs2 = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.10"
 
 [dev-dependencies]
 tempfile = "3.13"
-

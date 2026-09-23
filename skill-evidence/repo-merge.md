@@ -22,13 +22,19 @@ Acceptance:
 
 Real-agent acceptance:
 
-- Codex 0.155.1 discovered and installed the local plugin through its native
-  marketplace flow, invoked $repo-merge, and completed a target-bound
-  non-main local landing in the disposable fixture.
-- Exact result: release/next reached
-  7db4735a0bcde9f42b083b30c5afbe9eac26b32e; main remained
-  464cfbe245a3130d89caa89ac1bdfa1110ae4554; campaign
-  campaign-15aed4ef4a09c941 reached complete; cleanup was explicitly none.
+- Codex 0.155.1, gpt-5.6-luna, high reasoning, approval never, and
+  workspace-write sandbox discovered and installed the local plugin through its
+  native marketplace flow, invoked `$repo-merge`, recovered to the prepared
+  writable clone after an immutable checkout path, and completed a
+  target-bound non-main local landing.
+- Exact result: `release/next` advanced from
+  `bc9a0feb9dcf0ee5d28c160001b60a7bf1e5b75c` to
+  `ec1cb8d556ff0d2193f128364fed7579ba427efa`; source ancestry, `auth.txt`,
+  and existing `release.txt` were verified; main remained
+  `ac92839d316618f5dfcfa40bbf213b22cc0028ca`; campaign
+  `campaign-5b4789d507dd56ba` reached `campaign-complete/complete`; cleanup
+  was explicitly none. The helper was built outside the sandbox and supplied
+  with `TAILROCKS_HELPER_BIN`.
 
 Hardening and publication:
 
@@ -44,6 +50,10 @@ Hardening and publication:
 - v0.1.0 release workflow 35826243801 passed. The released tag installed in
   native Codex and Claude marketplace flows and strict Claude validation
   passed. Live Claude execution remains blocked by expired OAuth.
-- A later real-agent retry landed a disposable target but helper build was
-  sandbox-blocked and no completion receipt was emitted; the wrapper failed,
-  so it is not counted as acceptance.
+- The prebuilt-helper seam is now covered by the passing real-agent harness;
+  the former sandbox build denial is no longer an acceptance blocker for
+  hosts that can build the declared helper before invoking the installed
+  plugin.
+- Campaign state read-modify-write operations now use a per-campaign OS lock;
+  the helper unit test proves concurrent mutation fails closed, and the native
+  acceptance completed its receipt and journal sequence without lost state.

@@ -14,22 +14,23 @@
 - Disposable contracts pass: selector, main/non-main fixture landing,
   multiple-source landing, target-relative no-op rerun, recovery/resume, and
   client static checks.
-- A real Codex 0.155.1 local-only run completed an actual non-main landing in
-  a writable disposable clone: campaign
-  campaign-15aed4ef4a09c941, target refs/heads/release/next advanced to
-  7db4735a0bcde9f42b083b30c5afbe9eac26b32e by cherry-pick, source
-  origin/feature/auth was verified, and main stayed at
-  464cfbe245a3130d89caa89ac1bdfa1110ae4554.
-- The real-agent harness found and corrected two test assumptions: writable
-  clones may expose source/default refs only as origin/*, and completion is a
-  receipt status rather than one fixed journal event name. The successful
-  agent receipt remains the acceptance evidence; a later retry was stopped
-  after a disposable target advance when the model process stalled.
-- A post-hardening retry also landed the disposable source into
-  release/next (7d2882a3f7e318d3ee6f0d7a84f3556cd086cbd4) while preserving
-  main (1eed19fc1ac859cb372d96712fa339cfad93a9ab), but the sandbox denied the
-  helper build. It therefore produced no campaign completion receipt and the
-  wrapper correctly failed; this run is not counted as end-to-end acceptance.
+- The latest real Codex 0.155.1 / gpt-5.6-luna local-only run used high
+  reasoning, approval never, and workspace-write sandbox. It completed
+  campaign `campaign-5b4789d507dd56ba` after recovering from immutable
+  checked-out metadata into the prepared writable clone. Target
+  `refs/heads/release/next` advanced from
+  `bc9a0feb9dcf0ee5d28c160001b60a7bf1e5b75c` to
+  `ec1cb8d556ff0d2193f128364fed7579ba427efa`; source
+  `228f5550fd4e275479377068514e0235a2b31d2f` was represented; `auth.txt` and
+  `release.txt` were verified; main stayed at
+  `ac92839d316618f5dfcfa40bbf213b22cc0028ca`; and cleanup was none.
+- The harness now builds the helper outside the agent sandbox and exports
+  `TAILROCKS_HELPER_BIN`. The installed helper wrapper honors that prebuilt
+  binary, so restricted plugin-cache writes cannot erase a valid landing's
+  completion receipt. Campaign JSON read-modify-write commands now take an
+  OS-backed per-campaign mutation lock and fail closed on concurrent writers;
+  the lock unit test and full helper gates pass. The native harness exited `0`
+  with `real Codex local-only landing: PASS` and a complete campaign journal.
 - The umbrella registration PR was merged into tailrocks-skills main at
   2b6d21c326e5febf889d280cb2c5f4a595775ff.
 - Independent read-only review of baseline commit 5dff1239 requested changes
@@ -51,6 +52,8 @@
 - Final hosted CI run 35830543413 passed selector, main/non-main landing,
   scoped cleanup, recovery/resume, no-op, client-contract, manifest, and
   inventory checks.
+- v0.1.1 manifests and changelog are prepared; release evidence is pending the
+  commit, tag, hosted CI, release workflow, and fresh artifact install.
 
 ## Completed research
 
@@ -66,13 +69,20 @@ A delegated probe reused the shared workspace as temporary state and removed unc
 
 ## Blockers
 
-- Live Claude model E2E is blocked by the expired OAuth session. The
-  post-hardening Codex real-agent retry also hit the sandbox's helper-build
-  denial; the wrapper failed without a completion receipt, as required.
+- Live Claude model E2E is blocked before model execution by the installed
+  client's expired OAuth session.
+- Hosted PR-to-non-main landing is not proven because Jackin remains read-only
+  and no authorized disposable hosted test repository was available.
+- The full v2 adversarial matrix remains incomplete: all-work live discovery,
+  complete remote API pagination, concurrent external writers, and every
+  Git/LFS/submodule recovery mode still need authorized fixtures or runtime
+  access. Local contracts cover the implemented seams.
 
 ## Next
 
-1. Re-run authenticated Claude acceptance if credentials are available; retain
-   the OAuth blocker otherwise.
-2. Finish final evidence and close the goal only after every required receipt
-   and genuine blocker is recorded.
+1. Run authenticated Claude real-agent acceptance when credentials are
+   available.
+2. Run hosted PR-to-non-main acceptance only in an authorized disposable test
+   repository; never use Jackin for mutation.
+3. Expand the v2 adversarial matrix in isolated fixtures, then re-audit the
+   evidence before closing the goal.

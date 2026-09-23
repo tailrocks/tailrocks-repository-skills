@@ -6,6 +6,7 @@ work=$(mktemp -d /tmp/tailrocks-agent.XXXXXX)
 repo="$work/repo"
 landing_repo="$work/landing/repo"
 state_dir="$work/state"
+helper_target="$work/helper-target"
 log="$work/codex.log"
 marketplace_name=tailrocks-repository-skills
 
@@ -41,10 +42,16 @@ git -C "$repo" commit -qm release
 mkdir -p "$work/landing"
 git clone -q --local --no-hardlinks "$repo" "$landing_repo"
 mkdir -p "$state_dir"
+# Build before the agent starts so a restricted plugin-cache sandbox cannot
+# turn a completed landing into a missing campaign receipt.
+cargo build --quiet --locked --manifest-path "$repo_root/helper/Cargo.toml" --target-dir "$helper_target"
+helper_bin="$helper_target/debug/tailrocks-repository-helper"
+test -x "$helper_bin"
 
 codex plugin marketplace add "$repo_root" --json >/dev/null
 codex plugin add "$marketplace_name@$marketplace_name" --json >/dev/null
 export TAILROCKS_REPOSITORY_STATE_DIR="$state_dir"
+export TAILROCKS_HELPER_BIN="$helper_bin"
 codex exec --ephemeral --sandbox workspace-write --cd "$repo" \
   'Use $repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth. This is a disposable local fixture. Actually land the justified source into the exact local target, do not change main, do not use network, and report the target OID. Use TAILROCKS_REPOSITORY_STATE_DIR='"$state_dir"' for campaign state. If the checked-out fixture Git metadata is immutable, use the precreated writable clone at '"$landing_repo"' and verify that clone.' >"$log"
 
@@ -56,6 +63,13 @@ test -f "$landing_repo/release.txt"
 git -C "$landing_repo" merge-base --is-ancestor refs/remotes/origin/feature/auth refs/heads/release/next
 test "$(git -C "$landing_repo" show refs/heads/release/next:auth.txt)" = "auth"
 test "$(git -C "$landing_repo" show refs/heads/release/next:release.txt)" = "release"
-grep -F '"status": "complete"' "$log" >/dev/null
+campaign_state=$(find "$state_dir" -maxdepth 1 -type f -name 'campaign-*.json' -print -quit)
+test -n "$campaign_state"
+jq -e '
+  .status == "complete" and
+  .phase == "complete" and
+  (.receipt_refs | length) > 0 and
+  any(.journal[]; .event == "campaign-complete" and .status == "complete")
+' "$campaign_state" >/dev/null
 
 echo "real Codex local-only landing: PASS"

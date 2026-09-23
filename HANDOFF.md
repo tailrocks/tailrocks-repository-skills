@@ -19,18 +19,24 @@ The helper writes campaign JSON and a create-new lease outside the repository. A
 - Campaign completion must be journaled as campaign-complete/complete only
   after a receipt is attached through the helper; missing snapshot patch
   artifacts fail restore-test and block cleanup.
-- Real Codex acceptance landed feature/auth into disposable release/next at
-  7db4735a0bcde9f42b083b30c5afbe9eac26b32e while keeping main at
-  464cfbe245a3130d89caa89ac1bdfa1110ae4554; campaign
-  campaign-15aed4ef4a09c941 completed.
-- A later hardened retry reached a real disposable landing but helper build
-  was sandbox-blocked, so it emitted no completion receipt and is not proof of
-  campaign success.
+- Latest real Codex acceptance landed feature/auth into disposable
+  `release/next` at `ec1cb8d556ff0d2193f128364fed7579ba427efa` from initial
+  target `bc9a0feb9dcf0ee5d28c160001b60a7bf1e5b75c`, while keeping main at
+  `ac92839d316618f5dfcfa40bbf213b22cc0028ca`; campaign
+  `campaign-5b4789d507dd56ba` completed with audit, review, landing, target
+  observation, and completion receipts. The run recovered to a writable clone
+  after immutable checkout metadata, used `TAILROCKS_HELPER_BIN` for a
+  prebuilt helper outside the sandbox, and exercised the per-campaign state
+  mutation lock.
 - Published proof: hardening commit
   4809cf4c1cc91df6ff28cbf009fe3de83de96437; CI 35826193979; release workflow
   35826243801; tag v0.1.0. The tag installed and validated in both native
   clients. Umbrella registration merged at
   2b6d21c326e5febf889d280cb2c5f4a595775ff.
+- Current patch release work is v0.1.1: prebuilt-helper host seam, corrected
+  real-agent harness, and fail-closed campaign-state mutation locking. Do not
+  call v0.1.1 shipped until its commit, CI, tag, release workflow, and fresh
+  install are verified.
 - Cleanup proof landed in 3c996a3ad9d87d2e438456280edc29f7b77eedbf; later
   main commits only update evidence records. Hosted CI 35830543413 passed.
 

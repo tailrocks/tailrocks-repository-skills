@@ -25,14 +25,19 @@ Acceptance:
 
 Real-agent receipt:
 
-- Codex CLI 0.155.1, installed local plugin, workspace-write sandbox,
-  disposable fixture, and --local-only --cleanup=none.
-- Campaign campaign-15aed4ef4a09c941 bound the exact target
-  refs/heads/release/next; audit and independent local review passed, CI was
-  correctly not-applicable for the fixture, cherry-pick landing produced
-  7db4735a0bcde9f42b083b30c5afbe9eac26b32e, and the campaign journal reached
-  complete.
-- Post-landing checks proved source commit 8b4bee1e88618f79d3de0a89d38e9f459f70cbcf
-  was represented, auth.txt and release.txt were present, main stayed at
-  464cfbe245a3130d89caa89ac1bdfa1110ae4554, origin/release/next stayed
-  unchanged, and the target clone was clean. No network or cleanup occurred.
+- Codex CLI 0.155.1, gpt-5.6-luna, high reasoning, approval never,
+  workspace-write sandbox, installed local plugin, disposable fixture, and
+  `--local-only --cleanup=none`.
+- Campaign `campaign-5b4789d507dd56ba` bound the exact target
+  `refs/heads/release/next`; audit and independent local review passed, CI was
+  correctly not-applicable for the fixture, merge landing produced
+  `ec1cb8d556ff0d2193f128364fed7579ba427efa`, and the campaign journal reached
+  `campaign-complete/complete`.
+- Post-landing checks proved source commit
+  `228f5550fd4e275479377068514e0235a2b31d2f` was represented, `auth.txt` and
+  `release.txt` were present, main stayed at
+  `ac92839d316618f5dfcfa40bbf213b22cc0028ca`, and the target clone was clean.
+  No network or cleanup occurred. The helper was built before agent start and
+  invoked through `TAILROCKS_HELPER_BIN`; the run also exercised recovery to a
+  writable clone when the first checkout's metadata was immutable. The helper's
+  per-campaign OS lock serialized the receipt and journal mutations.

@@ -1,6 +1,8 @@
 # Tailrocks repository skills: delivery goal
 
-Status: complete; Claude live E2E is externally blocked by expired OAuth and is recorded below.
+Status: active; v0.1.0 is shipped, v0.1.1 is ready for release after the
+recorded local gates, and Claude/hosted non-main evidence remains externally
+blocked as recorded below.
 
 Ship tailrocks/tailrocks-repository-skills as one installable plugin for Codex CLI and Claude Code. It owns repository audit, convergence, and eligible cleanup while composing the existing pull-request lifecycle skills.
 
@@ -22,5 +24,11 @@ Delivery record: main contains the published implementation, hardening, and
 scoped-cleanup proof (3c996a3ad9d87d2e438456280edc29f7b77eedbf); subsequent
 evidence-only commits preserve the verification records.
 v0.1.0 is released and registered in the Tailrocks umbrella. Native Codex and
-Claude installation was verified. Live Claude execution remains blocked by
-the installed client's expired OAuth session and is recorded in PROGRESS.md.
+Claude installation was verified. The latest real Codex non-main acceptance
+completed campaign `campaign-5b4789d507dd56ba` at target OID
+`ec1cb8d556ff0d2193f128364fed7579ba427efa` from initial target
+`bc9a0feb9dcf0ee5d28c160001b60a7bf1e5b75c`, with main unchanged at
+`ac92839d316618f5dfcfa40bbf213b22cc0028ca`. The run exercised the prebuilt
+helper seam and serialized campaign-state mutations. Live Claude execution and
+hosted PR-to-non-main landing remain blocked as recorded in PROGRESS.md; the
+broad v2 adversarial matrix is not yet complete.
