@@ -18,6 +18,9 @@ command help. The local native test added this marketplace, discovered the
 observed literal main target rejection for the unborn target. The temporary
 marketplace and install were then removed.
 
+Release proof: an isolated checkout of tag v0.1.0 was installed through the
+native Codex marketplace flow and reported enabled version 0.1.0.
+
 The real-agent disposable acceptance run used Codex 0.155.1 with
 workspace-write sandbox and the installed local plugin. It invoked
 $repo-merge --local-only --cleanup=none --target-branch=release/next
@@ -49,6 +52,11 @@ namespaced read-only invocation was attempted with --plugin-dir and reached
 the client, but failed before model execution because the installed OAuth
 session was expired and could not be refreshed. Re-run
 tests/client-contract.sh with TAILROCKS_CLIENT_E2E=1 after authentication.
+
+Release proof: an isolated v0.1.0 checkout was added as a Claude marketplace,
+installed at local scope, reported enabled version 0.1.0, and passed strict
+plugin validation. This proves packaging/installability; it does not bypass
+the separate live-session OAuth blocker.
 
 ## Transport rule
 

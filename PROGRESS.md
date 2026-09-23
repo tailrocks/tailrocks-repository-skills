@@ -2,9 +2,10 @@
 
 ## Current state
 
-- Repository bootstrap is committed and pushed to the public remote at
-  https://github.com/tailrocks/tailrocks-repository-skills.git. Hosted CI run
-  35818512123 passed the published baseline.
+- Repository is committed and pushed to the public remote at
+  https://github.com/tailrocks/tailrocks-repository-skills.git. Baseline CI
+  run 35818512123 and hardening CI run 35826193979 passed. Hardening commit
+  4809cf4c1cc91df6ff28cbf009fe3de83de96437 is on main.
 - Rust helper exists under helper/; it is a typed boundary for argument parsing, exact target binding, campaign state, and local-state snapshots.
 - Helper tests cover literal hash transport, omitted-main semantics, selector deduplication/provenance, explicit numeric branches, mixed-repository rejection, list URL query preservation, no-selector rejection, and target-bound campaign creation.
 - Portable root manifest plus Codex and Claude compatibility manifests are present.
@@ -29,11 +30,22 @@
   wrapper correctly failed; this run is not counted as end-to-end acceptance.
 - The umbrella registration PR was merged into tailrocks-skills main at
   2b6d21c326e5febf889d280cb2c5f4a595775ff.
-- Review-driven hardening is staged locally after the baseline push: campaign
-  reuse now rejects repository/path/request/target collisions, completion
-  requires target observation plus a target-bound attached receipt, and
-  snapshot restore rejects missing patch artifacts. Recovery tests cover all
-  three.
+- Independent read-only review of baseline commit 5dff1239 requested changes
+  for campaign identity collisions, fail-open completion, and missing restore
+  artifacts; all three were fixed and covered by the hardening commit. Its
+  separate concern that the plugin lacks a duplicate executable convergence
+  engine was rejected as out of boundary: the skills are the executor and
+  compose existing lifecycle owners, with real-agent landing evidence.
+- Review-driven hardening is published: campaign reuse rejects
+  repository/path/request/target collisions, completion requires target
+  observation plus a target-bound attached receipt, and snapshot restore
+  rejects missing patch artifacts. Recovery tests cover all three.
+- Tag v0.1.0 is published. Release workflow 35826243801 passed and published
+  catalog.json and plugin.json at
+  https://github.com/tailrocks/tailrocks-repository-skills/releases/tag/v0.1.0.
+- The v0.1.0 tag was installed through native Codex and Claude marketplace
+  flows in an isolated checkout; Codex and Claude both reported enabled
+  version 0.1.0 and Claude strict validation passed.
 
 ## Completed research
 
@@ -51,13 +63,13 @@ A delegated probe reused the shared workspace as temporary state and removed unc
 
 - Claude native execution is still blocked by the expired OAuth session; live
   namespaced E2E needs refreshed credentials.
-- Release tag/install and post-hardening hosted CI remain.
+- Live Claude model E2E remains blocked by the expired OAuth session. The
+  post-hardening real-agent retry also hit the sandbox's helper-build denial;
+  the wrapper failed without a completion receipt, as required.
 
 ## Next
 
-1. Commit/push the hardening with DCO signoff and rerun hosted CI.
-2. Tag/release 0.1.0 and verify the release assets and install path.
-3. Re-run authenticated Claude acceptance if credentials are available; retain
+1. Re-run authenticated Claude acceptance if credentials are available; retain
    the OAuth blocker otherwise.
-4. Finish final evidence and close the goal only after every required receipt
+2. Finish final evidence and close the goal only after every required receipt
    and genuine blocker is recorded.

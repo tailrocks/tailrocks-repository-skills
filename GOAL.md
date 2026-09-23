@@ -17,3 +17,8 @@ The repo-merge entry point must:
 Completion means the selected target contains the justified work and verification receipts prove it. A report, patch, opened PR, or queued merge is not completion.
 
 The full superseding specification is tailrocks-repository-skills-development-goal-v2.md.
+
+Delivery record: main contains the published implementation and hardening;
+v0.1.0 is released and registered in the Tailrocks umbrella. Native Codex and
+Claude installation was verified. Live Claude execution remains blocked by
+the installed client's expired OAuth session and is recorded in PROGRESS.md.

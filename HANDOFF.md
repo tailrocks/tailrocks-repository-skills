@@ -26,6 +26,11 @@ The helper writes campaign JSON and a create-new lease outside the repository. A
 - A later hardened retry reached a real disposable landing but helper build
   was sandbox-blocked, so it emitted no completion receipt and is not proof of
   campaign success.
+- Published proof: hardening commit
+  4809cf4c1cc91df6ff28cbf009fe3de83de96437; CI 35826193979; release workflow
+  35826243801; tag v0.1.0. The tag installed and validated in both native
+  clients. Umbrella registration merged at
+  2b6d21c326e5febf889d280cb2c5f4a595775ff.
 
 ## Ownership
 
