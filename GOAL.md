@@ -19,8 +19,8 @@ Completion means the selected target contains the justified work and verificatio
 The full superseding specification is tailrocks-repository-skills-development-goal-v2.md.
 
 Delivery record: main contains the published implementation, hardening, and
-scoped-cleanup proof (3c996a3ad9d87d2e438456280edc29f7b77eedbf); final tip is
-later evidence-only commits preserve the verification records;
+scoped-cleanup proof (3c996a3ad9d87d2e438456280edc29f7b77eedbf); subsequent
+evidence-only commits preserve the verification records.
 v0.1.0 is released and registered in the Tailrocks umbrella. Native Codex and
 Claude installation was verified. Live Claude execution remains blocked by
 the installed client's expired OAuth session and is recorded in PROGRESS.md.
