@@ -56,6 +56,8 @@
   exposes catalog.json and plugin.json assets for tag v0.1.1. A fresh exact-tag
   checkout installed as v0.1.1 in both native Codex and Claude marketplace
   flows, and both temporary registrations were removed.
+- Follow-up test commit `cbc9968` updates the optional Codex E2E invocation for
+  Codex 0.155.1; hosted CI `35842398838` passed.
 
 ## Completed research
 

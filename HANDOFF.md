@@ -37,6 +37,8 @@ The helper writes campaign JSON and a create-new lease outside the repository. A
   `v0.1.1`, release workflow `35834905290`, and fresh exact-tag installs in
   native Codex and Claude both passed. The release API exposes the canonical
   `catalog.json` and `plugin.json` assets.
+- Current main also contains test compatibility commit `cbc9968`, which
+  updates the optional Codex 0.155.1 E2E flag; CI `35842398838` passed.
 - Cleanup proof landed in 3c996a3ad9d87d2e438456280edc29f7b77eedbf; later
   main commits only update evidence records. Hosted CI 35830543413 passed.
 
