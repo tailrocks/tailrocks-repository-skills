@@ -22,7 +22,7 @@ fi
 
 client_e2e=$(printenv TAILROCKS_CLIENT_E2E 2>/dev/null || true)
 if [ "$client_e2e" = "1" ]; then
-  codex exec --sandbox read-only --ask-for-approval never --cd "$repo_root" \
+  codex exec --sandbox read-only --cd "$repo_root" \
     'Use $repo-merge --audit-only --target-branch=main feature/auth, then report the exact target.' >/dev/null
   claude --plugin-dir "$repo_root" --print --no-session-persistence \
     --permission-mode plan --prompt-suggestions false \
