@@ -1,7 +1,8 @@
 # Tailrocks repository skills: delivery goal
 
-Status: active; v0.1.1 is shipped, and Claude/hosted non-main evidence remains
-externally blocked as recorded below.
+Status: active; v0.1.2 resolution, lease, receipt, and binding hardening is
+in progress. Claude/hosted non-main evidence and several full-spec semantics
+remain blocked or incomplete as recorded below.
 
 Ship tailrocks/tailrocks-repository-skills as one installable plugin for Codex CLI and Claude Code. It owns repository audit, convergence, and eligible cleanup while composing the existing pull-request lifecycle skills.
 
@@ -25,12 +26,15 @@ v0.1.1 helper and campaign-state hardening in `6c3b62b`; subsequent records
 preserve the verification evidence.
 v0.1.0 is released and registered in the Tailrocks umbrella. Native Codex and
 Claude installation was verified. The latest real Codex non-main acceptance
-completed campaign `campaign-5b4789d507dd56ba` at target OID
-`ec1cb8d556ff0d2193f128364fed7579ba427efa` from initial target
-`bc9a0feb9dcf0ee5d28c160001b60a7bf1e5b75c`, with main unchanged at
-`ac92839d316618f5dfcfa40bbf213b22cc0028ca`. The run exercised the prebuilt
+completed campaign `campaign-c991f32f1deb5da4` at target OID
+`395154a65036e65a83dfc5edd70172c7271b7d6b` from initial target
+`401b69dcc549b3df7cd089dbb82753369e546fe2`, with main unchanged at
+`36c4a47febe81790b8b232915177da9f20bc669c`. The run exercised the prebuilt
 helper seam and serialized campaign-state mutations. Live Claude execution and
 hosted PR-to-non-main landing remain blocked as recorded in PROGRESS.md; the
 broad v2 adversarial matrix is not yet complete. v0.1.1 passed hosted CI
 `35834837262`, release workflow `35834905290`, and fresh native Codex and
-Claude installs from tag `v0.1.1`.
+Claude installs from tag `v0.1.1`. Unshipped v0.1.2 adds frozen GitHub
+selector resolution, current-checkout repository binding verification,
+target-wide leases, fast-forward target observation, and typed phase receipts;
+its release proof is pending.

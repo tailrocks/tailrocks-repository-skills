@@ -52,15 +52,25 @@ git -C "$campaign_repo" remote add origin https://example.invalid/tailrocks-fixt
 printf 'base\n' >"$campaign_repo/base.txt"
 git -C "$campaign_repo" add base.txt
 git -C "$campaign_repo" commit -qm base
+git -C "$campaign_repo" branch feature/auth
 request="$work/request.json"
 target="$work/target.json"
 "$helper_bin" parse-request --text "--target-branch=main feature/auth" >"$request"
 "$helper_bin" target-check --repo-path "$campaign_repo" --target-branch main >"$target"
-state_json=$("$helper_bin" campaign-init --state-dir "$campaign_state" --repo-path "$campaign_repo" --request-file "$request" --target-receipt "$target")
+resolution="$work/resolution.json"
+"$helper_bin" resolve-selectors --repo-path "$campaign_repo" --request-file "$request" >"$resolution"
+state_json=$("$helper_bin" campaign-init --state-dir "$campaign_state" --repo-path "$campaign_repo" --request-file "$request" --target-receipt "$target" --resolution-file "$resolution")
 campaign_id=$(printf '%s\n' "$state_json" | jq -r '.campaign_id')
 lock_path=$(printf '%s\n' "$state_json" | jq -r '.lock_path')
 test -f "$lock_path"
 "$helper_bin" campaign-resume --state-dir "$campaign_state" --campaign-id "$campaign_id" --target-branch main >/dev/null
+second_request="$work/second-request.json"
+"$helper_bin" parse-request --text "--target-branch=main feature/other" >"$second_request"
+if "$helper_bin" campaign-init --state-dir "$campaign_state" --repo-path "$campaign_repo" \
+  --request-file "$second_request" --target-receipt "$target" >"$work/second-out" 2>"$work/second-err"; then
+  echo "second campaign on the same target unexpectedly acquired a lease" >&2
+  exit 1
+fi
 collision_repo="$work/collision-repo"
 git clone -q --local --no-hardlinks "$campaign_repo" "$collision_repo"
 git -C "$collision_repo" remote set-url origin https://example.invalid/tailrocks-fixture.git
@@ -81,18 +91,38 @@ new_target="$work/new-target.json"
 "$helper_bin" target-check --repo-path "$campaign_repo" --target-branch main >"$new_target"
 observed=$("$helper_bin" campaign-observe --state-dir "$campaign_state" --campaign-id "$campaign_id" --target-receipt "$new_target")
 printf '%s\n' "$observed" | jq -e '.current_target_oid == "'"$(jq -r .target_oid "$new_target")"'"' >/dev/null
+initial_oid=$(printf '%s\n' "$state_json" | jq -r .initial_target_oid)
+new_oid=$(jq -r .target_oid "$new_target")
+git -C "$campaign_repo" update-ref refs/heads/main "$initial_oid"
+rollback_target="$work/rollback-target.json"
+"$helper_bin" target-check --repo-path "$campaign_repo" --target-branch main >"$rollback_target"
+if "$helper_bin" campaign-observe --state-dir "$campaign_state" --campaign-id "$campaign_id" \
+  --target-receipt "$rollback_target" >"$work/rollback-out" 2>"$work/rollback-err"; then
+  echo "non-fast-forward target movement unexpectedly accepted" >&2
+  exit 1
+fi
+git -C "$campaign_repo" update-ref refs/heads/main "$new_oid"
 if "$helper_bin" campaign-journal --state-dir "$campaign_state" --campaign-id "$campaign_id" --event campaign-complete --phase complete --status complete >"$work/early-complete-out" 2>"$work/early-complete-err"; then
   echo "campaign completed without an attached receipt" >&2
   exit 1
 fi
-receipt="$work/receipt.json"
-jq -n \
-  --arg repo_path "$(jq -r .repo_path "$new_target")" \
-  --arg branch "$(jq -r .target_branch "$new_target")" \
-  --arg ref "$(jq -r .target_ref "$new_target")" \
-  --arg oid "$(jq -r .target_oid "$new_target")" \
-  '{event:"no-op-verified",target:{repo_path:$repo_path,branch:$branch,ref:$ref,oid:$oid}}' >"$receipt"
-"$helper_bin" campaign-attach-receipt --state-dir "$campaign_state" --campaign-id "$campaign_id" --receipt "$receipt" >/dev/null
+repository=$(printf '%s\n' "$state_json" | jq -r .repository)
+scope=$(printf '%s\n' "$state_json" | jq -r .scope)
+repo_path=$(printf '%s\n' "$state_json" | jq -r .repo_path)
+for phase in audit review ci landing verification cleanup; do
+  receipt="$work/receipt-$phase.json"
+  jq -n \
+    --arg campaign_id "$campaign_id" \
+    --arg scope "$scope" \
+    --arg repository "$repository" \
+    --arg repo_path "$repo_path" \
+    --arg branch "$(jq -r .target_branch "$new_target")" \
+    --arg ref "$(jq -r .target_ref "$new_target")" \
+    --arg oid "$(jq -r .target_oid "$new_target")" \
+    --arg phase "$phase" \
+    '{schema:"tailrocks.campaign-receipt/v1",campaign_id:$campaign_id,scope:$scope,repository:$repository,repo_path:$repo_path,source_ids:["branch:feature/auth"],phase:$phase,status:"verified",operation_id:("fixture-" + $phase),content_sha256:("0000000000000000000000000000000000000000000000000000000000000000"),target:{branch:$branch,ref:$ref,oid:$oid}}' >"$receipt"
+  "$helper_bin" campaign-attach-receipt --state-dir "$campaign_state" --campaign-id "$campaign_id" --receipt "$receipt" >/dev/null
+done
 "$helper_bin" campaign-journal --state-dir "$campaign_state" --campaign-id "$campaign_id" --event no-op-verified --phase verified --status recorded >/dev/null
 "$helper_bin" campaign-journal --state-dir "$campaign_state" --campaign-id "$campaign_id" --event campaign-complete --phase complete --status complete >/dev/null
 test ! -e "$lock_path"

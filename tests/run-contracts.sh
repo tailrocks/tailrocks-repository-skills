@@ -7,6 +7,7 @@ cargo build --quiet --locked --manifest-path helper/Cargo.toml
 export TAILROCKS_HELPER_BIN="$repo_root/helper/target/debug/tailrocks-repository-helper"
 
 tests/selector-contract.sh
+tests/resolution-contract.sh
 tests/fixture-landing.sh
 tests/cleanup-scope.sh
 tests/recovery-and-resume.sh

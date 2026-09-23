@@ -6,7 +6,7 @@ Continue from the active goal in GOAL.md. Keep the repository target-bound and f
 
 ## Durable state
 
-The helper writes campaign JSON and a create-new lease outside the repository. A campaign records repository identity, exact target branch/ref/OID, initial and current target OIDs, frozen source selectors and provenance, scope, local-only/audit modes, configuration digest, scan coverage, decisions, receipts, recovery index, phase, status, and journal. Reusing a campaign validates repository path, request, and target identity. Attach every target-bound receipt before completion; completion requires target-observed plus an attached receipt. Resume must use the same campaign and target; a different target starts a different campaign. Re-observe the target after every advance.
+The helper writes campaign JSON and create-new campaign/target leases outside the repository. A campaign records repository identity, exact target branch/ref/OID, initial and current target OIDs, frozen source selectors and resolved metadata/provenance, scope, local-only/audit modes, configuration digests, scan coverage, decisions, typed receipts, recovery index, phase, status, and journal. Reusing a campaign validates repository path, request, resolution, and target identity. Attach every target-bound phase receipt before completion; completion requires target-observed plus all applicable audit/review/CI/landing/verification receipts. Resume must use the same campaign and target; a different target starts a different campaign. Re-observe the target after every advance; non-fast-forward movement fails closed.
 
 ## Required completion proof
 
@@ -17,13 +17,14 @@ The helper writes campaign JSON and a create-new lease outside the repository. A
 - Client proof records Codex native skill invocation and Claude namespaced plugin invocation. If Claude authentication is unavailable, report that exact blocker.
 - CI/review/landing receipts name the exact target and target OID. Queued merges do not count.
 - Campaign completion must be journaled as campaign-complete/complete only
-  after a receipt is attached through the helper; missing snapshot patch
-  artifacts fail restore-test and block cleanup.
+  after target observation and all applicable typed phase receipts are
+  attached through the helper; missing snapshot patch artifacts fail
+  restore-test and block cleanup.
 - Latest real Codex acceptance landed feature/auth into disposable
-  `release/next` at `ec1cb8d556ff0d2193f128364fed7579ba427efa` from initial
-  target `bc9a0feb9dcf0ee5d28c160001b60a7bf1e5b75c`, while keeping main at
-  `ac92839d316618f5dfcfa40bbf213b22cc0028ca`; campaign
-  `campaign-5b4789d507dd56ba` completed with audit, review, landing, target
+  `release/next` at `395154a65036e65a83dfc5edd70172c7271b7d6b` from initial
+  target `401b69dcc549b3df7cd089dbb82753369e546fe2`, while keeping main at
+  `36c4a47febe81790b8b232915177da9f20bc669c`; campaign
+  `campaign-c991f32f1deb5da4` completed with audit, review, landing, target
   observation, and completion receipts. The run recovered to a writable clone
   after immutable checkout metadata, used `TAILROCKS_HELPER_BIN` for a
   prebuilt helper outside the sandbox, and exercised the per-campaign state
@@ -39,6 +40,14 @@ The helper writes campaign JSON and a create-new lease outside the repository. A
   `catalog.json` and `plugin.json` assets.
 - Current main also contains test compatibility commit `cbc9968`, which
   updates the optional Codex 0.155.1 E2E flag; CI `35842398838` passed.
+- Current unshipped work is v0.1.2: explicit `--repo`/URL campaigns verify
+  normalized GitHub `origin` identity before state creation; `resolve-selectors`
+  freezes paginated PR/branch metadata; target leases serialize a bound target;
+  non-fast-forward observation fails closed; typed phase receipts gate
+  completion; and the native fixture harness can preserve synthetic
+  receipts/transcripts for review.
+  Do not call v0.1.2 shipped until commit, CI, tag, release, and fresh install
+  are verified.
 - Cleanup proof landed in 3c996a3ad9d87d2e438456280edc29f7b77eedbf; later
   main commits only update evidence records. Hosted CI 35830543413 passed.
 

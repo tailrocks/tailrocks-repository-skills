@@ -34,10 +34,13 @@ Read:
    --target-branch is the DESTINATION and omitted means literal main. Do not
    infer a destination from current HEAD, PR base, origin/HEAD, or the
    repository default. Reject a missing or ambiguous target.
-2. Resolve selectors deterministically, paginate list URLs, preserve literal
-   hash arguments and provenance, deduplicate canonical identities, and reject
-   mixed repositories. No selectors means usage/error. --all-work is the only
-   explicit host-wide scope.
+2. Resolve selectors deterministically with the helper's \`resolve-selectors\`
+   operation. It paginates list URLs through the authenticated GitHub client,
+   freezes exact PR/branch membership and metadata, preserves literal hash
+   arguments and provenance, deduplicates canonical identities, and rejects
+   mixed repositories. No selectors means usage/error. Do not call selected
+   source resolution for \`--all-work\`; that flag selects the host-wide
+   owner explicitly.
 3. Check the exact target and create or resume an external campaign. Freeze the
    target branch, ref, OID, repository, source set, cleanup mode, and scope.
 4. Run tailrocks-repository-audit against the fresh target. For every source,
@@ -67,7 +70,9 @@ Read:
 10. Re-read the destination after every batch. Verify the combined batch and
     final target OID against the target's requirements. A main receipt cannot
     verify a non-main destination.
-11. If cleanup is resolved, route candidates to
+11. Attach typed target-bound receipts for audit, review, CI, landing, final
+   verification, idempotency, and cleanup. The helper completion gate requires
+   all applicable phases before campaign-complete. If cleanup is resolved, route candidates to
     tailrocks-repository-cleanup. If cleanup is none, make no deletion
     attempt. Cleanup remains limited to the frozen source scope.
 12. Journal every phase and emit target-bound receipts. On interruption, resume

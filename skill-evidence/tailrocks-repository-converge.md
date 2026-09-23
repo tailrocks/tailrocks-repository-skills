@@ -19,7 +19,10 @@ Acceptance:
   missing-target rejection. Its rerun check proves an already represented
   source leaves the target OID unchanged.
 - helper campaign-observe updates current_target_oid only for the recorded
-  target identity.
+  target identity and rejects a stale/non-fast-forward target movement.
+- tests/resolution-contract.sh freezes exact PR/branch list membership and
+  target exclusion before convergence; tests/recovery-and-resume.sh proves
+  same-target lease exclusion and typed phase completion gating.
 - Shared lifecycle policy routes review to tailrocks-review-pr and landing to
   tailrocks-merge-pr; no duplicate PR policy exists here.
 
@@ -28,15 +31,15 @@ Real-agent receipt:
 - Codex CLI 0.155.1, gpt-5.6-luna, high reasoning, approval never,
   workspace-write sandbox, installed local plugin, disposable fixture, and
   `--local-only --cleanup=none`.
-- Campaign `campaign-5b4789d507dd56ba` bound the exact target
+- Campaign `campaign-c991f32f1deb5da4` bound the exact target
   `refs/heads/release/next`; audit and independent local review passed, CI was
   correctly not-applicable for the fixture, merge landing produced
-  `ec1cb8d556ff0d2193f128364fed7579ba427efa`, and the campaign journal reached
+  `395154a65036e65a83dfc5edd70172c7271b7d6b`, and the campaign journal reached
   `campaign-complete/complete`.
 - Post-landing checks proved source commit
-  `228f5550fd4e275479377068514e0235a2b31d2f` was represented, `auth.txt` and
+  `9da059a8378cb6853c2d587e52241481bc263311` was represented, `auth.txt` and
   `release.txt` were present, main stayed at
-  `ac92839d316618f5dfcfa40bbf213b22cc0028ca`, and the target clone was clean.
+  `36c4a47febe81790b8b232915177da9f20bc669c`, and the target clone was clean.
   No network or cleanup occurred. The helper was built before agent start and
   invoked through `TAILROCKS_HELPER_BIN`; the run also exercised recovery to a
   writable clone when the first checkout's metadata was immutable. The helper's

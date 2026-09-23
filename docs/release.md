@@ -27,3 +27,7 @@ https://github.com/tailrocks/tailrocks-repository-skills/releases/tag/v0.1.1.
 The release API exposes the canonical catalog.json and plugin.json assets. An
 isolated exact-tag checkout installed and reported version 0.1.1 in both native
 Codex and Claude marketplace flows; strict Claude validation passed.
+The next patch release is v0.1.2 and contains current-checkout repository
+binding hardening, deterministic GitHub selector resolution, frozen source
+metadata, target leases, fast-forward observation checks, and typed phase
+receipts. Its commit, CI, release, and fresh-install proof are pending.

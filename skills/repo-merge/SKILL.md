@@ -46,8 +46,12 @@ non-shell helper. Never ask a shell to interpret it. The # in #1145 is data.
 ## Execution
 
 1. Parse and validate the request using scripts/run-helper.sh parse-request.
-2. Resolve the repository and source selectors. Record canonical IDs,
-   provenance, list pagination, and repository identity.
+2. Resolve the repository and source selectors with the helper's
+   \`resolve-selectors\` operation. It resolves local/qualified refs,
+   retrieves exact PR metadata, paginates \`/pulls\` and \`/branches/all\`
+   through the authenticated GitHub client, freezes the resolved membership,
+   and records canonical IDs, provenance, list timestamp, and repository
+   identity. If the client or API is unavailable, stop before mutation.
 3. Check the exact destination with target-check. Create or resume external
    campaign state. Record target branch, ref, OID, scope, and cleanup mode.
 4. Route the read-only inventory and target-relative comparison to
@@ -66,10 +70,12 @@ non-shell helper. Never ask a shell to interpret it. The # in #1145 is data.
    prepared patch, opened PR, approval, green pending check, or queued merge
    is not completion.
 7. Re-read and verify the combined batch after every target advance. Attach
-   review, CI, landing, idempotency, and cleanup receipts with
-   campaign-attach-receipt; each must bind to this repository path, target
-   ref, and initial or current target OID. Do not journal campaign-complete
-   until target-observed and an attached receipt exist.
+   audit, review, CI, landing, verification, idempotency, and cleanup
+   receipts with campaign-attach-receipt. Each must use
+   \`tailrocks.campaign-receipt/v1\`, bind campaign/scope/source IDs,
+   repository/path, exact target ref/OID, phase/status, operation ID, and a
+   64-character content or artifact hash. Do not journal campaign-complete
+   until target-observed and all required phase receipts exist.
 8. Route eligible deletion to tailrocks-repository-cleanup only after restore
    testing unique local state and proving no other target or unresolved work
    needs the source. Do not turn selected-source work into global cleanup.

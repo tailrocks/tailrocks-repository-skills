@@ -29,14 +29,14 @@ the installed local plugin. It invoked `$repo-merge --local-only
 --cleanup=none --target-branch=release/next feature/auth`, recovered from an
 immutable checked-out Git metadata path into the prepared writable clone, and
 landed the source at target OID
-`ec1cb8d556ff0d2193f128364fed7579ba427efa`. It verified `auth.txt`, preserved
+`395154a65036e65a83dfc5edd70172c7271b7d6b`. It verified `auth.txt`, preserved
 `release.txt`, kept main at
-`ac92839d316618f5dfcfa40bbf213b22cc0028ca`, used no network, and skipped
-cleanup by policy. Campaign `campaign-5b4789d507dd56ba` reached
+`36c4a47febe81790b8b232915177da9f20bc669c`, used no network, and skipped
+cleanup by policy. Campaign `campaign-c991f32f1deb5da4` reached
 `campaign-complete/complete` with audit, review, CI, landing, verification,
 and target-observation receipts. The initial target was
-`bc9a0feb9dcf0ee5d28c160001b60a7bf1e5b75c`; the source was
-`228f5550fd4e275479377068514e0235a2b31d2f`. The harness built the helper
+`401b69dcc549b3df7cd089dbb82753369e546fe2`; the source was
+`9da059a8378cb6853c2d587e52241481bc263311`. The harness built the helper
 before agent start and passed it through `TAILROCKS_HELPER_BIN`; campaign state
 mutations were serialized by the helper's per-campaign OS lock.
 

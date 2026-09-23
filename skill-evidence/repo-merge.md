@@ -19,6 +19,10 @@ Acceptance:
 - tests/client-contract.sh verifies installed client command surfaces,
   namespaced/mention spellings, /goal documentation, no bare alias, and
   optional authenticated e2e mode.
+- tests/resolution-contract.sh proves deterministic local ref resolution,
+  exact PR/list metadata through a paginated GitHub-client seam, draft
+  preservation, branch-list target exclusion, provenance, deduplication, and
+  divergent same-name ref rejection.
 
 Real-agent acceptance:
 
@@ -28,11 +32,11 @@ Real-agent acceptance:
   writable clone after an immutable checkout path, and completed a
   target-bound non-main local landing.
 - Exact result: `release/next` advanced from
-  `bc9a0feb9dcf0ee5d28c160001b60a7bf1e5b75c` to
-  `ec1cb8d556ff0d2193f128364fed7579ba427efa`; source ancestry, `auth.txt`,
+  `401b69dcc549b3df7cd089dbb82753369e546fe2` to
+  `395154a65036e65a83dfc5edd70172c7271b7d6b`; source ancestry, `auth.txt`,
   and existing `release.txt` were verified; main remained
-  `ac92839d316618f5dfcfa40bbf213b22cc0028ca`; campaign
-  `campaign-5b4789d507dd56ba` reached `campaign-complete/complete`; cleanup
+  `36c4a47febe81790b8b232915177da9f20bc669c`; campaign
+  `campaign-c991f32f1deb5da4` reached `campaign-complete/complete`; cleanup
   was explicitly none. The helper was built outside the sandbox and supplied
   with `TAILROCKS_HELPER_BIN`.
 
@@ -60,3 +64,8 @@ Hardening and publication:
 - v0.1.1 commit `6c3b62b` passed hosted CI `35834837262` and release workflow
   `35834905290`. An exact-tag checkout installed and reported v0.1.1 in both
   native Codex and Claude marketplace flows; strict Claude validation passed.
+- v0.1.2 hardening adds origin verification for explicit repositories, a
+  paginated `resolve-selectors` helper with frozen source metadata, a
+  repository/target lease, non-fast-forward target movement rejection, and
+  typed receipt phase/completion gates. The local recovery contract proves a
+  second same-target campaign and rollback observation fail closed.

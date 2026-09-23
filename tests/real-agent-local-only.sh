@@ -9,11 +9,16 @@ state_dir="$work/state"
 helper_target="$work/helper-target"
 log="$work/codex.log"
 marketplace_name=tailrocks-repository-skills
+keep_work=${TAILROCKS_KEEP_ACCEPTANCE_WORK:-0}
 
 cleanup() {
   codex plugin remove "$marketplace_name@$marketplace_name" --json >/dev/null 2>&1 || true
   codex plugin marketplace remove "$marketplace_name" --json >/dev/null 2>&1 || true
-  rm -rf "$work"
+  if [ "$keep_work" = "1" ]; then
+    echo "real-agent acceptance work preserved: $work" >&2
+  else
+    rm -rf "$work"
+  fi
 }
 trap cleanup EXIT HUP INT TERM
 
@@ -53,7 +58,7 @@ codex plugin add "$marketplace_name@$marketplace_name" --json >/dev/null
 export TAILROCKS_REPOSITORY_STATE_DIR="$state_dir"
 export TAILROCKS_HELPER_BIN="$helper_bin"
 codex exec --ephemeral --sandbox workspace-write --cd "$repo" \
-  'Use $repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth. This is a disposable local fixture. Actually land the justified source into the exact local target, do not change main, do not use network, and report the target OID. Use TAILROCKS_REPOSITORY_STATE_DIR='"$state_dir"' for campaign state. If the checked-out fixture Git metadata is immutable, use the precreated writable clone at '"$landing_repo"' and verify that clone.' >"$log"
+  'Use $repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth. This is a disposable local fixture. Actually land the justified source into the exact local target, do not change main, do not use network, and report the target OID. Use TAILROCKS_REPOSITORY_STATE_DIR='"$state_dir"' for campaign state. Resolve the selected source before campaign-init and attach typed tailrocks.campaign-receipt/v1 receipts for audit, review, CI, landing, and verification; each needs the exact campaign/scope/source IDs, target ref/OID, operation_id, and a 64-character content_sha256. If the checked-out fixture Git metadata is immutable, use the precreated writable clone at '"$landing_repo"' and verify that clone.' >"$log"
 
 test "$(git -C "$repo" rev-parse refs/heads/main)" = "$main_before"
 test "$(git -C "$landing_repo" rev-parse refs/remotes/origin/main)" = "$main_before"

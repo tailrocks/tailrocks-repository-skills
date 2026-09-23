@@ -15,6 +15,9 @@ const TARGET_SCHEMA: &str = "tailrocks.target-receipt/v1";
 const CAMPAIGN_SCHEMA: &str = "tailrocks.campaign-state/v1";
 const SNAPSHOT_SCHEMA: &str = "tailrocks.snapshot/v1";
 const LEASE_SCHEMA: &str = "tailrocks.campaign-lease/v1";
+const TARGET_LEASE_SCHEMA: &str = "tailrocks.target-lease/v1";
+const RESOLUTION_SCHEMA: &str = "tailrocks.source-resolution/v1";
+const RECEIPT_SCHEMA: &str = "tailrocks.campaign-receipt/v1";
 
 #[derive(Debug, Clone)]
 struct HelperError(String);
@@ -73,6 +76,33 @@ pub struct Request {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SourceResolution {
+    pub schema: String,
+    pub selector: SourceSelector,
+    pub repository: String,
+    pub canonical: String,
+    pub kind: String,
+    pub source_ref: Option<String>,
+    pub head_branch: Option<String>,
+    pub head_oid: Option<String>,
+    pub base_branch: Option<String>,
+    pub base_oid: Option<String>,
+    pub number: Option<u64>,
+    pub state: Option<String>,
+    pub draft: Option<bool>,
+    pub protected: Option<bool>,
+    pub provenance: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ResolutionSet {
+    pub schema: String,
+    pub repository: String,
+    pub resolved_at_unix: u64,
+    pub sources: Vec<SourceResolution>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TargetReceipt {
     pub schema: String,
     pub repo_path: String,
@@ -103,17 +133,25 @@ pub struct CampaignState {
     pub target: TargetReceipt,
     pub request: Request,
     pub frozen_sources: Vec<SourceSelector>,
+    #[serde(default)]
+    pub resolved_sources: Vec<SourceResolution>,
+    #[serde(default)]
+    pub source_resolution_at_unix: Option<u64>,
     pub scope: String,
     pub initial_target_oid: String,
     pub current_target_oid: String,
     pub audit_only: bool,
     pub local_only: bool,
     pub configuration_digest: String,
+    #[serde(default)]
+    pub source_resolution_digest: String,
     pub scan_coverage: Vec<String>,
     pub decisions: Vec<String>,
     pub receipt_refs: Vec<String>,
     pub recovery_index: Vec<String>,
     pub lock_path: String,
+    #[serde(default)]
+    pub target_lock_path: String,
     pub status: String,
     pub phase: String,
     pub journal: Vec<JournalEntry>,
@@ -121,6 +159,19 @@ pub struct CampaignState {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CampaignLease {
+    pub schema: String,
+    pub campaign_id: String,
+    pub repository: String,
+    pub repo_path: String,
+    pub target_branch: String,
+    pub target_ref: String,
+    pub target_oid: String,
+    pub owner_pid: u32,
+    pub acquired_at_unix: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TargetLease {
     pub schema: String,
     pub campaign_id: String,
     pub repository: String,
@@ -197,6 +248,13 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
             let receipt = check_target(&repo_path, &branch, remote.as_deref())?;
             print_json(&receipt)
         }
+        "resolve-selectors" => {
+            let repo_path = required_path(&args[1..], "--repo-path")?;
+            let request_file = required_path(&args[1..], "--request-file")?;
+            let request: Request = read_json(&request_file)?;
+            let resolved = resolve_selectors(&repo_path, &request)?;
+            print_json(&resolved)
+        }
         "campaign-init" => {
             let state_dir = required_path(&args[1..], "--state-dir")?;
             let repo_path = required_path(&args[1..], "--repo-path")?;
@@ -204,7 +262,11 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
             let target_file = required_path(&args[1..], "--target-receipt")?;
             let request: Request = read_json(&request_file)?;
             let target: TargetReceipt = read_json(&target_file)?;
-            let state = init_campaign(&state_dir, &repo_path, request, target)?;
+            let resolution = option_value(&args[1..], "--resolution-file")
+                .map(PathBuf::from)
+                .map(|path| read_json(&path))
+                .transpose()?;
+            let state = init_campaign(&state_dir, &repo_path, request, target, resolution)?;
             print_json(&state)
         }
         "campaign-resume" => {
@@ -253,14 +315,14 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
             if event == "campaign-complete"
                 && (phase != "complete"
                     || status != "complete"
-                    || state.receipt_refs.is_empty()
+                    || !receipts_support_completion(&state)
                     || !state
                         .journal
                         .iter()
                         .any(|entry| entry.event == "target-observed"))
             {
                 return Err(HelperError(
-                    "campaign completion requires a target observation and at least one attached receipt"
+                    "campaign completion requires target observation and phase-complete campaign receipts"
                         .into(),
                 ));
             }
@@ -298,7 +360,7 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
             let receipt: serde_json::Value = read_json(&receipt_path)?;
             if !receipt_matches_campaign(&receipt, &state) {
                 return Err(HelperError(
-                    "receipt does not bind to the campaign target ref and OID".into(),
+                    "receipt schema, campaign, scope, source, phase, hash, or target binding is invalid".into(),
                 ));
             }
             let receipt_path = receipt_path.to_string_lossy().into_owned();
@@ -337,7 +399,7 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
 }
 
 fn usage() -> String {
-    "usage: helper <parse-request|target-check|campaign-init|campaign-resume|campaign-observe|campaign-journal|campaign-attach-receipt|campaign-release|snapshot-create|snapshot-restore-test> ...".into()
+    "usage: helper <parse-request|target-check|resolve-selectors|campaign-init|campaign-resume|campaign-observe|campaign-journal|campaign-attach-receipt|campaign-release|snapshot-create|snapshot-restore-test> ...".into()
 }
 
 fn print_json<T: Serialize>(value: &T) -> Result<()> {
@@ -703,7 +765,7 @@ fn parse_url_selector(raw: &str) -> Result<SourceSelector> {
     if repo.ends_with(".git") {
         repo.truncate(repo.len() - 4);
     }
-    let repository = format!("{owner}/{repo}");
+    let repository = format!("{owner}/{repo}").to_ascii_lowercase();
     let tail = parts.collect::<Vec<_>>();
     if tail.len() == 2 && tail[0] == "pull" {
         let number = parse_positive_number(tail[1])
@@ -786,13 +848,422 @@ fn bind_url_repositories(request: &mut Request) -> Result<()> {
     Ok(())
 }
 
+fn resolve_selectors(repo_path: &Path, request: &Request) -> Result<ResolutionSet> {
+    if request.schema != REQUEST_SCHEMA {
+        return Err(HelperError("unsupported request schema".into()));
+    }
+    if request.all_work {
+        return Err(HelperError(
+            "--all-work requires host-wide discovery; use the convergence owner".into(),
+        ));
+    }
+    let repo_path = fs::canonicalize(repo_path)
+        .map_err(|_| HelperError("repository path is missing or not accessible".into()))?;
+    let origin_url = git_output_optional(&repo_path, &["remote", "get-url", "origin"])
+        .ok()
+        .map(|value| value.trim().to_owned());
+    let origin = origin_url.as_deref().and_then(canonical_github_repository);
+    let repository = if let Some(expected) = &request.repository {
+        match origin.as_deref() {
+            Some(actual) if actual == expected => expected.clone(),
+            Some(actual) => {
+                return Err(HelperError(format!(
+                    "repository binding mismatch: request={expected} origin={actual}"
+                )))
+            }
+            None => {
+                return Err(HelperError(format!(
+                    "repository binding cannot verify {expected} against origin"
+                )))
+            }
+        }
+    } else {
+        origin.unwrap_or_else(|| {
+            origin_url
+                .map(|value| redact_url(&value))
+                .unwrap_or_else(|| format!("local:{}", repo_path.to_string_lossy()))
+        })
+    };
+
+    let mut resolved = BTreeMap::<String, SourceResolution>::new();
+    for selector in &request.sources {
+        let items = match selector.kind.as_str() {
+            "branch" => vec![resolve_branch_selector(&repo_path, selector, &repository)?],
+            "pull-request" | "pull-request-url" => {
+                vec![resolve_pull_request(&repository, selector)?]
+            }
+            "pulls-url" => resolve_pull_list(&repository, selector)?,
+            "branches-all-url" => {
+                resolve_branch_list(&repository, selector, &request.target_branch)?
+            }
+            kind => return Err(HelperError(format!("unsupported selector kind {kind}"))),
+        };
+        for item in items {
+            if item.kind == "branch"
+                && item
+                    .head_branch
+                    .as_deref()
+                    .is_some_and(|branch| branch == request.target_branch)
+            {
+                continue;
+            }
+            if let Some(existing) = resolved.get_mut(&item.canonical) {
+                for provenance in item.provenance {
+                    if !existing.provenance.contains(&provenance) {
+                        existing.provenance.push(provenance.clone());
+                    }
+                    if !existing.selector.provenance.contains(&provenance) {
+                        existing.selector.provenance.push(provenance);
+                    }
+                }
+            } else {
+                resolved.insert(item.canonical.clone(), item);
+            }
+        }
+    }
+    Ok(ResolutionSet {
+        schema: RESOLUTION_SCHEMA.into(),
+        repository,
+        resolved_at_unix: now_unix(),
+        sources: resolved.into_values().collect(),
+    })
+}
+
+fn resolve_branch_selector(
+    repo_path: &Path,
+    selector: &SourceSelector,
+    repository: &str,
+) -> Result<SourceResolution> {
+    let branch = selector
+        .branch
+        .as_deref()
+        .ok_or_else(|| HelperError("branch selector has no branch name".into()))?;
+    let candidates = branch_candidates(repo_path, selector)?;
+    if candidates.is_empty() {
+        return Err(HelperError(format!(
+            "source branch {branch} does not exist in the bound repository"
+        )));
+    }
+    let unique_oids = candidates
+        .iter()
+        .map(|(_, oid)| oid.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
+    if unique_oids.len() > 1 {
+        return Err(HelperError(format!(
+            "ambiguous source branch {branch}: refs={}",
+            candidates
+                .iter()
+                .map(|(reference, oid)| format!("{reference}@{oid}"))
+                .collect::<Vec<_>>()
+                .join(",")
+        )));
+    }
+    let (source_ref, head_oid) = candidates
+        .iter()
+        .find(|(reference, _)| reference == &format!("refs/heads/{branch}"))
+        .or_else(|| {
+            candidates
+                .iter()
+                .find(|(reference, _)| reference == &format!("refs/remotes/origin/{branch}"))
+        })
+        .unwrap_or(&candidates[0]);
+    Ok(SourceResolution {
+        schema: RESOLUTION_SCHEMA.into(),
+        selector: selector.clone(),
+        repository: repository.into(),
+        canonical: selector.canonical.clone(),
+        kind: "branch".into(),
+        source_ref: Some(source_ref.clone()),
+        head_branch: Some(branch.into()),
+        head_oid: Some(head_oid.clone()),
+        base_branch: None,
+        base_oid: None,
+        number: None,
+        state: None,
+        draft: None,
+        protected: None,
+        provenance: selector.provenance.clone(),
+    })
+}
+
+fn branch_candidates(repo_path: &Path, selector: &SourceSelector) -> Result<Vec<(String, String)>> {
+    let branch = selector
+        .branch
+        .as_deref()
+        .ok_or_else(|| HelperError("branch selector has no branch name".into()))?;
+    let output = git_output(
+        repo_path,
+        &[
+            "for-each-ref",
+            "--format=%(refname) %(objectname)",
+            "refs/heads",
+            "refs/remotes",
+        ],
+    )?;
+    let expected_prefix = match selector.query.as_deref() {
+        Some("full-ref") => Some(format!("refs/heads/{branch}")),
+        Some("origin") => Some(format!("refs/remotes/origin/{branch}")),
+        Some(value) if value.starts_with("remote:") => Some(format!(
+            "refs/remotes/{}/{branch}",
+            &value["remote:".len()..]
+        )),
+        _ => None,
+    };
+    let mut candidates = output
+        .lines()
+        .filter_map(|line| {
+            let (reference, oid) = line.split_once(' ')?;
+            let matches = if let Some(expected) = &expected_prefix {
+                reference == expected
+            } else {
+                reference == format!("refs/heads/{branch}")
+                    || (reference.starts_with("refs/remotes/")
+                        && reference.ends_with(&format!("/{branch}")))
+            };
+            matches.then(|| (reference.to_string(), oid.to_string()))
+        })
+        .collect::<Vec<_>>();
+    candidates.sort();
+    Ok(candidates)
+}
+
+fn resolve_pull_request(repository: &str, selector: &SourceSelector) -> Result<SourceResolution> {
+    let number = selector
+        .number
+        .ok_or_else(|| HelperError("pull request selector has no number".into()))?;
+    let value = github_api_json(&format!("repos/{repository}/pulls/{number}"), false)?;
+    source_resolution_from_pull(selector, repository, &value)
+}
+
+fn resolve_pull_list(repository: &str, selector: &SourceSelector) -> Result<Vec<SourceResolution>> {
+    let query = list_query(
+        selector.query.as_deref(),
+        &["state", "sort", "direction", "page", "per_page"],
+    )?;
+    let state = query.get("state").map(String::as_str).unwrap_or("open");
+    if !matches!(state, "open" | "closed" | "all") {
+        return Err(HelperError(format!(
+            "unsupported pull request state {state}"
+        )));
+    }
+    let mut endpoint = format!("repos/{repository}/pulls?state={state}&per_page=100");
+    for key in ["sort", "direction"] {
+        if let Some(value) = query.get(key) {
+            endpoint.push('&');
+            endpoint.push_str(key);
+            endpoint.push('=');
+            endpoint.push_str(value);
+        }
+    }
+    let value = github_api_json(&endpoint, true)?;
+    flatten_api_items(value)
+        .into_iter()
+        .map(|item| {
+            let number = item
+                .get("number")
+                .and_then(serde_json::Value::as_u64)
+                .ok_or_else(|| HelperError("pull list item has no number".into()))?;
+            let mut item_selector = pr_selector(&format!("pr:{number}"), number);
+            item_selector.repository = Some(repository.into());
+            item_selector.provenance = selector.provenance.clone();
+            source_resolution_from_pull(&item_selector, repository, &item)
+        })
+        .collect()
+}
+
+fn resolve_branch_list(
+    repository: &str,
+    selector: &SourceSelector,
+    target_branch: &str,
+) -> Result<Vec<SourceResolution>> {
+    let query = list_query(
+        selector.query.as_deref(),
+        &["protected", "page", "per_page"],
+    )?;
+    let mut endpoint = format!("repos/{repository}/branches?per_page=100");
+    if let Some(protected) = query.get("protected") {
+        if !matches!(protected.as_str(), "true" | "false") {
+            return Err(HelperError(
+                "branches/all protected must be true or false".into(),
+            ));
+        }
+        endpoint.push_str("&protected=");
+        endpoint.push_str(protected);
+    }
+    let value = github_api_json(&endpoint, true)?;
+    let mut output = Vec::new();
+    for item in flatten_api_items(value) {
+        let branch = item
+            .get("name")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| HelperError("branch list item has no name".into()))?;
+        validate_branch_text(branch)?;
+        if branch == target_branch {
+            continue;
+        }
+        let oid = item
+            .get("commit")
+            .and_then(serde_json::Value::as_object)
+            .and_then(|commit| commit.get("sha"))
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| HelperError(format!("branch list item {branch} has no commit")))?;
+        let protected = item.get("protected").and_then(serde_json::Value::as_bool);
+        let item_selector = branch_selector(&format!("branch:{branch}"), branch, None);
+        output.push(SourceResolution {
+            schema: RESOLUTION_SCHEMA.into(),
+            selector: SourceSelector {
+                provenance: selector.provenance.clone(),
+                ..item_selector
+            },
+            repository: repository.into(),
+            canonical: format!("branch:{branch}"),
+            kind: "branch".into(),
+            source_ref: Some(format!("refs/heads/{branch}")),
+            head_branch: Some(branch.into()),
+            head_oid: Some(oid.into()),
+            base_branch: None,
+            base_oid: None,
+            number: None,
+            state: None,
+            draft: None,
+            protected,
+            provenance: selector.provenance.clone(),
+        });
+    }
+    output.sort_by(|left, right| left.canonical.cmp(&right.canonical));
+    Ok(output)
+}
+
+fn source_resolution_from_pull(
+    selector: &SourceSelector,
+    repository: &str,
+    value: &serde_json::Value,
+) -> Result<SourceResolution> {
+    let number = value
+        .get("number")
+        .and_then(serde_json::Value::as_u64)
+        .ok_or_else(|| HelperError("pull request response has no number".into()))?;
+    let base_repository = value
+        .get("base")
+        .and_then(serde_json::Value::as_object)
+        .and_then(|base| base.get("repo"))
+        .and_then(serde_json::Value::as_object)
+        .and_then(|repo| repo.get("full_name"))
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_ascii_lowercase);
+    if base_repository.as_deref() != Some(repository) {
+        return Err(HelperError(format!(
+            "pull request {number} is not based on repository {repository}"
+        )));
+    }
+    let head = value
+        .get("head")
+        .and_then(serde_json::Value::as_object)
+        .ok_or_else(|| HelperError(format!("pull request {number} has no head")))?;
+    let base = value
+        .get("base")
+        .and_then(serde_json::Value::as_object)
+        .ok_or_else(|| HelperError(format!("pull request {number} has no base")))?;
+    let head_oid = head
+        .get("sha")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| HelperError(format!("pull request {number} has no head SHA")))?;
+    let head_branch = head
+        .get("ref")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| HelperError(format!("pull request {number} has no head branch")))?;
+    let base_branch = base
+        .get("ref")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| HelperError(format!("pull request {number} has no base branch")))?;
+    let base_oid = base.get("sha").and_then(serde_json::Value::as_str);
+    let mut item_selector = selector.clone();
+    item_selector.repository = Some(repository.into());
+    item_selector.number = Some(number);
+    item_selector.canonical = format!("pr:{repository}#{number}");
+    Ok(SourceResolution {
+        schema: RESOLUTION_SCHEMA.into(),
+        selector: item_selector,
+        repository: repository.into(),
+        canonical: format!("pr:{repository}#{number}"),
+        kind: "pull-request".into(),
+        source_ref: Some(format!("refs/pull/{number}/head")),
+        head_branch: Some(head_branch.into()),
+        head_oid: Some(head_oid.into()),
+        base_branch: Some(base_branch.into()),
+        base_oid: base_oid.map(str::to_owned),
+        number: Some(number),
+        state: value
+            .get("state")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_owned),
+        draft: value.get("draft").and_then(serde_json::Value::as_bool),
+        protected: None,
+        provenance: selector.provenance.clone(),
+    })
+}
+
+fn list_query(query: Option<&str>, allowed: &[&str]) -> Result<BTreeMap<String, String>> {
+    let mut values = BTreeMap::new();
+    for pair in query
+        .unwrap_or_default()
+        .split('&')
+        .filter(|pair| !pair.is_empty())
+    {
+        let (key, value) = pair
+            .split_once('=')
+            .ok_or_else(|| HelperError(format!("query parameter lacks value: {pair}")))?;
+        if !allowed.contains(&key)
+            || value.is_empty()
+            || value
+                .chars()
+                .any(|character| matches!(character, ' ' | '\n' | '\r'))
+        {
+            return Err(HelperError(format!(
+                "unsupported list query parameter {key}"
+            )));
+        }
+        if values.insert(key.into(), value.into()).is_some() {
+            return Err(HelperError(format!("duplicate list query parameter {key}")));
+        }
+    }
+    Ok(values)
+}
+
+fn github_api_json(endpoint: &str, paginate: bool) -> Result<serde_json::Value> {
+    let binary = env::var_os("TAILROCKS_GH_BIN").unwrap_or_else(|| OsString::from("gh"));
+    let mut command = Command::new(binary);
+    command.arg("api");
+    if paginate {
+        command.args(["--paginate", "--slurp"]);
+    }
+    let output = command
+        .arg(endpoint)
+        .output()
+        .map_err(|_| HelperError("GitHub API client gh is unavailable".into()))?;
+    if !output.status.success() {
+        return Err(HelperError(format!(
+            "GitHub API request failed for {endpoint}"
+        )));
+    }
+    serde_json::from_slice(&output.stdout)
+        .map_err(|_| HelperError(format!("GitHub API returned invalid JSON for {endpoint}")))
+}
+
+fn flatten_api_items(value: serde_json::Value) -> Vec<serde_json::Value> {
+    match value {
+        serde_json::Value::Array(items) => items.into_iter().flat_map(flatten_api_items).collect(),
+        item => vec![item],
+    }
+}
+
 fn normalize_repository(value: &str) -> Result<String> {
     if value.contains('/') && !value.starts_with("http://") && !value.starts_with("https://") {
         let mut parts = value.split('/');
         let owner = parts.next().unwrap_or_default();
         let repo = parts.next().unwrap_or_default().trim_end_matches(".git");
         if !owner.is_empty() && !repo.is_empty() && parts.next().is_none() {
-            return Ok(format!("{owner}/{repo}"));
+            return Ok(format!("{owner}/{repo}").to_ascii_lowercase());
         }
     }
     let selector = parse_url_selector(&format!("{}/pull/1", value.trim_end_matches('/')))
@@ -898,6 +1369,7 @@ fn init_campaign(
     repo_path: &Path,
     request: Request,
     target: TargetReceipt,
+    resolution: Option<ResolutionSet>,
 ) -> Result<CampaignState> {
     if request.schema != REQUEST_SCHEMA || target.schema != TARGET_SCHEMA {
         return Err(HelperError(
@@ -921,18 +1393,69 @@ fn init_campaign(
             "campaign state must live outside the repository".into(),
         ));
     }
-    let repository = request
-        .repository
-        .clone()
-        .or_else(|| {
-            git_output_optional(&repo_path, &["remote", "get-url", "origin"])
-                .ok()
-                .map(|value| redact_url(value.trim()))
-        })
-        .unwrap_or_else(|| format!("local:{}", repo_path.to_string_lossy()));
+    let origin_url = git_output_optional(&repo_path, &["remote", "get-url", "origin"])
+        .ok()
+        .map(|value| value.trim().to_owned());
+    let origin_repository = origin_url.as_deref().and_then(canonical_github_repository);
+    let repository = if let Some(expected) = request.repository.clone() {
+        match origin_repository.as_deref() {
+            Some(actual) if actual != expected => {
+                return Err(HelperError(format!(
+                    "repository binding mismatch: request={expected} origin={actual}"
+                )));
+            }
+            None => {
+                return Err(HelperError(format!(
+                    "repository binding cannot verify {expected} against origin"
+                )));
+            }
+            _ => {}
+        }
+        expected
+    } else {
+        origin_url
+            .map(|value| redact_url(&value))
+            .unwrap_or_else(|| format!("local:{}", repo_path.to_string_lossy()))
+    };
+    let (resolved_sources, source_resolution_at_unix) = if let Some(resolution) = resolution {
+        if resolution.schema != RESOLUTION_SCHEMA || resolution.repository != repository {
+            return Err(HelperError(
+                "source resolution does not bind to the campaign repository".into(),
+            ));
+        }
+        if resolution.sources.iter().any(|source| {
+            !request.sources.iter().any(|selector| {
+                selector
+                    .provenance
+                    .iter()
+                    .any(|provenance| source.provenance.contains(provenance))
+            }) || (source.kind == "branch"
+                && source.head_branch.as_deref() == Some(request.target_branch.as_str()))
+        }) {
+            return Err(HelperError(
+                "source resolution contains an unrequested or target branch".into(),
+            ));
+        }
+        (resolution.sources, Some(resolution.resolved_at_unix))
+    } else {
+        (Vec::new(), None)
+    };
+    let source_resolution_digest = if source_resolution_at_unix.is_none() {
+        String::new()
+    } else {
+        sha256_bytes(
+            serde_json::to_vec(&resolved_sources)
+                .map_err(|_| HelperError("source resolution encode failed".into()))?
+                .as_slice(),
+        )
+    };
     let seed = format!(
-        "{}\n{}\n{}\n{}",
-        repository, request.target_branch, request.raw_text, target.target_oid
+        "{}\n{}\n{}\n{}\n{}",
+        repository,
+        request.target_branch,
+        request.raw_text,
+        target.target_oid,
+        source_resolution_digest
     );
     let campaign_id = format!("campaign-{}", &sha256_bytes(seed.as_bytes())[..16]);
     let path = state_dir.join(format!("{campaign_id}.json"));
@@ -941,11 +1464,16 @@ fn init_campaign(
         if existing.repository != repository
             || existing.repo_path != repo_path.to_string_lossy().as_ref()
             || existing.request != request
+            || existing.source_resolution_digest != source_resolution_digest
             || !same_target_identity(&existing.target, &target)
         {
             return Err(HelperError(format!(
                 "campaign identity collision: {campaign_id} belongs to another repository, target, or request"
             )));
+        }
+        if existing.status != "complete" {
+            ensure_campaign_lease(&existing)?;
+            ensure_target_lease(&existing)?;
         }
         return Ok(existing);
     }
@@ -966,6 +1494,10 @@ fn init_campaign(
         .as_bytes(),
     );
     let lock_path = state_dir.join(format!("{campaign_id}.lock"));
+    let target_lock_path = state_dir.join(format!(
+        "target-{}.lock",
+        &sha256_bytes(format!("{}\n{}", repository, target.target_ref).as_bytes())[..16]
+    ));
     let lease = CampaignLease {
         schema: LEASE_SCHEMA.into(),
         campaign_id: campaign_id.clone(),
@@ -980,7 +1512,22 @@ fn init_campaign(
     let initial_target_oid = target.target_oid.clone();
     let audit_only = request.audit_only;
     let local_only = request.local_only;
-    create_campaign_lease(&lock_path, &lease)?;
+    let target_lease = TargetLease {
+        schema: TARGET_LEASE_SCHEMA.into(),
+        campaign_id: campaign_id.clone(),
+        repository: repository.clone(),
+        repo_path: repo_path.to_string_lossy().into_owned(),
+        target_branch: target.target_branch.clone(),
+        target_ref: target.target_ref.clone(),
+        target_oid: target.target_oid.clone(),
+        owner_pid: std::process::id(),
+        acquired_at_unix: now_unix(),
+    };
+    create_target_lease(&target_lock_path, &target_lease)?;
+    if let Err(error) = create_campaign_lease(&lock_path, &lease) {
+        let _ = fs::remove_file(&target_lock_path);
+        return Err(error);
+    }
     let state = CampaignState {
         schema: CAMPAIGN_SCHEMA.into(),
         campaign_id,
@@ -989,6 +1536,8 @@ fn init_campaign(
         repo_path: repo_path.to_string_lossy().into_owned(),
         target,
         frozen_sources: request.sources.clone(),
+        resolved_sources,
+        source_resolution_at_unix,
         request,
         scope: scope.into(),
         initial_target_oid: initial_target_oid.clone(),
@@ -996,11 +1545,13 @@ fn init_campaign(
         audit_only,
         local_only,
         configuration_digest,
+        source_resolution_digest,
         scan_coverage: vec!["target-ref".into(), "source-selectors".into()],
         decisions: Vec::new(),
         receipt_refs: Vec::new(),
         recovery_index: Vec::new(),
         lock_path: lock_path.to_string_lossy().into_owned(),
+        target_lock_path: target_lock_path.to_string_lossy().into_owned(),
         status: "planned".into(),
         phase: "bound".into(),
         journal: vec![JournalEntry {
@@ -1013,6 +1564,7 @@ fn init_campaign(
     };
     if let Err(error) = write_json_atomic(&path, &state) {
         let _ = fs::remove_file(&lock_path);
+        let _ = fs::remove_file(&target_lock_path);
         return Err(error);
     }
     Ok(state)
@@ -1027,59 +1579,113 @@ fn same_target_identity(left: &TargetReceipt, right: &TargetReceipt) -> bool {
 }
 
 fn receipt_matches_campaign(value: &serde_json::Value, state: &CampaignState) -> bool {
-    let Some((target_branch, target_ref, target_oid, repo_path)) = find_receipt_target(value)
-    else {
+    let Some(object) = value.as_object() else {
         return false;
     };
-    repo_path.as_deref() == Some(state.repo_path.as_str())
-        && target_ref == state.target.target_ref
-        && (target_oid == state.initial_target_oid || target_oid == state.current_target_oid)
-        && target_branch
-            .as_deref()
-            .is_none_or(|branch| branch == state.target.target_branch)
+    let target = object.get("target").and_then(serde_json::Value::as_object);
+    let target_branch = target
+        .and_then(|value| value.get("branch"))
+        .or_else(|| object.get("target_branch"))
+        .and_then(serde_json::Value::as_str);
+    let target_ref = target
+        .and_then(|value| value.get("ref"))
+        .or_else(|| object.get("target_ref"))
+        .and_then(serde_json::Value::as_str);
+    let target_oid = target
+        .and_then(|value| value.get("oid"))
+        .or_else(|| object.get("target_oid"))
+        .and_then(serde_json::Value::as_str);
+    let repo_path = target
+        .and_then(|value| value.get("repo_path"))
+        .or_else(|| object.get("repo_path"))
+        .and_then(serde_json::Value::as_str);
+    let source_ids = object
+        .get("source_ids")
+        .and_then(serde_json::Value::as_array);
+    let source_ids_valid = source_ids.is_some_and(|ids| {
+        let values = ids
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .collect::<Vec<_>>();
+        values.len() == ids.len()
+            && (state.scope == "all-work"
+                || (!values.is_empty()
+                    && values.iter().all(|id| {
+                        state
+                            .frozen_sources
+                            .iter()
+                            .any(|source| source.canonical == *id)
+                    })))
+    });
+    let phase = object.get("phase").and_then(serde_json::Value::as_str);
+    let status = object.get("status").and_then(serde_json::Value::as_str);
+    let operation_id = object
+        .get("operation_id")
+        .and_then(serde_json::Value::as_str);
+    let content_hash = object
+        .get("content_sha256")
+        .or_else(|| object.get("artifact_sha256"))
+        .and_then(serde_json::Value::as_str);
+    object.get("schema").and_then(serde_json::Value::as_str) == Some(RECEIPT_SCHEMA)
+        && object
+            .get("campaign_id")
+            .and_then(serde_json::Value::as_str)
+            == Some(state.campaign_id.as_str())
+        && object.get("scope").and_then(serde_json::Value::as_str) == Some(state.scope.as_str())
+        && object.get("repository").and_then(serde_json::Value::as_str)
+            == Some(state.repository.as_str())
+        && repo_path == Some(state.repo_path.as_str())
+        && target_ref == Some(state.target.target_ref.as_str())
+        && target_oid.is_some_and(|oid| {
+            oid == state.initial_target_oid.as_str() || oid == state.current_target_oid.as_str()
+        })
+        && target_branch.is_none_or(|branch| branch == state.target.target_branch)
+        && source_ids_valid
+        && matches!(
+            phase,
+            Some(
+                "audit"
+                    | "review"
+                    | "ci"
+                    | "landing"
+                    | "verification"
+                    | "cleanup"
+                    | "idempotency"
+                    | "recovery"
+            )
+        )
+        && status.is_some_and(|value| !value.is_empty() && value != "pending" && value != "queued")
+        && operation_id.is_some_and(|value| !value.is_empty())
+        && content_hash.is_some_and(is_sha256)
 }
 
-fn find_receipt_target(
-    value: &serde_json::Value,
-) -> Option<(Option<String>, String, String, Option<String>)> {
-    let object = value.as_object()?;
-    if let Some(target) = object.get("target").and_then(serde_json::Value::as_object) {
-        let target_ref = target.get("ref").and_then(serde_json::Value::as_str)?;
-        let target_oid = target.get("oid").and_then(serde_json::Value::as_str)?;
-        let target_branch = target
-            .get("branch")
-            .and_then(serde_json::Value::as_str)
-            .map(str::to_owned);
-        let repo_path = target
-            .get("repo_path")
-            .or_else(|| object.get("repo_path"))
-            .and_then(serde_json::Value::as_str)
-            .map(str::to_owned);
-        return Some((
-            target_branch,
-            target_ref.to_owned(),
-            target_oid.to_owned(),
-            repo_path,
-        ));
+fn is_sha256(value: &str) -> bool {
+    value.len() == 64 && value.chars().all(|character| character.is_ascii_hexdigit())
+}
+
+fn receipts_support_completion(state: &CampaignState) -> bool {
+    let required = if state.audit_only {
+        vec!["audit"]
+    } else {
+        let mut phases = vec!["audit", "review", "ci", "landing", "verification"];
+        if state.request.cleanup == "resolved" {
+            phases.push("cleanup");
+        }
+        phases
+    };
+    let mut phases = BTreeMap::<String, ()>::new();
+    for path in &state.receipt_refs {
+        let Ok(value) = read_json::<serde_json::Value>(Path::new(path)) else {
+            return false;
+        };
+        if !receipt_matches_campaign(&value, state) {
+            return false;
+        }
+        if let Some(phase) = value.get("phase").and_then(serde_json::Value::as_str) {
+            phases.insert(phase.to_owned(), ());
+        }
     }
-    if let (Some(target_ref), Some(target_oid)) = (
-        object.get("target_ref").and_then(serde_json::Value::as_str),
-        object.get("target_oid").and_then(serde_json::Value::as_str),
-    ) {
-        return Some((
-            object
-                .get("target_branch")
-                .and_then(serde_json::Value::as_str)
-                .map(str::to_owned),
-            target_ref.to_owned(),
-            target_oid.to_owned(),
-            object
-                .get("repo_path")
-                .and_then(serde_json::Value::as_str)
-                .map(str::to_owned),
-        ));
-    }
-    object.values().find_map(find_receipt_target)
+    required.into_iter().all(|phase| phases.contains_key(phase))
 }
 
 fn create_campaign_lease(path: &Path, lease: &CampaignLease) -> Result<()> {
@@ -1096,6 +1702,22 @@ fn create_campaign_lease(path: &Path, lease: &CampaignLease) -> Result<()> {
         .map_err(|_| HelperError("cannot finish campaign lease".into()))?;
     file.sync_all()
         .map_err(|_| HelperError("cannot sync campaign lease".into()))
+}
+
+fn create_target_lease(path: &Path, lease: &TargetLease) -> Result<()> {
+    let bytes = serde_json::to_vec_pretty(lease)
+        .map_err(|_| HelperError("target lease encode failed".into()))?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|_| HelperError("target already has an active campaign lease".into()))?;
+    file.write_all(&bytes)
+        .map_err(|_| HelperError("cannot write target lease".into()))?;
+    file.write_all(b"\n")
+        .map_err(|_| HelperError("cannot finish target lease".into()))?;
+    file.sync_all()
+        .map_err(|_| HelperError("cannot sync target lease".into()))
 }
 
 fn acquire_state_mutation_lock(state_path: &Path) -> Result<StateMutationLock> {
@@ -1130,6 +1752,53 @@ fn ensure_campaign_lease(state: &CampaignState) -> Result<()> {
             "campaign lease identity does not match campaign state".into(),
         ));
     }
+    ensure_target_lease(state)?;
+    Ok(())
+}
+
+fn target_lock_path(state: &CampaignState) -> PathBuf {
+    if !state.target_lock_path.is_empty() {
+        return PathBuf::from(&state.target_lock_path);
+    }
+    let parent = Path::new(&state.lock_path)
+        .parent()
+        .unwrap_or_else(|| Path::new("."));
+    parent.join(format!(
+        "target-{}.lock",
+        &sha256_bytes(format!("{}\n{}", state.repository, state.target.target_ref).as_bytes())
+            [..16]
+    ))
+}
+
+fn ensure_target_lease(state: &CampaignState) -> Result<()> {
+    let path = target_lock_path(state);
+    if !path.exists() {
+        let lease = TargetLease {
+            schema: TARGET_LEASE_SCHEMA.into(),
+            campaign_id: state.campaign_id.clone(),
+            repository: state.repository.clone(),
+            repo_path: state.repo_path.clone(),
+            target_branch: state.target.target_branch.clone(),
+            target_ref: state.target.target_ref.clone(),
+            target_oid: state.initial_target_oid.clone(),
+            owner_pid: std::process::id(),
+            acquired_at_unix: now_unix(),
+        };
+        create_target_lease(&path, &lease)?;
+    }
+    let lease: TargetLease = read_json(&path)?;
+    if lease.schema != TARGET_LEASE_SCHEMA
+        || lease.campaign_id != state.campaign_id
+        || lease.repository != state.repository
+        || lease.repo_path != state.repo_path
+        || lease.target_branch != state.target.target_branch
+        || lease.target_ref != state.target.target_ref
+        || lease.target_oid != state.initial_target_oid
+    {
+        return Err(HelperError(
+            "target lease identity does not match campaign state".into(),
+        ));
+    }
     Ok(())
 }
 
@@ -1139,7 +1808,19 @@ fn release_campaign_lease(state: &CampaignState) -> Result<()> {
         return Ok(());
     }
     ensure_campaign_lease(state)?;
-    fs::remove_file(path).map_err(|_| HelperError("cannot release campaign lease".into()))
+    fs::remove_file(path).map_err(|_| HelperError("cannot release campaign lease".into()))?;
+    let target_path = target_lock_path(state);
+    if target_path.exists() {
+        let target_lease: TargetLease = read_json(&target_path)?;
+        if target_lease.campaign_id != state.campaign_id {
+            return Err(HelperError(
+                "target lease belongs to another campaign".into(),
+            ));
+        }
+        fs::remove_file(target_path)
+            .map_err(|_| HelperError("cannot release target lease".into()))?;
+    }
+    Ok(())
 }
 
 fn observe_campaign(
@@ -1157,6 +1838,29 @@ fn observe_campaign(
         return Err(HelperError(
             "observed target identity conflicts with campaign".into(),
         ));
+    }
+    if target.target_oid != state.current_target_oid {
+        let actual_oid = git_output_optional(
+            Path::new(&state.repo_path),
+            &["rev-parse", &state.target.target_ref],
+        )
+        .map_err(|_| HelperError("cannot re-read the campaign target ref".into()))?
+        .trim()
+        .to_owned();
+        if actual_oid != target.target_oid {
+            return Err(HelperError(
+                "observed target receipt is stale relative to the current target ref".into(),
+            ));
+        }
+        if !is_ancestor(
+            Path::new(&state.repo_path),
+            &state.current_target_oid,
+            &target.target_oid,
+        )? {
+            return Err(HelperError(
+                "target moved non-fast-forward; re-audit before continuing".into(),
+            ));
+        }
     }
     state.current_target_oid = target.target_oid.clone();
     state.journal.push(JournalEntry {
@@ -1486,6 +2190,17 @@ fn git_run(repo: &Path, args: &[&str]) -> Result<()> {
     }
 }
 
+fn is_ancestor(repo: &Path, older: &str, newer: &str) -> Result<bool> {
+    let output = command(repo, &["merge-base", "--is-ancestor", older, newer])?;
+    if output.status.success() {
+        Ok(true)
+    } else if output.status.code() == Some(1) {
+        Ok(false)
+    } else {
+        Err(HelperError("git could not compare target ancestry".into()))
+    }
+}
+
 fn command(repo: &Path, args: &[&str]) -> Result<Output> {
     Command::new("git")
         .args(args)
@@ -1571,6 +2286,31 @@ fn redact_url(value: &str) -> String {
         }
     }
     value.into()
+}
+
+fn canonical_github_repository(value: &str) -> Option<String> {
+    let trimmed = value.trim().trim_end_matches('/');
+    let path = if let Some(value) = trimmed.strip_prefix("git@github.com:") {
+        value
+    } else {
+        let (scheme, rest) = trimmed.split_once("://")?;
+        if !matches!(scheme, "http" | "https" | "ssh") {
+            return None;
+        }
+        let (host, path) = rest.split_once('/')?;
+        if host.rsplit('@').next()? != "github.com" {
+            return None;
+        }
+        path
+    };
+    let path = path.trim_end_matches(".git");
+    let mut parts = path.split('/');
+    let owner = parts.next()?.trim();
+    let repository = parts.next()?.trim();
+    if owner.is_empty() || repository.is_empty() || parts.next().is_some() {
+        return None;
+    }
+    Some(format!("{owner}/{repository}").to_ascii_lowercase())
 }
 
 fn now_unix() -> u64 {
@@ -1705,11 +2445,105 @@ mod tests {
         let target = check_target(&repo, "main", None).unwrap();
         let request = parse_request("--target-branch=main feature").unwrap();
         let state_dir = temp.path().join("state");
-        let state = init_campaign(&state_dir, &repo, request, target).unwrap();
+        let state = init_campaign(&state_dir, &repo, request, target, None).unwrap();
         assert_eq!(state.target.target_branch, "main");
         let path = state_dir.join(format!("{}.json", state.campaign_id));
         let stored: CampaignState = read_json(&path).unwrap();
         assert_eq!(stored.campaign_id, state.campaign_id);
+    }
+
+    #[test]
+    fn explicit_repository_binding_matches_origin_and_rejects_mismatch() {
+        let temp = TempDir::new().unwrap();
+        let repo = temp.path().join("repo");
+        Command::new("git")
+            .args(["init", "-q", "-b", "main", &repo.to_string_lossy()])
+            .status()
+            .unwrap();
+        Command::new("git")
+            .args([
+                "-C",
+                &repo.to_string_lossy(),
+                "config",
+                "user.email",
+                "test@example.com",
+            ])
+            .status()
+            .unwrap();
+        Command::new("git")
+            .args(["-C", &repo.to_string_lossy(), "config", "user.name", "Test"])
+            .status()
+            .unwrap();
+        fs::write(repo.join("README"), "x").unwrap();
+        Command::new("git")
+            .args(["-C", &repo.to_string_lossy(), "add", "README"])
+            .status()
+            .unwrap();
+        Command::new("git")
+            .args(["-C", &repo.to_string_lossy(), "commit", "-qm", "init"])
+            .status()
+            .unwrap();
+        Command::new("git")
+            .args([
+                "-C",
+                &repo.to_string_lossy(),
+                "remote",
+                "add",
+                "origin",
+                "git@github.com:acme/one.git",
+            ])
+            .status()
+            .unwrap();
+
+        let request = parse_request("--repo=acme/one --target-branch=main feature").unwrap();
+        let target = check_target(&repo, "main", None).unwrap();
+        let state_dir = temp.path().join("state");
+        init_campaign(&state_dir, &repo, request.clone(), target.clone(), None).unwrap();
+
+        Command::new("git")
+            .args([
+                "-C",
+                &repo.to_string_lossy(),
+                "remote",
+                "set-url",
+                "origin",
+                "https://github.com/acme/two.git",
+            ])
+            .status()
+            .unwrap();
+        let error = init_campaign(
+            &temp.path().join("mismatch-state"),
+            &repo,
+            request,
+            target,
+            None,
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("repository binding mismatch"));
+    }
+
+    #[test]
+    fn github_remote_identity_redacts_credentials_and_normalizes_forms() {
+        assert_eq!(
+            canonical_github_repository("https://token@github.com/acme/one.git"),
+            Some("acme/one".into())
+        );
+        assert_eq!(
+            canonical_github_repository("ssh://git@github.com/acme/one"),
+            Some("acme/one".into())
+        );
+        assert_eq!(
+            canonical_github_repository("git@github.com:acme/one.git"),
+            Some("acme/one".into())
+        );
+        assert_eq!(
+            canonical_github_repository("https://example.invalid/acme/one"),
+            None
+        );
+        assert_eq!(
+            canonical_github_repository("ftp://github.com/acme/one"),
+            None
+        );
     }
 
     #[test]
