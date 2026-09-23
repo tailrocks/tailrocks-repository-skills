@@ -6,7 +6,7 @@ Continue from the active goal in GOAL.md. Keep the repository target-bound and f
 
 ## Durable state
 
-The helper writes campaign JSON and a create-new lease outside the repository. A campaign records repository identity, exact target branch/ref/OID, initial and current target OIDs, frozen source selectors and provenance, scope, local-only/audit modes, configuration digest, scan coverage, decisions, receipts, recovery index, phase, status, and journal. Resume must use the same campaign and target; a different target starts a different campaign. Re-observe the target after every advance.
+The helper writes campaign JSON and a create-new lease outside the repository. A campaign records repository identity, exact target branch/ref/OID, initial and current target OIDs, frozen source selectors and provenance, scope, local-only/audit modes, configuration digest, scan coverage, decisions, receipts, recovery index, phase, status, and journal. Reusing a campaign validates repository path, request, and target identity. Attach every target-bound receipt before completion; completion requires target-observed plus an attached receipt. Resume must use the same campaign and target; a different target starts a different campaign. Re-observe the target after every advance.
 
 ## Required completion proof
 
@@ -16,10 +16,16 @@ The helper writes campaign JSON and a create-new lease outside the repository. A
 - Recovery proof restores staged, unstaged, ignored, untracked, and symlink state before cleanup.
 - Client proof records Codex native skill invocation and Claude namespaced plugin invocation. If Claude authentication is unavailable, report that exact blocker.
 - CI/review/landing receipts name the exact target and target OID. Queued merges do not count.
+- Campaign completion must be journaled as campaign-complete/complete only
+  after a receipt is attached through the helper; missing snapshot patch
+  artifacts fail restore-test and block cleanup.
 - Real Codex acceptance landed feature/auth into disposable release/next at
   7db4735a0bcde9f42b083b30c5afbe9eac26b32e while keeping main at
   464cfbe245a3130d89caa89ac1bdfa1110ae4554; campaign
   campaign-15aed4ef4a09c941 completed.
+- A later hardened retry reached a real disposable landing but helper build
+  was sandbox-blocked, so it emitted no completion receipt and is not proof of
+  campaign success.
 
 ## Ownership
 

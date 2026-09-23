@@ -48,6 +48,7 @@ campaign_state="$work/campaign-state"
 git init -q -b main "$campaign_repo"
 git -C "$campaign_repo" config user.name Fixture
 git -C "$campaign_repo" config user.email fixture@example.invalid
+git -C "$campaign_repo" remote add origin https://example.invalid/tailrocks-fixture.git
 printf 'base\n' >"$campaign_repo/base.txt"
 git -C "$campaign_repo" add base.txt
 git -C "$campaign_repo" commit -qm base
@@ -60,6 +61,15 @@ campaign_id=$(printf '%s\n' "$state_json" | jq -r '.campaign_id')
 lock_path=$(printf '%s\n' "$state_json" | jq -r '.lock_path')
 test -f "$lock_path"
 "$helper_bin" campaign-resume --state-dir "$campaign_state" --campaign-id "$campaign_id" --target-branch main >/dev/null
+collision_repo="$work/collision-repo"
+git clone -q --local --no-hardlinks "$campaign_repo" "$collision_repo"
+git -C "$collision_repo" remote set-url origin https://example.invalid/tailrocks-fixture.git
+collision_target="$work/collision-target.json"
+"$helper_bin" target-check --repo-path "$collision_repo" --target-branch main >"$collision_target"
+if "$helper_bin" campaign-init --state-dir "$campaign_state" --repo-path "$collision_repo" --request-file "$request" --target-receipt "$collision_target" >"$work/collision-out" 2>"$work/collision-err"; then
+  echo "campaign identity collision unexpectedly accepted" >&2
+  exit 1
+fi
 if "$helper_bin" campaign-resume --state-dir "$campaign_state" --campaign-id "$campaign_id" --target-branch release/next >"$work/out" 2>"$work/err"; then
   echo "resume target conflict unexpectedly accepted" >&2
   exit 1
@@ -71,7 +81,29 @@ new_target="$work/new-target.json"
 "$helper_bin" target-check --repo-path "$campaign_repo" --target-branch main >"$new_target"
 observed=$("$helper_bin" campaign-observe --state-dir "$campaign_state" --campaign-id "$campaign_id" --target-receipt "$new_target")
 printf '%s\n' "$observed" | jq -e '.current_target_oid == "'"$(jq -r .target_oid "$new_target")"'"' >/dev/null
-"$helper_bin" campaign-journal --state-dir "$campaign_state" --campaign-id "$campaign_id" --event no-op-verified --phase verified --status complete >/dev/null
+if "$helper_bin" campaign-journal --state-dir "$campaign_state" --campaign-id "$campaign_id" --event campaign-complete --phase complete --status complete >"$work/early-complete-out" 2>"$work/early-complete-err"; then
+  echo "campaign completed without an attached receipt" >&2
+  exit 1
+fi
+receipt="$work/receipt.json"
+jq -n \
+  --arg repo_path "$(jq -r .repo_path "$new_target")" \
+  --arg branch "$(jq -r .target_branch "$new_target")" \
+  --arg ref "$(jq -r .target_ref "$new_target")" \
+  --arg oid "$(jq -r .target_oid "$new_target")" \
+  '{event:"no-op-verified",target:{repo_path:$repo_path,branch:$branch,ref:$ref,oid:$oid}}' >"$receipt"
+"$helper_bin" campaign-attach-receipt --state-dir "$campaign_state" --campaign-id "$campaign_id" --receipt "$receipt" >/dev/null
+"$helper_bin" campaign-journal --state-dir "$campaign_state" --campaign-id "$campaign_id" --event no-op-verified --phase verified --status recorded >/dev/null
+"$helper_bin" campaign-journal --state-dir "$campaign_state" --campaign-id "$campaign_id" --event campaign-complete --phase complete --status complete >/dev/null
 test ! -e "$lock_path"
+
+broken_snapshot="$work/broken-snapshot"
+broken_restore="$work/broken-restore"
+cp -R "$snapshot" "$broken_snapshot"
+rm "$broken_snapshot/staged.patch"
+if "$helper_bin" snapshot-restore-test --snapshot "$broken_snapshot" --output "$broken_restore" >"$work/broken-restore-out" 2>"$work/broken-restore-err"; then
+  echo "restore accepted a missing patch artifact" >&2
+  exit 1
+fi
 
 echo "recovery and resume: PASS"

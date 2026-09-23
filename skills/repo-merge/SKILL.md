@@ -65,9 +65,11 @@ non-shell helper. Never ask a shell to interpret it. The # in #1145 is data.
    The exact target branch and expected heads must be passed through. A report,
    prepared patch, opened PR, approval, green pending check, or queued merge
    is not completion.
-7. Re-read and verify the combined batch after every target advance. Receipts
-   bind review, CI, landing, idempotency, and cleanup to the exact target
-   branch and OID.
+7. Re-read and verify the combined batch after every target advance. Attach
+   review, CI, landing, idempotency, and cleanup receipts with
+   campaign-attach-receipt; each must bind to this repository path, target
+   ref, and initial or current target OID. Do not journal campaign-complete
+   until target-observed and an attached receipt exist.
 8. Route eligible deletion to tailrocks-repository-cleanup only after restore
    testing unique local state and proving no other target or unresolved work
    needs the source. Do not turn selected-source work into global cleanup.

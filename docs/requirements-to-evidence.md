@@ -19,6 +19,8 @@
 | Restore before deletion | snapshot-restore receipt |
 | Resume and recovery | campaign journal and resume target-conflict test |
 | Target movement and leases | campaign-observe, initial/current OIDs, create-new lease, release test |
+| Campaign identity and completion safety | collision test across clone paths; receipt attachment requires repository path, target ref, and initial/current OID; completion requires target-observed plus an attached receipt |
+| Fail-closed cleanup restore | recovery test rejects a snapshot with a missing staged/unstaged patch artifact |
 | Explicit local-only result | repo-merge/converge contract and local fixture landing |
 | Idempotent no-op rerun | fixture test and no-op receipt |
 | Codex and Claude invocation | README plus client contract test/evidence |

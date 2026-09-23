@@ -113,7 +113,9 @@ pub struct CampaignLease {
     pub schema: String,
     pub campaign_id: String,
     pub repository: String,
+    pub repo_path: String,
     pub target_branch: String,
+    pub target_ref: String,
     pub target_oid: String,
     pub owner_pid: u32,
     pub acquired_at_unix: u64,
@@ -235,6 +237,25 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
             let state_path = state_dir.join(format!("{campaign_id}.json"));
             let mut state: CampaignState = read_json(&state_path)?;
             ensure_campaign_lease(&state)?;
+            if event == "campaign-complete"
+                && (phase != "complete"
+                    || status != "complete"
+                    || state.receipt_refs.is_empty()
+                    || !state
+                        .journal
+                        .iter()
+                        .any(|entry| entry.event == "target-observed"))
+            {
+                return Err(HelperError(
+                    "campaign completion requires a target observation and at least one attached receipt"
+                        .into(),
+                ));
+            }
+            if status == "complete" && event != "campaign-complete" {
+                return Err(HelperError(
+                    "only campaign-complete may set status=complete".into(),
+                ));
+            }
             let sequence = state.journal.len() as u64 + 1;
             state.journal.push(JournalEntry {
                 sequence,
@@ -248,6 +269,28 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
             write_json_atomic(&state_path, &state)?;
             if state.status == "complete" {
                 release_campaign_lease(&state)?;
+            }
+            print_json(&state)
+        }
+        "campaign-attach-receipt" => {
+            let state_dir = required_path(&args[1..], "--state-dir")?;
+            let campaign_id = required_string(&args[1..], "--campaign-id")?;
+            let receipt_path = required_path(&args[1..], "--receipt")?;
+            let state_path = state_dir.join(format!("{campaign_id}.json"));
+            let mut state: CampaignState = read_json(&state_path)?;
+            ensure_campaign_lease(&state)?;
+            let receipt_path = fs::canonicalize(&receipt_path)
+                .map_err(|_| HelperError("receipt path is missing or not accessible".into()))?;
+            let receipt: serde_json::Value = read_json(&receipt_path)?;
+            if !receipt_matches_campaign(&receipt, &state) {
+                return Err(HelperError(
+                    "receipt does not bind to the campaign target ref and OID".into(),
+                ));
+            }
+            let receipt_path = receipt_path.to_string_lossy().into_owned();
+            if !state.receipt_refs.contains(&receipt_path) {
+                state.receipt_refs.push(receipt_path);
+                write_json_atomic(&state_path, &state)?;
             }
             print_json(&state)
         }
@@ -279,7 +322,7 @@ fn dispatch(args: Vec<OsString>) -> Result<()> {
 }
 
 fn usage() -> String {
-    "usage: helper <parse-request|target-check|campaign-init|campaign-resume|campaign-observe|campaign-journal|campaign-release|snapshot-create|snapshot-restore-test> ...".into()
+    "usage: helper <parse-request|target-check|campaign-init|campaign-resume|campaign-observe|campaign-journal|campaign-attach-receipt|campaign-release|snapshot-create|snapshot-restore-test> ...".into()
 }
 
 fn print_json<T: Serialize>(value: &T) -> Result<()> {
@@ -880,6 +923,15 @@ fn init_campaign(
     let path = state_dir.join(format!("{campaign_id}.json"));
     if path.exists() {
         let existing: CampaignState = read_json(&path)?;
+        if existing.repository != repository
+            || existing.repo_path != repo_path.to_string_lossy().as_ref()
+            || existing.request != request
+            || !same_target_identity(&existing.target, &target)
+        {
+            return Err(HelperError(format!(
+                "campaign identity collision: {campaign_id} belongs to another repository, target, or request"
+            )));
+        }
         return Ok(existing);
     }
     let scope = if request.all_work {
@@ -903,7 +955,9 @@ fn init_campaign(
         schema: LEASE_SCHEMA.into(),
         campaign_id: campaign_id.clone(),
         repository: repository.clone(),
+        repo_path: repo_path.to_string_lossy().into_owned(),
         target_branch: target.target_branch.clone(),
+        target_ref: target.target_ref.clone(),
         target_oid: target.target_oid.clone(),
         owner_pid: std::process::id(),
         acquired_at_unix: now_unix(),
@@ -949,6 +1003,70 @@ fn init_campaign(
     Ok(state)
 }
 
+fn same_target_identity(left: &TargetReceipt, right: &TargetReceipt) -> bool {
+    left.repo_path == right.repo_path
+        && left.target_branch == right.target_branch
+        && left.target_ref == right.target_ref
+        && left.target_oid == right.target_oid
+        && left.remote == right.remote
+}
+
+fn receipt_matches_campaign(value: &serde_json::Value, state: &CampaignState) -> bool {
+    let Some((target_branch, target_ref, target_oid, repo_path)) = find_receipt_target(value)
+    else {
+        return false;
+    };
+    repo_path.as_deref() == Some(state.repo_path.as_str())
+        && target_ref == state.target.target_ref
+        && (target_oid == state.initial_target_oid || target_oid == state.current_target_oid)
+        && target_branch
+            .as_deref()
+            .is_none_or(|branch| branch == state.target.target_branch)
+}
+
+fn find_receipt_target(
+    value: &serde_json::Value,
+) -> Option<(Option<String>, String, String, Option<String>)> {
+    let object = value.as_object()?;
+    if let Some(target) = object.get("target").and_then(serde_json::Value::as_object) {
+        let target_ref = target.get("ref").and_then(serde_json::Value::as_str)?;
+        let target_oid = target.get("oid").and_then(serde_json::Value::as_str)?;
+        let target_branch = target
+            .get("branch")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_owned);
+        let repo_path = target
+            .get("repo_path")
+            .or_else(|| object.get("repo_path"))
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_owned);
+        return Some((
+            target_branch,
+            target_ref.to_owned(),
+            target_oid.to_owned(),
+            repo_path,
+        ));
+    }
+    if let (Some(target_ref), Some(target_oid)) = (
+        object.get("target_ref").and_then(serde_json::Value::as_str),
+        object.get("target_oid").and_then(serde_json::Value::as_str),
+    ) {
+        return Some((
+            object
+                .get("target_branch")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_owned),
+            target_ref.to_owned(),
+            target_oid.to_owned(),
+            object
+                .get("repo_path")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_owned),
+        ));
+    }
+    object.values().find_map(find_receipt_target)
+}
+
 fn create_campaign_lease(path: &Path, lease: &CampaignLease) -> Result<()> {
     let bytes =
         serde_json::to_vec_pretty(lease).map_err(|_| HelperError("lease encode failed".into()))?;
@@ -970,7 +1088,10 @@ fn ensure_campaign_lease(state: &CampaignState) -> Result<()> {
     if lease.schema != LEASE_SCHEMA
         || lease.campaign_id != state.campaign_id
         || lease.repository != state.repository
+        || lease.repo_path != state.repo_path
         || lease.target_branch != state.target.target_branch
+        || lease.target_ref != state.target.target_ref
+        || lease.target_oid != state.initial_target_oid
     {
         return Err(HelperError(
             "campaign lease identity does not match campaign state".into(),
@@ -1098,6 +1219,14 @@ fn restore_test(snapshot: &Path, output: &Path) -> Result<RestoreReceipt> {
     )?;
     let staged_patch = snapshot.join("staged.patch");
     let unstaged_patch = snapshot.join("unstaged.patch");
+    for patch in [&staged_patch, &unstaged_patch] {
+        if !patch.is_file() {
+            return Err(HelperError(format!(
+                "snapshot patch artifact is missing: {}",
+                patch.display()
+            )));
+        }
+    }
     let staged_patch_verified = apply_patch_if_nonempty(&restored, &staged_patch, true)?;
     let unstaged_patch_verified = apply_patch_if_nonempty(&restored, &unstaged_patch, false)?;
     let mut verified = 0usize;
@@ -1148,7 +1277,16 @@ fn restore_test(snapshot: &Path, output: &Path) -> Result<RestoreReceipt> {
 }
 
 fn apply_patch_if_nonempty(repo: &Path, patch: &Path, index: bool) -> Result<bool> {
-    if fs::metadata(patch).map(|meta| meta.len()).unwrap_or(0) == 0 {
+    if fs::metadata(patch)
+        .map_err(|_| {
+            HelperError(format!(
+                "snapshot patch artifact is missing: {}",
+                patch.display()
+            ))
+        })?
+        .len()
+        == 0
+    {
         return Ok(false);
     }
     let patch_arg = patch.to_string_lossy().to_string();

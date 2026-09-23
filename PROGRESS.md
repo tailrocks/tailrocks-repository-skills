@@ -2,8 +2,9 @@
 
 ## Current state
 
-- Repository bootstrap is locally complete and passes the mechanical gates; it
-  is not yet committed or published.
+- Repository bootstrap is committed and pushed to the public remote at
+  https://github.com/tailrocks/tailrocks-repository-skills.git. Hosted CI run
+  35818512123 passed the published baseline.
 - Rust helper exists under helper/; it is a typed boundary for argument parsing, exact target binding, campaign state, and local-state snapshots.
 - Helper tests cover literal hash transport, omitted-main semantics, selector deduplication/provenance, explicit numeric branches, mixed-repository rejection, list URL query preservation, no-selector rejection, and target-bound campaign creation.
 - Portable root manifest plus Codex and Claude compatibility manifests are present.
@@ -21,7 +22,18 @@
   receipt status rather than one fixed journal event name. The successful
   agent receipt remains the acceptance evidence; a later retry was stopped
   after a disposable target advance when the model process stalled.
-- No remote repository, release, or umbrella registration has been created yet.
+- A post-hardening retry also landed the disposable source into
+  release/next (7d2882a3f7e318d3ee6f0d7a84f3556cd086cbd4) while preserving
+  main (1eed19fc1ac859cb372d96712fa339cfad93a9ab), but the sandbox denied the
+  helper build. It therefore produced no campaign completion receipt and the
+  wrapper correctly failed; this run is not counted as end-to-end acceptance.
+- The umbrella registration PR was merged into tailrocks-skills main at
+  2b6d21c326e5febf889d280cb2c5f4a595775ff.
+- Review-driven hardening is staged locally after the baseline push: campaign
+  reuse now rejects repository/path/request/target collisions, completion
+  requires target observation plus a target-bound attached receipt, and
+  snapshot restore rejects missing patch artifacts. Recovery tests cover all
+  three.
 
 ## Completed research
 
@@ -37,14 +49,15 @@ A delegated probe reused the shared workspace as temporary state and removed unc
 
 ## Blockers
 
-- Claude native execution was not completed because the installed Claude OAuth session was expired during research. Plugin validation and namespaced command shape were checked; final live execution needs an authenticated session.
-- The GitHub repository does not yet exist. Creation, push, CI, release, and umbrella registration remain.
+- Claude native execution is still blocked by the expired OAuth session; live
+  namespaced E2E needs refreshed credentials.
+- Release tag/install and post-hardening hosted CI remain.
 
 ## Next
 
-1. Commit with DCO signoff, create/push the public repository, and run hosted CI.
-2. Review and land the publication change through the existing PR lifecycle.
-3. Tag/release 0.1.0, install the released plugin, and register it in the
-   Tailrocks umbrella.
-4. Re-run authenticated Claude acceptance if credentials are available; retain
+1. Commit/push the hardening with DCO signoff and rerun hosted CI.
+2. Tag/release 0.1.0 and verify the release assets and install path.
+3. Re-run authenticated Claude acceptance if credentials are available; retain
    the OAuth blocker otherwise.
+4. Finish final evidence and close the goal only after every required receipt
+   and genuine blocker is recorded.
