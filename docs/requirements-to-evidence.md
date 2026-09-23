@@ -14,7 +14,7 @@
 | Cross-target PR preservation | converge reference and adaptation receipt |
 | Actual landing | merge receipt with landed target OID; fixture Git refs |
 | Real-agent non-main landing | Codex 0.155.1 campaign receipt; release/next OID 7db4735a…; main unchanged |
-| Independent review and applicable CI | read-only baseline review with three fixes; hosted CI 35826193979 passed on hardening commit |
+| Independent review and applicable CI | read-only baseline review with three fixes; final hosted CI 35830543413 passed |
 | Batch re-verification | post-batch target receipt |
 | Restore before deletion | tests/cleanup-scope.sh and recovery snapshot-restore receipt |
 | Resume and recovery | campaign journal and resume target-conflict test |
