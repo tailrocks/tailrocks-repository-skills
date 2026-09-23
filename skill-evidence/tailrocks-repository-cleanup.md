@@ -15,6 +15,9 @@ Acceptance:
 - tests/recovery-and-resume.sh restores staged, unstaged, untracked, ignored,
   and symlink state, then exercises target-conflict rejection, target
   re-observation, lease release, and no-op journaling.
+- tests/cleanup-scope.sh restore-tests a unique dirty clone before deleting the
+  selected landed branch, then proves the unrelated source, main, and target
+  refs remain unchanged; cleanup=none remains a retained-source decision.
 - skills/shared/cleanup-eligibility.md blocks cross-target and unresolved
   sources and requires a final identity recheck.
 - No test touches Jackin or deletes a non-disposable path.

@@ -8,7 +8,7 @@
 | Branch/ref/PR/list selectors | parser contract tests and audit skill reference |
 | Literal hash transport | parser contract test |
 | One repository and provenance-preserving deduplication | parser tests and campaign frozen_sources |
-| Selected sources are not global cleanup | request scope and cleanup receipt |
+| Selected sources are not global cleanup | tests/cleanup-scope.sh preserves unrelated source, main, and target refs |
 | Explicit all-work mode | parser contract and convergence reference |
 | Target-relative judgment | audit receipt names target OID and comparison base |
 | Cross-target PR preservation | converge reference and adaptation receipt |
@@ -16,7 +16,7 @@
 | Real-agent non-main landing | Codex 0.155.1 campaign receipt; release/next OID 7db4735a…; main unchanged |
 | Independent review and applicable CI | read-only baseline review with three fixes; hosted CI 35826193979 passed on hardening commit |
 | Batch re-verification | post-batch target receipt |
-| Restore before deletion | snapshot-restore receipt |
+| Restore before deletion | tests/cleanup-scope.sh and recovery snapshot-restore receipt |
 | Resume and recovery | campaign journal and resume target-conflict test |
 | Target movement and leases | campaign-observe, initial/current OIDs, create-new lease, release test |
 | Campaign identity and completion safety | collision test across clone paths; receipt attachment requires repository path, target ref, and initial/current OID; completion requires target-observed plus an attached receipt |
