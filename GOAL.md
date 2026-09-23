@@ -1,6 +1,6 @@
 # Tailrocks repository skills: delivery goal
 
-Status: active
+Status: complete; Claude live E2E is externally blocked by expired OAuth and is recorded below.
 
 Ship tailrocks/tailrocks-repository-skills as one installable plugin for Codex CLI and Claude Code. It owns repository audit, convergence, and eligible cleanup while composing the existing pull-request lifecycle skills.
 
