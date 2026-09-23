@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "release/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          components: rustfmt
+      - name: Check formatting
+        run: cargo fmt --manifest-path helper/Cargo.toml --all -- --check
+      - name: Run helper tests
+        run: cargo test --manifest-path helper/Cargo.toml --locked
+      - name: Run Clippy
+        run: cargo clippy --manifest-path helper/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Run disposable contracts
+        run: TAILROCKS_SKIP_CLIENT_CONTRACT=1 tests/run-contracts.sh
+      - name: Validate JSON manifests
+        run: |
+          jq -e . plugin.json .codex-plugin/plugin.json .claude-plugin/plugin.json .claude-plugin/marketplace.json catalog.json
+      - name: Validate skill inventory
+        run: |
+          test "$(find skills -name SKILL.md | wc -l | tr -d ' ')" = 4
+          test "$(jq -r '.skills | length' catalog.json)" = 4
+          grep -F 'name: repo-merge' skills/repo-merge/SKILL.md
+          grep -F 'disable-model-invocation: true' skills/repo-merge/SKILL.md
