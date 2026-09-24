@@ -251,20 +251,12 @@ if [ "$all_work_resolved_delete" = 1 ]; then
   all_work_resolved_guard_source_refs_before=$(jq -er '.source_refs_before' "$all_work_resolved_guard_config")
   all_work_resolved_expected_readme=$(jq -er '.expected_readme' "$all_work_resolved_guard_config")
   all_work_resolved_observed_target_file="$XDG_STATE_HOME/all-work-resolved-target-before-delete.json"
-  case "$all_work_resolved_operation:$all_work_resolved_delete_ref" in
-    branch:feature/resolved|branch:refs/heads/feature/resolved|update-ref:refs/heads/feature/resolved) ;;
-    *)
-      echo "fixture guard blocks non-authorized ref deletion: $all_work_resolved_operation $all_work_resolved_delete_ref" >&2
-      exit 70
-      ;;
-  esac
-  if [ "$all_work_resolved_delete_ref_count" -gt 1 ] &&
-    { [ "$all_work_resolved_operation" != update-ref ] || [ "$all_work_resolved_extra_delete_arg" != "$all_work_resolved_guard_oid" ]; }; then
-    echo 'fixture guard blocks multi-ref or stale-OID deletion' >&2
-    exit 70
-  fi
-  if [ "$all_work_resolved_delete_ref_count" -lt 1 ] || [ "${all_work_resolved_git_dir_override:-0}" = 1 ]; then
-    echo 'fixture guard blocks ambiguous or multi-ref deletion' >&2
+  if [ "$all_work_resolved_operation" != update-ref ] ||
+    [ "$all_work_resolved_delete_ref" != "$all_work_resolved_guard_ref" ] ||
+    [ "$all_work_resolved_delete_ref_count" -ne 2 ] ||
+    [ "$all_work_resolved_extra_delete_arg" != "$all_work_resolved_guard_oid" ] ||
+    [ "${all_work_resolved_git_dir_override:-0}" = 1 ]; then
+    echo 'fixture guard requires update-ref deletion of the exact full ref with its expected OID' >&2
     exit 70
   fi
   all_work_resolved_git_cwd=${all_work_resolved_git_cwd:-$(pwd -P)}
@@ -770,10 +762,21 @@ EOF
   test "$all_work_resolved_git_log_lines_after" -gt "$all_work_resolved_git_log_lines_before"
   all_work_resolved_git_invocations="$work/all-work-resolved-git-invocations.jsonl"
   tail -n "+$((all_work_resolved_git_log_lines_before + 1))" "$TAILROCKS_GIT_SHIM_LOG" >"$all_work_resolved_git_invocations"
-  jq -e -s --arg ref feature/resolved --arg abs_ref refs/heads/feature/resolved '
-    any(.[][]?; . == "branch" or . == "update-ref") and
-    any(.[][]?; . == "-d" or . == "-D" or . == "--delete") and
-    any(.[][]?; . == $ref or . == $abs_ref)
+  jq -e -s --arg abs_ref refs/heads/feature/resolved --arg expected_oid "$all_work_resolved_source_oid" '
+    def cas_delete:
+      (index("update-ref") != null) and
+      (index("-d") != null or index("--delete") != null) and
+      (index($abs_ref) as $ref_index
+       | $ref_index != null
+       and .[$ref_index + 1] == $expected_oid
+       and length == ($ref_index + 2));
+    any(.[]; cas_delete) and
+    all(.[];
+      (index("branch") == null or
+        (index("-d") == null and index("-D") == null and index("--delete") == null)) and
+      (index("update-ref") == null or
+        (index("-d") == null and index("--delete") == null) or cas_delete)
+    )
   ' "$all_work_resolved_git_invocations" >/dev/null
 
   jq -e \

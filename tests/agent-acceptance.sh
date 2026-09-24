@@ -1734,8 +1734,55 @@ cleanup_non_target_before=$(git -C "$cleanup_repo" rev-parse refs/heads/feature/
 branch_file "$cleanup_repo" feature/preserved preserved.txt 'preserve-other-source'
 cleanup_preserved_before=$(git -C "$cleanup_repo" rev-parse refs/heads/feature/preserved)
 git -C "$cleanup_repo" checkout -q main
+cleanup_git_shim_backup="$work/git-shim.before-resolved-cleanup"
+cleanup_git_invocations="$work/resolved-cleanup-git-invocations.jsonl"
+if [ ! -e "$TAILROCKS_GIT_SHIM_LOG" ]; then
+  : >"$TAILROCKS_GIT_SHIM_LOG"
+fi
+cleanup_git_log_before=$(wc -l <"$TAILROCKS_GIT_SHIM_LOG" | tr -d '[:space:]')
+cp "$shim_dir/git" "$cleanup_git_shim_backup"
+cat >"$shim_dir/git" <<'EOF'
+#!/bin/sh
+set -eu
+
+cleanup_git_argv_json=$(printf '%s\n' "$@" | jq -R . | jq -s -c .)
+printf '%s\n' "$cleanup_git_argv_json" >>"$TAILROCKS_GIT_SHIM_LOG"
+for cleanup_git_arg do
+  if [ "$cleanup_git_arg" = push ]; then
+    echo 'fixture git shim blocks every push' >&2
+    exit 69
+  fi
+done
+
+exec "$TAILROCKS_REAL_GIT" "$@"
+EOF
+chmod +x "$shim_dir/git"
+cleanup_agent_status=0
 run_agent resolved-cleanup "$cleanup_repo" :workspace \
-  "Use \$tailrocks-repository-skills:repo-merge --local-only --cleanup=resolved --target-branch=release/next feature/resolved. This explicitly authorizes deleting only refs/heads/feature/resolved in this disposable repository, after its justified change is locally landed on exact release/next. Use repo-merge's local cleanup finalization procedure; do not programmatically invoke the standalone manual-only cleanup skill. Before deletion create a full Git bundle snapshot at $cleanup_bundle, restore it into a disposable repository at $cleanup_restore, and verify the restored refs/heads/feature/resolved OID and resolved.txt byte-for-byte match the original source OID $cleanup_source_before. Delete the selected ref only with an expected-OID compare-and-swap against $cleanup_source_before; if the ref changed, reject deletion and preserve the replacement. Only after that real restore test and fresh identity recheck may local finalization remove the selected feature/resolved ref. Preserve main, the release/next target, feature/non-target, feature/preserved, and both recovery artifacts. No remote writes. Return JSON with outcome landed-local, exact target branch/OID, restore_test passed, snapshot_path, restored_source_oid, and deleted_refs containing only refs/heads/feature/resolved." "$cleanup_root" "$cleanup_proof"
+  "Use \$tailrocks-repository-skills:repo-merge --local-only --cleanup=resolved --target-branch=release/next feature/resolved. This explicitly authorizes deleting only refs/heads/feature/resolved in this disposable repository, after its justified change is locally landed on exact release/next. Use repo-merge's local cleanup finalization procedure; do not programmatically invoke the standalone manual-only cleanup skill. Before deletion create a full Git bundle snapshot at $cleanup_bundle, restore it into a disposable repository at $cleanup_restore, and verify the restored refs/heads/feature/resolved OID and resolved.txt byte-for-byte match the original source OID $cleanup_source_before. Delete the selected ref only with an expected-OID compare-and-swap against $cleanup_source_before; if the ref changed, reject deletion and preserve the replacement. Only after that real restore test and fresh identity recheck may local finalization remove the selected feature/resolved ref. Preserve main, the release/next target, feature/non-target, feature/preserved, and both recovery artifacts. No remote writes. Return JSON with outcome landed-local, exact target branch/OID, restore_test passed, snapshot_path, restored_source_oid, and deleted_refs containing only refs/heads/feature/resolved." "$cleanup_root" "$cleanup_proof" || cleanup_agent_status=$?
+cp "$cleanup_git_shim_backup" "$shim_dir/git"
+if [ "$cleanup_agent_status" -ne 0 ]; then
+  exit "$cleanup_agent_status"
+fi
+cleanup_git_log_after=$(wc -l <"$TAILROCKS_GIT_SHIM_LOG" | tr -d '[:space:]')
+test "$cleanup_git_log_after" -gt "$cleanup_git_log_before"
+tail -n "+$((cleanup_git_log_before + 1))" "$TAILROCKS_GIT_SHIM_LOG" >"$cleanup_git_invocations"
+jq -e -s --arg abs_ref refs/heads/feature/resolved --arg expected_oid "$cleanup_source_before" '
+  def cas_delete:
+    (index("update-ref") != null) and
+    (index("-d") != null or index("--delete") != null) and
+    (index($abs_ref) as $ref_index
+     | $ref_index != null
+     and .[$ref_index + 1] == $expected_oid
+     and length == ($ref_index + 2));
+  any(.[]; cas_delete) and
+  all(.[];
+    (index("branch") == null or
+      (index("-d") == null and index("-D") == null and index("--delete") == null)) and
+    (index("update-ref") == null or
+      (index("-d") == null and index("--delete") == null) or cas_delete)
+  )
+' "$cleanup_git_invocations" >/dev/null
 test "$(git -C "$cleanup_repo" rev-parse refs/heads/main)" = "$cleanup_main_before"
 test "$(git -C "$cleanup_repo" rev-parse refs/heads/feature/non-target)" = "$cleanup_non_target_before"
 test "$(git -C "$cleanup_repo" rev-parse refs/heads/feature/preserved)" = "$cleanup_preserved_before"
@@ -1757,7 +1804,7 @@ assert_json_final "$work/resolved-cleanup.final.txt" '.outcome == "landed-local"
 test "$(jq -r '.target_oid' "$work/resolved-cleanup.final.txt")" = "$cleanup_target_after"
 test "$(jq -r '.snapshot_path' "$work/resolved-cleanup.final.txt")" = "$cleanup_bundle"
 test "$(jq -r '.restored_source_oid' "$work/resolved-cleanup.final.txt")" = "$cleanup_source_before"
-record 'verified=selected-source deletion and restore test independently observed; distinct cleanup-owner invocation not independently receipted'
+record "verified=selected-source deletion and restore test independently observed; Git argv receipt requires update-ref CAS on refs/heads/feature/resolved with expected OID $cleanup_source_before and rejects branch deletion forms"
 
 # Direct cleanup skill must retain an unresolved source and preserve all local state.
 direct_cleanup_repo="$work/direct-cleanup-unresolved-fixture"
