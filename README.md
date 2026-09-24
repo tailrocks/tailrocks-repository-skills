@@ -1,15 +1,25 @@
 # tailrocks-repository-skills
 
-One portable package with exactly three skills:
+One portable package with exactly nine public skills:
 
-- `tailrocks-repository-merge` is the sole end-to-end coordinator for selected-source
-  integration.
+- `tailrocks-repository-merge` is the sole end-to-end coordinator for
+  selected-source integration.
 - `tailrocks-repository-audit` is an independently callable, read-only audit.
-- `tailrocks-repository-cleanup` is an independently callable,
-  proof-gated cleanup operation.
+- `tailrocks-repository-cleanup` is an independently callable, proof-gated
+  cleanup operation.
+- `tailrocks-create-pr` creates a pull request after its branch and body
+  gates pass.
+- `tailrocks-refresh-pr` reconciles an existing pull request with its branch.
+- `tailrocks-review-pr` performs a read-only, evidence-based review.
+- `tailrocks-merge-pr` owns the guarded pull-request landing procedure.
+- `tailrocks-document` updates documentation required by a pull request.
+- `tailrocks-pr-template` creates or reconciles a repository pull-request
+  template.
 
-Each skill carries the bundled references it needs. Install the complete
-package or release archive; do not copy an individual `SKILL.md` out of its
+The six pull-request lifecycle skills are bundled here. Their references,
+templates, and required runtime resources ship with this package; no separate
+source-collection checkout or installation is required. Install the complete
+package or release archive. Do not copy an individual `SKILL.md` out of its
 skill directory.
 
 ## Select sources and target
@@ -45,12 +55,13 @@ and restore-test proof.
 
 ## Lifecycle boundary
 
-Review, PR creation, and remote PR landing belong to the installed Tailrocks
-pull-request lifecycle collection. The relevant owners are
-`tailrocks-review-pr`, `tailrocks-create-pr`, and `tailrocks-merge-pr`; they
-are manual-only and must be explicitly selected when required. A review report
-does not authorize a merge, and loading a skill does not authorize side
-effects.
+Review, PR creation, refresh, documentation, template work, and remote PR
+landing belong to the six bundled pull-request lifecycle skills. The relevant
+owners are `tailrocks-review-pr`, `tailrocks-create-pr`,
+`tailrocks-refresh-pr`, `tailrocks-document`, `tailrocks-pr-template`, and
+`tailrocks-merge-pr`; they are manual-only and must be explicitly selected
+when required. A review report does not authorize a merge, and loading a skill
+does not authorize side effects.
 
 The current merge owner does not atomically compare-and-swap the selected
 target base ref and object ID during mutation. Remote landing therefore stays
@@ -61,29 +72,9 @@ work and never claims hosted delivery or CI.
 ## Native clients
 
 Use the client-specific installation and invocation routes in
-[docs/client-invocation.md](docs/client-invocation.md). Codex and Claude use
-their plugin manifests; Muse and Antigravity use their native plugin
-manifests; Kimi loads the `skills/` directory; OpenCode uses `skills.paths`
-and `permission.skill`.
-
-## Checks
-
-Run the remaining deterministic checks from a source checkout's repository root:
-
-```sh
-tests/release-version-contract.sh
-tests/claude-install-contract.sh
-jq -e . \
-  plugin.json \
-  .codex-plugin/plugin.json \
-  .claude-plugin/plugin.json \
-  .claude-plugin/marketplace.json \
-  .muse-plugin/plugin.json \
-  catalog.json
-```
-
-These checks cover release-version consistency, Claude install metadata, and
-manifest JSON syntax. They require the source checkout and do not claim model
-behavior. Native acceptance requires isolated native-client runs and the
-credentials or client capability required by that client; blocked or
-install-only runs remain blocked or install-only.
+[docs/client-invocation.md](docs/client-invocation.md). Codex, Claude, and
+Grok use plugin manifests or marketplaces; Muse and Antigravity use their
+native plugin manifests; Amp uses its bundled directory-plugin adapter and
+Kimi loads the bundled skill directories;
+OpenCode discovers `.opencode/skills` and uses `permission.skill`. Each route
+installs this package as one unit and does not depend on another repository.

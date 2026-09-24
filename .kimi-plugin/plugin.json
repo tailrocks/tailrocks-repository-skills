@@ -1,9 +1,9 @@
 {
-  "name": "tailrocks-pull-request-skills",
-  "version": "0.28.0",
-  "description": "Fail-closed pull-request workflows for creation, review, documentation, refresh, merge, and repository-native templates.",
+  "name": "tailrocks-repository-skills",
+  "version": "0.2.0",
+  "description": "Target-bound repository orchestration and fail-closed pull-request lifecycle skills.",
   "keywords": [
-    "pull-request",
+    "repository",
     "github",
     "code-review",
     "merge",
@@ -16,26 +16,28 @@
     "name": "tailrocks",
     "url": "https://github.com/tailrocks"
   },
-  "homepage": "https://github.com/tailrocks/tailrocks-pull-request-skills",
+  "homepage": "https://github.com/tailrocks/tailrocks-repository-skills",
   "license": "Apache-2.0",
   "skills": "./skills/",
   "interface": {
-    "displayName": "Pull Request Skills",
-    "shortDescription": "Fail-closed pull-request lifecycle workflows.",
-    "longDescription": "Fail-closed pull-request workflows for creation, review, documentation, refresh, merge, and repository-native templates.",
+    "displayName": "Repository Skills",
+    "shortDescription": "Target-bound repository and pull-request lifecycle workflows.",
+    "longDescription": "Target-bound repository orchestration with fail-closed pull-request creation, review, documentation, refresh, merge, templates, audit, and cleanup.",
     "capabilities": [
       "Create",
       "Review",
       "Document",
       "Refresh",
-      "Merge"
+      "Merge",
+      "Audit",
+      "Cleanup"
     ],
-    "websiteURL": "https://github.com/tailrocks/tailrocks-pull-request-skills",
+    "websiteURL": "https://github.com/tailrocks/tailrocks-repository-skills",
     "defaultPrompt": [
-      "Review this pull request.",
-      "Create a pull request for this change.",
-      "Merge this PR after all gates pass."
+      "Coordinate these sources into the exact selected repository target.",
+      "Review or create this pull request after its gates pass.",
+      "Merge this pull request only after all gates pass."
     ]
   },
-  "repository": "https://github.com/tailrocks/tailrocks-pull-request-skills"
+  "repository": "https://github.com/tailrocks/tailrocks-repository-skills"
 }

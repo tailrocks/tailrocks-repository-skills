@@ -1,7 +1,7 @@
 {
   "name": "tailrocks-repository-skills",
   "version": "0.2.0",
-  "description": "Repository source orchestration with read-only audit, one end-to-end merge workflow, and proof-gated cleanup.",
+  "description": "Target-bound repository orchestration plus fail-closed pull-request creation, refresh, review, documentation, templates, landing, audit, and cleanup.",
   "author": {
     "name": "tailrocks",
     "url": "https://github.com/tailrocks"
@@ -21,17 +21,19 @@
   "interface": {
     "displayName": "Repository Skills",
     "shortDescription": "Target-aware repository coordination, audit, and cleanup.",
-    "longDescription": "tailrocks-repository-merge audits selected sources against one exact destination, completes justified changes, uses explicitly selected pull-request owners for remote review and landing, verifies the target, and finalizes only proven cleanup.",
+    "longDescription": "tailrocks-repository-merge audits selected sources against one exact destination, while the bundled pull-request skills create, refresh, review, document, template, and land changes under explicit gates; audit and cleanup remain independently callable.",
     "developerName": "Tailrocks",
     "category": "Developer Tools",
     "capabilities": [
       "Audit",
+      "Pull Request",
       "Merge",
       "Cleanup"
     ],
     "websiteURL": "https://github.com/tailrocks/tailrocks-repository-skills",
     "defaultPrompt": [
       "Coordinate these sources into the exact selected repository target.",
+      "Review, create, refresh, document, template, or merge this pull request under its gates.",
       "Audit these repository sources against the selected target.",
       "Clean up these resolved sources only after their evidence is verified."
     ]
