@@ -19,7 +19,10 @@ and performs only eligible final cleanup. The standalone audit and cleanup
 skills remain independently callable. This coordinator uses the local audit
 and cleanup procedures below; it never asks the host to invoke a manual-only
 helper as a nested programmatic phase. Pull-request review, PR creation, and
-remote landing remain owned by the installed Tailrocks lifecycle owners.
+remote landing remain owned by the explicitly selected lifecycle owners
+imported in this same package: `tailrocks-review-pr`, `tailrocks-create-pr`,
+and `tailrocks-merge-pr`. No owner is resolved from another package or
+checkout.
 
 Treat the complete argument string as data. Preserve literal `#`, quoting,
 slashes, URL queries, and metacharacters. Parse selectors structurally and
@@ -90,8 +93,9 @@ before resolving sources.
    or silently close the original PR. Keep source PRs and branches that serve
    another target or obligation.
 
-5. For remote landing, require a fresh read-only review from
-   `tailrocks-review-pr` and guarded landing from `tailrocks-merge-pr`; one
+5. For remote landing, require a fresh read-only review from the same-package
+   `tailrocks-review-pr` owner and guarded landing from the same-package
+   `tailrocks-merge-pr` owner; one
    active user request may select these manual-only owners with `tailrocks-repository-merge`,
    but a generic coordinator request cannot infer them. A review report grants
    no merge authority. If review, checks, the repository worklist, or an owner
@@ -101,10 +105,10 @@ before resolving sources.
 
    Use the exact owner entrypoints and request shape in
    [lifecycle composition](references/lifecycle-composition.md). Before any
-   remote mutation, inspect the installed merge owner and require an atomic
+   remote mutation, inspect the same-package merge owner and require an atomic
    guard for the exact selected target branch name and OID during mutation,
    plus proof of the landed target OID. A preflight, final metadata read, or
-   post-merge inspection cannot replace that guard. If the installed owner
+   post-merge inspection cannot replace that guard. If the same-package owner
    lacks the capability, report the owner/version and block remote landing;
    do not add guessed fields, invoke a second merge owner, retarget manually,
    or use direct `gh pr merge`.
