@@ -154,6 +154,8 @@ resolving sources.
 ## Interruption and resume
 
 For each run, create or update one concise Markdown progress/handoff record at
+`$XDG_STATE_HOME/tailrocks/repo-merge/runs/<run-id>.md` when
+`XDG_STATE_HOME` is set, otherwise
 `~/.local/state/tailrocks/repo-merge/runs/<run-id>.md`; keep it outside every
 repository, source, and cleanup candidate. Record the run ID, original request
 and authority, repository, exact target and observed ref, exact source set and
