@@ -34,11 +34,14 @@ Read:
 
 ## All-work coverage
 
-`--all-work` means broad read-only discovery for the bound repository. First enumerate the local volumes and the exact accessible workspace, project, and agent worktree roots exposed by the host. Include configured Git/worktree roots, hidden runtime worktree directories, and user-selected roots. Search those roots for `.git` directories, `.git` pointer files, bare repositories, nested repositories, and repository paths recorded by Git. Follow Git worktree metadata and explicit Git pointers; do not follow arbitrary symlinks outside declared roots.
-
-Query the bound hosting repository for branch heads, open and draft PRs, and relevant closed or merged PR lineage. Complete pagination for each list. Inspect each discovered copy for its distinct refs, common Git directory, worktree state, detached heads, configured remotes, stashes, reflog-reachable work, recoverable objects, in-progress Git operations, staged and unstaged changes, untracked files, and potentially valuable ignored files. Note shallow or partial clones, missing objects, alternates, submodules, LFS objects, forks, protected refs, and duplicate object stores.
-
-List exact scan roots, exact exclusions with reasons, permission-denied paths, unavailable volumes, API failures, truncated listings, unresolved identities, and active writers. Do not claim host-wide completeness or zero remaining work when any applicable root, repository, page, or identity is unknown. Do not silently omit user-data directories because their names resemble caches.
+For `--all-work`, follow the exact root, identity, pagination, and coverage
+rules in the [shared selector contract](../shared/selector-contract.md).
+Canonicalize and match every discovered repository to the bound repository
+before inspecting its work; a same-name unrelated repository stays outside
+scope. Query only the bound repository and PR-linked metadata, never its
+organization or fork repositories. Preserve the initial membership and every
+coverage gap in the audit record; unknown roots, identities, pages, or active
+writers prevent a completeness claim.
 
 ## Output boundary
 
