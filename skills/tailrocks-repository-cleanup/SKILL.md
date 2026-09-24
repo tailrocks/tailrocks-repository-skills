@@ -12,7 +12,9 @@ user-invocable: true
 
 # Scoped repository cleanup
 
-This skill is independently callable and handles only explicitly selected cleanup. An audit never invokes it. A prior audit report is advisory; re-resolve every identity and eligibility condition against current state. Do not implement, merge, close, or retarget PRs as cleanup.
+This skill is independently callable for an explicit cleanup request. It may also be selected as the final phase of the same active, explicit `repo-merge` invocation only when that invocation is in normal mode and its effective cleanup mode is `resolved`—the documented default or an explicit `--cleanup=resolved`. That delegation preserves exactly the original repository, source selectors and resolved membership, and selected target. It adds no permission to clean related or newly discovered sources.
+
+`--audit-only` and `--cleanup=none` never delegate cleanup. A prior audit report, an older invocation, or a new source set cannot supply delegated authority. For original `--all-work`, retain the same declared scan roots and original candidate membership; report later additions without deleting them under the old request. Re-resolve every identity and eligibility condition against current state. Do not implement, merge, close, or retarget PRs as cleanup.
 
 Read:
 
@@ -23,8 +25,8 @@ Read:
 
 ## Procedure
 
-1. Require an explicit cleanup request and a nonempty source selector set, or explicit `--all-work` as the sole scope. No selectors is a usage error, never permission to clean all work. `--cleanup=none` is a hard no-delete instruction. Treat `--cleanup=resolved` as eligibility only, never as proof.
-2. Bind one repository and the exact selected target. An omitted target means literal `main`. Re-resolve the target ref and current object ID. A missing or ambiguous target stops cleanup. Never fall back to HEAD, `origin/HEAD`, a PR base, or the repository default.
+1. Require a direct explicit cleanup request or the exact delegation described above, plus a nonempty source selector set or explicit `--all-work` as the sole scope. No selectors is a usage error, never permission to clean all work. `--cleanup=none` is a hard no-delete instruction. Treat `--cleanup=resolved` as eligibility only, never as proof.
+2. Preserve the original source selector arguments and target from `repo-merge`. Do not add prerequisites, predecessors, successors, branches found during audit, or related clones/worktrees to the cleanup candidates. Bind one repository and the exact selected target. An omitted target means literal `main`. Re-resolve the target ref and current object ID. A missing or ambiguous target stops cleanup. Never fall back to HEAD, `origin/HEAD`, a PR base, or the repository default.
 3. Resolve the exact selected source branch, PR, clone, or worktree and record repository identity, canonical path, full ref, current object ID, and PR head/base where applicable. Keep all selectors in the bound repository. Deduplicate equivalent identities while retaining each selector spelling.
 4. Prove that the whole selected contribution is resolved on this exact target. Inspect target behavior, not just ancestry or a commit identifier. Record valid goals intentionally rejected or superseded with evidence. Partial landing is not enough to delete a source that still contains accepted work.
 5. Check every remaining obligation: open or draft PRs, original PR base, required review or checks, successors, dependent work, reverts, unresolved findings, another target that still needs the source, protected or maintenance use, and current repository worklist. A PR whose base differs from the selected target stays open with its source intact until its original-target obligations are separately satisfied. An adaptation into this target does not satisfy those obligations.

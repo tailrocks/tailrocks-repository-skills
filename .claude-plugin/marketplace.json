@@ -11,8 +11,8 @@
     {
       "name": "tailrocks-repository-skills",
       "source": "./",
-      "description": "Target-bound repository convergence workflows.",
-      "version": "0.1.2",
+      "description": "Repository source audit, single-entry coordination, and proof-gated cleanup.",
+      "version": "0.2.0",
       "category": "Repository Skills"
     }
   ]

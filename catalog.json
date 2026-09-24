@@ -1,8 +1,7 @@
 {
   "skills": [
+    "repo-merge",
     "tailrocks-repository-audit",
-    "tailrocks-repository-converge",
-    "tailrocks-repository-cleanup",
-    "repo-merge"
+    "tailrocks-repository-cleanup"
   ]
 }

@@ -14,16 +14,14 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          components: rustfmt
-      - name: Verify before release
+      - name: Verify exact tag matches plugin versions
+        run: tests/release-version-guard.sh
+      - name: Verify deterministic source contracts (no client or agent result claimed)
         run: |
-          cargo fmt --manifest-path helper/Cargo.toml --all -- --check
-          cargo test --manifest-path helper/Cargo.toml --locked
-          TAILROCKS_SKIP_CLIENT_CONTRACT=1 tests/run-contracts.sh
+          for script in tests/*.sh tests/fixtures/*.sh; do
+            sh -n "$script"
+          done
+          tests/run-contracts.sh
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:

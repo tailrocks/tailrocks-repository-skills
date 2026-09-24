@@ -1,7 +1,7 @@
 {
   "name": "tailrocks-repository-skills",
-  "version": "0.1.2",
-  "description": "Target-bound repository audit, convergence, pull-request lifecycle composition, and safe cleanup.",
+  "version": "0.2.0",
+  "description": "Repository source orchestration with read-only audit, one end-to-end merge workflow, and proof-gated cleanup.",
   "author": {
     "name": "tailrocks",
     "url": "https://github.com/tailrocks"
@@ -12,31 +12,28 @@
   "keywords": [
     "repository",
     "audit",
-    "convergence",
-    "pull-request",
+    "review",
     "merge",
     "cleanup",
-    "github",
-    "ci"
+    "github"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Repository Skills",
-    "shortDescription": "Target-bound repository convergence workflows.",
-    "longDescription": "Audit selected sources, adapt justified improvements to an explicit destination, land them through existing pull-request lifecycle skills, verify, resume, and clean only eligible sources.",
+    "shortDescription": "Target-aware repository coordination, audit, and cleanup.",
+    "longDescription": "repo-merge coordinates selected sources against one exact destination, then invokes read-only audit, existing pull-request review and merge owners, target verification, and proof-gated cleanup.",
     "developerName": "Tailrocks",
     "category": "Developer Tools",
     "capabilities": [
       "Audit",
-      "Converge",
       "Merge",
       "Cleanup"
     ],
     "websiteURL": "https://github.com/tailrocks/tailrocks-repository-skills",
     "defaultPrompt": [
+      "Coordinate these sources into the exact selected repository target.",
       "Audit these repository sources against the selected target.",
-      "Converge these changes into the selected target and land them.",
-      "Resume the target-bound repository campaign."
+      "Clean up these resolved sources only after their evidence is verified."
     ]
   }
 }
