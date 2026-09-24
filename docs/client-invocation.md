@@ -42,8 +42,7 @@ $tailrocks-repository-audit --repo=OWNER/REPO --target-branch=release/next featu
 Record its observation time and delta in the existing handoff. The refresh
 does not change source state or run scope; revalidate changed identities before
 any later side effect. Installed `/goal` plus plugin argument transport still
-needs fresh acceptance evidence; see
-[requirements to evidence](requirements-to-evidence.md). No Claude `/goal`
+needs fresh acceptance evidence. No Claude `/goal`
 route is advertised. Use its namespaced skill command directly; do not assume
 that nesting a skill spelling inside another host command invokes it.
 

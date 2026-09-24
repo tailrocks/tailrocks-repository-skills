@@ -62,6 +62,5 @@ and [ownership](docs/architecture.md).
 either policy. Exact commands and high-risk rules are in
 [client invocation](docs/client-invocation.md).
 
-Current verification status and next action are in [PROGRESS.md](PROGRESS.md).
-Keep the complete original v2 goal and
-[requirements-to-evidence](docs/requirements-to-evidence.md).
+Run `tests/run-contracts.sh` for the current deterministic checks. These
+checks do not replace installed-client acceptance.
