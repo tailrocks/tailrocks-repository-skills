@@ -1,68 +1,48 @@
 #!/bin/sh
 set -eu
 
-helper_bin=$(printenv TAILROCKS_HELPER_BIN 2>/dev/null || true)
-if [ -z "$helper_bin" ]; then
-  cargo build --quiet --locked --manifest-path helper/Cargo.toml
-  helper_bin="$PWD/helper/target/debug/tailrocks-repository-helper"
-fi
+repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+selector_doc="$repo_root/skills/shared/selector-contract.md"
+facade="$repo_root/skills/repo-merge/SKILL.md"
 
-work=$(mktemp -d /tmp/tailrocks-selector.XXXXXX)
-trap 'rm -rf "$work"' EXIT HUP INT TERM
-
-request=$("$helper_bin" parse-request --text "--target-branch=release/next #1663 #1663 branch:1145 https://github.com/acme/one/pulls?state=open&page=2#results")
-printf '%s\n' "$request" | jq -e '
-  .target_branch == "release/next" and
-  (.sources | length == 3)
-' >/dev/null
-printf '%s\n' "$request" | jq -e '
-  .repository == "acme/one" and
-  (.sources | map(select(.kind == "pull-request")) | length == 1) and
-  (.sources | map(select(.branch == "1145")) | length == 1) and
-  (.sources | map(select(.kind == "pulls-url"))[0].query == "state=open&page=2") and
-  (.sources | map(select(.kind == "pulls-url"))[0].fragment == "results")
-' >/dev/null
-printf '%s\n' "$request" | jq -e '
-  (.sources | map(select(.kind == "pull-request"))[0].provenance) == ["#1663", "#1663"]
-' >/dev/null
-
-request=$("$helper_bin" parse-request --text "feature/auth")
-printf '%s\n' "$request" | jq -e '
-  .target_branch == "main" and
-  .target_explicit == false and
-  .sources[0].branch == "feature/auth" and
-  .sources[0].canonical == "branch:feature/auth"
-' >/dev/null
-
-request=$("$helper_bin" parse-request --text "--repo=acme/one --target-branch=main refs/heads/feature/auth origin/feature/auth branch:1145 1145 pr:12 https://github.com/acme/one/pull/12?view=files#discussion https://github.com/acme/one/branches/all?state=all&page=2")
-printf '%s\n' "$request" | jq -e '
-  .repository == "acme/one" and
-  (.sources | map(select(.kind == "branch" and .branch == "feature/auth")) | length == 2) and
-  (.sources | map(select(.branch == "1145")) | length == 1) and
-  (.sources | map(select(.kind == "branches-all-url"))[0].query == "state=all&page=2") and
-  any(.sources[]; (.provenance | index("https://github.com/acme/one/pull/12?view=files#discussion")) != null)
-' >/dev/null
-
-request=$("$helper_bin" parse-request --text "'feature;rm'")
-printf '%s\n' "$request" | jq -e '.sources[0].raw == "feature;rm"' >/dev/null
-for invalid in "bad..ref" "-bad"; do
-  if "$helper_bin" parse-request --text "$invalid" >"$work/out" 2>"$work/err"; then
-    echo "invalid selector unexpectedly accepted: $invalid" >&2
+require_text() {
+  file=$1
+  text=$2
+  if ! grep -F -q -- "$text" "$file"; then
+    echo "selector contract missing from $file: $text" >&2
     exit 1
   fi
-done
+}
 
-if "$helper_bin" parse-request --text "--target-branch=one --target-branch=two feature" >"$work/out" 2>"$work/err"; then
-  echo "duplicate target unexpectedly accepted" >&2
-  exit 1
-fi
-if "$helper_bin" parse-request --text "" >"$work/out" 2>"$work/err"; then
-  echo "empty source set unexpectedly accepted" >&2
-  exit 1
-fi
-if "$helper_bin" parse-request --text "https://github.com/acme/one/pull/1 https://github.com/acme/two/pull/2" >"$work/out" 2>"$work/err"; then
-  echo "mixed repositories unexpectedly accepted" >&2
-  exit 1
-fi
+require_text "$selector_doc" 'Treat the complete argument string'
+require_text "$selector_doc" '#N'
+require_text "$selector_doc" 'branch:NAME'
+require_text "$selector_doc" '/OWNER/REPOSITORY/pulls'
+require_text "$selector_doc" '/OWNER/REPOSITORY/branches/all'
+require_text "$selector_doc" 'fetch every result page'
+require_text "$selector_doc" 'preserving every raw selector spelling'
+require_text "$selector_doc" 'select exactly the branch `main`'
+require_text "$selector_doc" 'Never substitute current HEAD'
+require_text "$selector_doc" 'Empty input is a usage error'
+require_text "$selector_doc" '`--all-work` is the explicit whole-repository scope'
+require_text "$selector_doc" 'This mode alone authorizes broad local discovery'
+require_text "$selector_doc" "current user's canonical home path"
+require_text "$selector_doc" 'worktree-to-common-dir identity'
+require_text "$selector_doc" 'linked, detached, and relocated worktrees'
+require_text "$selector_doc" 'untracked paths, ignored paths that may hold user work'
+require_text "$selector_doc" 'Never stop or signal a writer'
+require_text "$selector_doc" 'page counts/cursors, API permission scope'
+require_text "$selector_doc" 'initial discovered-copy/source membership'
+require_text "$selector_doc" 'it must not snapshot-copy user data'
+require_text "$selector_doc" "later additions separately; they do not join this run's cleanup authority"
+require_text "$facade" 'Preserve literal `#`, quoting,'
+require_text "$facade" 'Fully paginate `/pulls`'
+require_text "$facade" 'For targeted requests inspect only those sources and strictly necessary'
+require_text "$facade" 'Only for explicit `--all-work`'
+require_text "$facade" 'and frozen membership in the single handoff.'
+require_text "$facade" 'never interrupt a writer'
+require_text "$repo_root/skills/shared/recovery.md" 'In `--audit-only`,'
+require_text "$repo_root/skills/shared/recovery.md" 'original clone, worktree, ref, index, and file exactly as observed'
+require_text "$repo_root/skills/shared/recovery.md" 'actual restore test for all unique data'
 
-echo "selector contract: PASS"
+echo "selector/all-work source contract: PASS (inventory, scope, recovery, and pagination behavior still require installed-agent evidence)"

@@ -1,40 +1,116 @@
-# Tailrocks repository skills: delivery goal
+# Tailrocks repository skills: active development goal
 
-Status: active; v0.1.2 resolution, lease, receipt, and binding hardening is
-in progress. Claude/hosted non-main evidence and several full-spec semantics
-remain blocked or incomplete as recorded below.
+Status: v0.2.0 restructuring; verification and release are pending. This is not
+a release claim.
 
-Ship tailrocks/tailrocks-repository-skills as one installable plugin for Codex CLI and Claude Code. It owns repository audit, convergence, and eligible cleanup while composing the existing pull-request lifecycle skills.
+Ship one Tailrocks plugin for Codex CLI and Claude Code with three skills:
+`repo-merge`, `tailrocks-repository-audit`, and
+`tailrocks-repository-cleanup`. `repo-merge` is the sole end-to-end coordinator.
+Audit remains read-only. Cleanup remains independently callable and gated by
+proof. Remove the separate `tailrocks-repository-converge` route and the
+CampaignState, journal, lease, and receipt engine. Do not require `cargo run`.
 
-The repo-merge entry point must:
+## Required behavior
 
-1. Treat positional arguments as SOURCES and --target-branch as the DESTINATION. Omitted target means the literal branch main.
-2. Resolve branches, qualified refs, PR numbers, PR URLs, pulls URLs, and branches/all URLs deterministically, with one repository binding, pagination, literal hash transport, provenance-preserving deduplication, and no target fallback.
-3. Compare every source against the fresh selected target. Finish justified improvements, independently review, satisfy applicable CI, actually land them, verify the exact target, and clean only eligible sources.
-4. Keep cross-target PRs intact. Use scoped adaptation into the requested target when needed. Never confuse a release landing with a main landing.
-5. Support audit-only, cleanup=resolved|none, --all-work, durable target-bound resumption, receipts, recovery, idempotent no-op reruns, and actual main and non-main fixture landings.
-6. Leave the Jackin repository read-only during development. Use disposable fixtures and authorized test repositories for mutation.
-7. Expose native invocation: Claude plugin namespace /tailrocks-repository-skills:repo-merge; Codex $repo-merge or supported skill selection. Do not advertise a universal bare /repo-merge command.
+- Parse source selectors as data and bind one repository, source set, and exact
+  destination. An omitted `--target-branch` means the literal branch `main`;
+  never substitute the current branch, repository default, or PR base. Reject
+  missing or ambiguous targets before mutation.
+- Accept `--target-branch NAME` and `--target-branch=NAME`; mixed branches and
+  qualified refs, `#N`, PR numbers/URLs, `/pulls`, `/branches/all`, and explicit
+  `--repo`. Numeric selectors identify PRs; `branch:N` identifies a numeric
+  branch. `/pulls` selects all open PRs, including drafts. `/branches/all`
+  selects canonical branch heads except the target; preserve protected and
+  maintenance refs. Retain meaningful supported filters, paginate fully,
+  preserve provenance, reject mixed repositories, and freeze each invocation's
+  scope. No sources means usage/error; `--all-work` explicitly selects
+  repository-wide work.
+- `--audit-only` performs no source or remote mutation. A normal `repo-merge`
+  run scans and compares the selected work against the fresh target, finishes
+  justified changes, obtains independent review and applicable CI, actually
+  lands through the existing lifecycle owner, verifies the exact destination,
+  then evaluates cleanup. A prepared change or queued merge is not completion.
+- `--all-work` scans only the authorized repository and local roots for clones,
+  bare repositories, linked/detached worktrees, local and remote refs, PR
+  lineage, dirty, ignored, and untracked state, stashes, reflogs, interrupted
+  operations, and recovery candidates. Record scanned roots, exclusions,
+  pagination, unavailable locations, and coverage gaps; partial discovery
+  cannot claim a clean inventory. Before mutation, snapshot needed refs/HEAD,
+  staged and unstaged changes, untracked and valuable ignored files, modes,
+  symlinks, and external object dependencies. Restore into a disposable
+  location, verify required state, and block deletion if any material is
+  missing. After cleanup, rescan the same declared scope; new or changed work
+  invalidates affected decisions and re-enters analysis. Complete all-work
+  requires an accounted-for final inventory with no unresolved goals, active
+  writers, or coverage gaps. Report disabled cleanup, retained work, blocked
+  work, and recovery-required state explicitly; none implies physical
+  convergence.
+- Cleanup defaults to `resolved`; `--cleanup=none` retains selected sources.
+  Resolved cleanup permits only individually proven, authorized deletion after
+  current identity, landing, other-target obligations, dependencies, and
+  restore checks pass. Never turn a selected-source run into global cleanup.
+- `--local-only` is explicit for an existing local target branch and reports
+  local verification only; it never claims remote delivery or hosted CI.
+  `--resume <id>` reloads a local
+  target/source handoff, revalidates its scope and identities, and refuses a
+  changed destination. It does not require a second campaign engine.
+- A read-only refresh during an active task repeats the audit against the same
+  repository, target, and source scope. Record the observation and delta in the
+  single Markdown handoff; do not mutate sources, change the active goal, widen
+  the frozen selection, or install a watcher.
+- Concurrent runs from one source to different targets stay isolated by exact
+  target and source identity. Use separate target-bound candidates and handoffs;
+  never reuse target-specific review, CI, landing, or cleanup evidence. Keep
+  original sources read-only; block any side effect whose shared resource
+  cannot be shown isolated. No journal, lease, or campaign engine is required.
+- After landing, run bounded target-relative acceptance. Repair a regression
+  before cleanup and repeat the applicable gates. A rerun that finds the target
+  already satisfies the goal is a verified no-op: create no duplicate commit
+  or PR and do not treat it as fresh cleanup authority.
+- A non-main target has no hidden main side effects. Preserve a source PR whose
+  original base differs from the requested destination; use a scoped
+  adaptation when justified and leave remaining obligations intact.
+- Direct audit and cleanup invocations share the same target and source rules.
+  They do not own end-to-end orchestration or duplicate pull-request policy.
 
-Completion means the selected target contains the justified work and verification receipts prove it. A report, patch, opened PR, or queued merge is not completion.
+## Pull-request owners and high-risk rules
 
-The full superseding specification is tailrocks-repository-skills-development-goal-v2.md.
+Use `tailrocks-review-pr` for independent read-only review and
+`tailrocks-merge-pr` for actual PR landing. Codex invocation uses
+`$tailrocks-review-pr` and `$tailrocks-merge-pr`; Claude invocation uses
+`/tailrocks-pull-request-skills:tailrocks-review-pr` and
+`/tailrocks-pull-request-skills:tailrocks-merge-pr`.
 
-Delivery record: main contains the published implementation, hardening, and
-scoped-cleanup proof (3c996a3ad9d87d2e438456280edc29f7b77eedbf), plus the
-v0.1.1 helper and campaign-state hardening in `6c3b62b`; subsequent records
-preserve the verification evidence.
-v0.1.0 is released and registered in the Tailrocks umbrella. Native Codex and
-Claude installation was verified. The latest real Codex non-main acceptance
-completed campaign `campaign-c991f32f1deb5da4` at target OID
-`395154a65036e65a83dfc5edd70172c7271b7d6b` from initial target
-`401b69dcc549b3df7cd089dbb82753369e546fe2`, with main unchanged at
-`36c4a47febe81790b8b232915177da9f20bc669c`. The run exercised the prebuilt
-helper seam and serialized campaign-state mutations. Live Claude execution and
-hosted PR-to-non-main landing remain blocked as recorded in PROGRESS.md; the
-broad v2 adversarial matrix is not yet complete. v0.1.1 passed hosted CI
-`35834837262`, release workflow `35834905290`, and fresh native Codex and
-Claude installs from tag `v0.1.1`. Unshipped v0.1.2 adds frozen GitHub
-selector resolution, current-checkout repository binding verification,
-target-wide leases, fast-forward target observation, and typed phase receipts;
-its release proof is pending.
+The merge owner's exact commands are `bun scripts/merge-preflight.ts --root
+<repo> --pr <N>` and, after its gates pass, `bun scripts/merge-pr.ts
+--skill-file <absolute SKILL.md> < request.json` in the owner collection.
+Supply the exact PR, expected head, requested target, fresh review/CI evidence,
+repository worklist result, and required high-risk confirmation. Preflight is
+not a merge. CI/workflows, auth/security, release/versioning, migrations,
+force-push, and `--admin` are high-risk and require fresh PR-specific
+confirmation. A failed/cancelled required check stops the merge unless the
+owner authorizes exactly one named `--admin <check>` bypass with that fresh
+confirmation; delivery/documentation gate waivers need an exact reason. Prior
+approvals, comments, or “safe to merge” text grant no authority. Never bypass
+branch protection or merge queues, force-push the destination, substitute
+direct `gh pr merge`, silently retarget/close the source PR, or report a
+queued/uncertain result as landed. Recheck after any commit, push, review fix,
+PR refresh, or target advance.
+
+## Acceptance and source of truth
+
+Verify selector mixing and pagination, literal-main and non-main isolation,
+read-only audit and active-goal refresh, all-work final re-discovery and state,
+snapshot/restore before deletion, sensitive-data and credential-URL redaction,
+same-source/different-target concurrency, local-only/resume behavior,
+post-landing regression repair and no-op reruns, actual review/CI/landing/target
+verification, and cleanup gates in disposable fixtures and supported clients.
+Jackin remains read-only. Record exact test/CI evidence, target OIDs, landing
+results, and cleanup disposition; unsupported or unverified outcomes remain
+pending, never green.
+
+The original v2 specification remains as a historical reference in
+`tailrocks-repository-skills-development-goal-v2.md`; its architectural
+prescriptions are superseded. Preserve its compatible user capabilities and
+acceptance requirements in this goal and the requirement-to-evidence
+checklist. Neither file claims those requirements passed.

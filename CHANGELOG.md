@@ -1,33 +1,27 @@
 # Changelog
 
-## 0.1.2
+## 0.2.0 — pending verification; not released
 
-- Verify explicit repository selectors against the current checkout's GitHub
-  origin before campaign state or mutation, failing closed on mismatch or
-  unverifiable binding.
-- Resolve local refs and GitHub PR/list selectors through a paginated client
-  seam, freeze source membership/metadata, reject divergent same-name refs,
-  serialize campaigns with a repository/target lease, and reject
-  non-fast-forward target movement.
-- Require typed campaign receipts for applicable audit, review, CI, landing,
-  verification, and resolved-cleanup phases before completion.
-- Add an opt-in preserved-work mode to the real-agent fixture harness for
-  independent transcript, receipt, and artifact inspection.
+- Set `repo-merge` as the sole end-to-end coordinator.
+- Retain read-only audit and proof-gated cleanup as distinct skills.
+- Remove the separate repository-converge route and CampaignState/journal/
+  lease/receipt engine from the active design.
+- Align the plugin inventory to the three retained skills.
+- All behavior, compatibility, CI, landing, and release acceptance is pending.
 
-## 0.1.1
+## 0.1.2 — historical candidate; release not verified
 
-- Allow hosts with restricted plugin-cache writes to invoke a prebuilt helper
-  through `TAILROCKS_HELPER_BIN`.
-- Make the real-agent acceptance harness build that helper outside the agent
-  sandbox and verify the target-bound completion receipt.
-- Serialize campaign-state mutations with a per-campaign OS lock and fail
-  closed when another writer is active.
+Earlier candidate described selector binding, pagination, leases, typed
+receipts, and campaign-state changes. Do not treat its old implementation or
+evidence as proof for 0.2.0.
 
-## 0.1.0
+## 0.1.1 — historical release
 
-- Added target-bound repo-merge facade.
-- Added repository audit, convergence, and scoped cleanup skills.
-- Added typed parser, target receipt, campaign journal, and local-state
-  snapshot/restore helper.
-- Added Codex and Claude manifests, disposable fixture contracts, CI, and
-  release workflow.
+The prior progress record names commit `6c3b62b`, hosted CI run
+`35834837262`, release workflow `35834905290`, and native client install
+receipts. These are historical v0.1.1 receipts only.
+
+## 0.1.0 — historical release
+
+The prior progress record names the initial plugin and release workflow
+`35826243801`. This is historical evidence only.
