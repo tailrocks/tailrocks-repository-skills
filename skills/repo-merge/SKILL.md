@@ -22,9 +22,11 @@ not delegate convergence to another skill, duplicate their review, merge, or
 cleanup policies, or ask the user to invoke each phase separately. Normal mode
 must finish justified in-scope work through verified landing, or report the
 exact blocker. A plan, patch, open PR, or queued merge
-is not done. Do not create separate audit, converge, or cleanup workflows;
-respect manual-only owner selection and each owner's authorization/high-risk
-requirements. A single explicit active user request may select `repo-merge`
+is not done. Do not create a second coordinator or parallel convergence
+workflow. Keep audit and cleanup as distinct manual-only capabilities: audit is
+performed inline here, and cleanup may be selected only as this run's eligible
+final phase. Respect manual-only owner selection and each owner's
+authorization/high-risk requirements. A single explicit active user request may select `repo-merge`
 and named manual-only owners together; a generic coordinator request cannot
 infer those selections. Block only work that depends on an unmet prerequisite.
 
