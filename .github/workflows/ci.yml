@@ -48,7 +48,7 @@ jobs:
           for skill in $expected_skills; do
             test -s "skills/$skill/SKILL.md"
           done
-          jq -e --argjson expected '["tailrocks-repository-merge", "tailrocks-repository-audit", "tailrocks-repository-cleanup"]' \
+          jq -e --argjson expected '["tailrocks-repository-audit", "tailrocks-repository-cleanup", "tailrocks-repository-merge"]' \
             '.skills | type == "array" and length == 3 and sort == $expected' catalog.json >/dev/null
           jq -e '
             .name == "tailrocks-repository-skills" and
