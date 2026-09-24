@@ -65,7 +65,8 @@ resolving sources.
 
 1. Bind and refresh the exact repository, target ref, and selected sources.
    For targeted requests inspect only those sources and strictly necessary
-   related work; do not host-scan because the source list is empty. For
+   related work; do not widen them into a host scan, including for a single
+   PR. No sources without `--all-work` or `--resume` is a usage error. For
    `/pulls` and `/branches/all`, finish the complete selected listing before
    acting. Report later additions separately.
 
@@ -73,17 +74,18 @@ resolving sources.
    workspace, project, Git, and agent-worktree roots, then locate accessible
    independent clones and linked, detached, or relocated worktrees for the
    bound repository under those roots. Follow the complete discovery contract
-   in [the selector reference](../shared/selector-contract.md). Inspect their refs and
-   branches, PR lineage, staged and unstaged changes, untracked files, stashes
-   and recovery candidates, and valuable ignored files. Recover valid
-   unfinished goals without changing original branches, clones, or worktrees:
-   preserve each source and recover only supported goal evidence into a
-   separate clean candidate bound to the exact target. Snapshot and
-   restore-test unique local data before recovery or deletion. If unique data
-   is uncertain or cannot be restore-tested, retain and block that source;
-   continue independent work. Record inaccessible roots, active writers,
-   ambiguous identities, and other coverage gaps; never claim complete
-   coverage while any remain. Read
+   in [the selector reference](../shared/selector-contract.md). Inspect their
+   refs and branches, PR lineage, staged and unstaged changes, untracked files, stashes
+   and recovery candidates, and valuable ignored files. `--audit-only`
+   inventories and reports recovery candidates and coverage only; it creates
+   no candidate and copies no data. In normal mode, recover valid unfinished
+   goals without changing original branches, clones, or worktrees: preserve
+   each source and recover only supported goal evidence into a separate clean
+   candidate bound to the exact target. Snapshot and restore-test unique local
+   data before recovery or deletion. If unique data is uncertain or cannot be
+   restore-tested, retain and block that source; continue independent work.
+   Record inaccessible roots, active writers, ambiguous identities, and other
+   coverage gaps; never claim complete coverage while any remain. Read
    [recovery guidance](../shared/recovery.md) before anything that could risk
    user work.
 
@@ -157,9 +159,12 @@ repository, source, and cleanup candidate. Record the run ID, original request
 and authority, repository, exact target and observed ref, exact source set and
 identities, decisions/actions, tests run and results (or why not run), review,
 CI and landing links/status, cleanup status/results, recovery location,
-blockers, and one deterministic next action. This single record also supports
-resume after interruption. Do not create campaign databases, journals, leases,
-phase receipts, or hash sidecars.
+blockers, and one deterministic next action. For `--all-work`, also record the
+exact scan roots and exclusions, observation time, frozen discovered-copy and
+source membership, pagination/API coverage, active-writer findings, and every
+coverage gap. This single record also supports resume after interruption. Do
+not create campaign databases, journals, leases, phase receipts, or hash
+sidecars.
 
 `--resume RUN_ID` reads only that file, restores its recorded scope and target,
 then refreshes source and target identities before continuing. Re-run any

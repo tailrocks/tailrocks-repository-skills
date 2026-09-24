@@ -4,7 +4,7 @@ description: >-
   Use for an explicit read-only audit of selected repository sources against
   one exact target branch, or for an explicitly requested all-work inventory.
   Compare target-relative behavior and report evidence, scope, and gaps.
-argument-hint: "[SOURCES] [--target-branch TARGET] [--all-work] [--audit-only]"
+argument-hint: "[SOURCES] [--repo OWNER/REPO] [--target-branch TARGET] [--all-work] [--audit-only]"
 disable-model-invocation: true
 license: Apache-2.0
 user-invocable: true
@@ -12,7 +12,7 @@ user-invocable: true
 
 # Read-only repository audit
 
-Read one bound repository and the requested source set against the exact selected target. Return one concise Markdown audit record. This skill never edits repository files, changes refs, fetches, stashes, posts, approves, merges, closes PRs, deletes branches, removes clones or worktrees, or invokes cleanup. It does not turn an audit request into convergence.
+Read one bound repository and the requested source set against the exact selected target. Use `--repo OWNER/REPO` when `--all-work` is requested outside an unambiguous checkout or when source URLs do not identify the repository. Return one concise Markdown audit record. This skill never edits repository files, changes refs, fetches, stashes, posts, approves, merges, closes PRs, deletes branches, removes clones or worktrees, or invokes cleanup. It does not turn an audit request into convergence.
 
 Read:
 
