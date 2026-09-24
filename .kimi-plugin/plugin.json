@@ -1,0 +1,41 @@
+{
+  "name": "tailrocks-pull-request-skills",
+  "version": "0.28.0",
+  "description": "Fail-closed pull-request workflows for creation, review, documentation, refresh, merge, and repository-native templates.",
+  "keywords": [
+    "pull-request",
+    "github",
+    "code-review",
+    "merge",
+    "ci",
+    "documentation",
+    "pr-template",
+    "release-gates"
+  ],
+  "author": {
+    "name": "tailrocks",
+    "url": "https://github.com/tailrocks"
+  },
+  "homepage": "https://github.com/tailrocks/tailrocks-pull-request-skills",
+  "license": "Apache-2.0",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Pull Request Skills",
+    "shortDescription": "Fail-closed pull-request lifecycle workflows.",
+    "longDescription": "Fail-closed pull-request workflows for creation, review, documentation, refresh, merge, and repository-native templates.",
+    "capabilities": [
+      "Create",
+      "Review",
+      "Document",
+      "Refresh",
+      "Merge"
+    ],
+    "websiteURL": "https://github.com/tailrocks/tailrocks-pull-request-skills",
+    "defaultPrompt": [
+      "Review this pull request.",
+      "Create a pull request for this change.",
+      "Merge this PR after all gates pass."
+    ]
+  },
+  "repository": "https://github.com/tailrocks/tailrocks-pull-request-skills"
+}
