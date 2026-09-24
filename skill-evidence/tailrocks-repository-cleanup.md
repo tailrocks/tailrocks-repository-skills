@@ -1,23 +1,14 @@
-# Cleanup evidence
+# Historical cleanup evidence
 
-Observed need: cleanup cannot infer safety from a bundle alone. The first
-helper implementation used one combined Git listing and missed ordinary
-untracked files while capturing ignored files. The failing recovery contract
-exposed that root enumeration defect; the helper now enumerates ignored and
-non-ignored untracked paths separately and deduplicates them.
+Status: historical v0.1.x record for the former cleanup skill and helper. It
+does not prove current 0.2.0 cleanup behavior.
 
-Discriminating contract: freeze scope, recheck target/source identity, prove
-other-target obligations absent, restore-test unique local state, then delete
-only eligible sources. cleanup=none never deletes.
+The old record named recovery and cleanup-scope checks for staged, unstaged,
+untracked, ignored, and symlink state, selected-source deletion, and retention
+of unrelated refs. These results are not current acceptance evidence.
 
-Acceptance:
+Current pending requirements include snapshot/restore before each deletion,
+fresh identity and target-obligation checks, authorization, independent
+inspection, and strict `--cleanup=none` retention. See
+`../docs/requirements-to-evidence.md`.
 
-- tests/recovery-and-resume.sh restores staged, unstaged, untracked, ignored,
-  and symlink state, then exercises target-conflict rejection, target
-  re-observation, lease release, and no-op journaling.
-- tests/cleanup-scope.sh restore-tests a unique dirty clone before deleting the
-  selected landed branch, then proves the unrelated source, main, and target
-  refs remain unchanged; cleanup=none remains a retained-source decision.
-- skills/shared/cleanup-eligibility.md blocks cross-target and unresolved
-  sources and requires a final identity recheck.
-- No test touches Jackin or deletes a non-disposable path.

@@ -1,7 +1,7 @@
 {
   "name": "tailrocks-repository-skills",
-  "description": "Target-bound repository audit, convergence, pull-request lifecycle composition, and safe cleanup.",
-  "version": "0.1.2",
+  "description": "Repository source orchestration with read-only audit, one end-to-end merge workflow, and proof-gated cleanup.",
+  "version": "0.2.0",
   "author": {
     "name": "tailrocks",
     "url": "https://github.com/tailrocks"
@@ -12,11 +12,10 @@
   "keywords": [
     "repository",
     "audit",
-    "convergence",
-    "pull-request",
+    "review",
     "merge",
     "cleanup",
-    "github",
-    "ci"
+    "github"
   ]
 }
+

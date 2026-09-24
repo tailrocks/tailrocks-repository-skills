@@ -1,33 +1,29 @@
-# Release
+# Release status
 
-The release unit is the repository root. Root plugin.json is the portable
-manifest. .codex-plugin/plugin.json and .claude-plugin/plugin.json are client
-compatibility manifests. .claude-plugin/marketplace.json is the direct Claude
-marketplace entry. catalog.json is the Tailrocks skill inventory.
+The intended next version is 0.2.0. It is pending implementation verification;
+there is no 0.2.0 release claim.
 
-Before tagging:
+Before release, root must:
 
-1. Run cargo fmt check, cargo test locked, cargo clippy with warnings denied,
-   tests/run-contracts.sh, JSON validation, and strict Claude validation.
-2. Review all four public skills and their shared references independently.
-3. Verify the tag version matches all client manifests and CHANGELOG.md.
-4. Push the tag only after the exact target branch has the reviewed commit.
-5. Check the GitHub release and install the released plugin in both clients.
+1. Verify Codex, Claude, and marketplace manifests use version 0.2.0 and
+   identify exactly `repo-merge`, `tailrocks-repository-audit`, and
+   `tailrocks-repository-cleanup`. Keep the portable root manifest within the
+   [Antigravity plugin schema](https://antigravity.google/docs/plugins/#manifest-file-pluginjson):
+   it permits only `$schema`, `name`, and `description`, so it has no version
+   field.
+2. Run required repository checks and CI, review the current skill files, and
+   inspect installed-client argument transport and permissions.
+3. Verify selector mixing and pagination, audit-only, all-work coverage,
+   non-main isolation, resume, snapshot/restore, actual lifecycle-owner review
+   and landing, target verification, and cleanup gates in authorized
+   disposable fixtures.
+4. Record exact commit, workflow/run IDs, artifact hashes, target OIDs, install
+   results, and independent verification in
+   [requirements-to-evidence](requirements-to-evidence.md).
+5. Only then tag, publish, and verify the exact release artifact. Do not
+   describe pending or historical evidence as a current pass.
 
-The release workflow repeats mechanical checks and publishes the manifests.
-Umbrella registration belongs in the Tailrocks skills catalog after the
-repository and release exist; it must be a separate reviewed registration
-change.
-
-Published receipts: commit 4809cf4c1cc91df6ff28cbf009fe3de83de96437 passed CI
-run 35826193979. Tag v0.1.0 passed release workflow 35826243801. Patch commit
-6c3b62b passed hosted CI 35834837262; tag v0.1.1 passed release workflow
-35834905290 and is available at
-https://github.com/tailrocks/tailrocks-repository-skills/releases/tag/v0.1.1.
-The release API exposes the canonical catalog.json and plugin.json assets. An
-isolated exact-tag checkout installed and reported version 0.1.1 in both native
-Codex and Claude marketplace flows; strict Claude validation passed.
-The next patch release is v0.1.2 and contains current-checkout repository
-binding hardening, deterministic GitHub selector resolution, frozen source
-metadata, target leases, fast-forward observation checks, and typed phase
-receipts. Its commit, CI, release, and fresh-install proof are pending.
+The canonical skill inventory is `catalog.json`. Runtime packaging lives in
+`.codex-plugin/` and `.claude-plugin/`; root `plugin.json` is the portable
+manifest. Umbrella registration is a separate change owned by the umbrella
+repository.

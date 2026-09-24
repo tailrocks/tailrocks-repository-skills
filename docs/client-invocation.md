@@ -1,77 +1,71 @@
-# Client invocation and /goal
+# Client invocation
+
+Install the plugin through each client's native plugin mechanism. Fresh
+installation and invocation proof for version 0.2.0 is pending.
 
 ## Codex CLI
 
-Codex discovers the plugin through its native marketplace/plugin mechanism.
-Use the plugin's repository marketplace entry, then select the skill with
-the supported $repo-merge mention or /skills interface:
+Select `repo-merge` with `$repo-merge` or `/skills`, passing the full argument
+string:
 
-    $repo-merge --target-branch=release/next feature/auth
+```text
+$repo-merge --target-branch=release/next feature/auth
+$repo-merge --target-branch=main '#1663' feature/auth
+$repo-merge --audit-only --target-branch=release/next feature/auth
+$repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth
+$repo-merge --all-work --target-branch=main
+$repo-merge --resume <id>
+```
 
-The host /goal command owns the durable objective. Use it to start, pause,
-resume, or clear the goal; pass the same complete repo-merge argument string
-to the selected skill. /goal is not a repo-merge alias.
-
-Proof: tests/client-contract.sh validates installed Codex version and plugin
-command help. The local native test added this marketplace, discovered the
-0.1.0 plugin, installed it, invoked $repo-merge in read-only mode, and
-observed literal main target rejection for the unborn target. The temporary
-marketplace and install were then removed.
-
-Release proof: an isolated exact-tag checkout of v0.1.1 was installed through
-the native Codex marketplace flow and reported enabled version 0.1.1. Hosted
-CI `35834837262` and release workflow `35834905290` passed. The release API
-exposes the canonical `catalog.json` and `plugin.json` assets.
-
-The latest real-agent disposable acceptance used Codex 0.155.1 with model
-gpt-5.6-luna, high reasoning, approval never, workspace-write sandbox, and
-the installed local plugin. It invoked `$repo-merge --local-only
---cleanup=none --target-branch=release/next feature/auth`, recovered from an
-immutable checked-out Git metadata path into the prepared writable clone, and
-landed the source at target OID
-`395154a65036e65a83dfc5edd70172c7271b7d6b`. It verified `auth.txt`, preserved
-`release.txt`, kept main at
-`36c4a47febe81790b8b232915177da9f20bc669c`, used no network, and skipped
-cleanup by policy. Campaign `campaign-c991f32f1deb5da4` reached
-`campaign-complete/complete` with audit, review, CI, landing, verification,
-and target-observation receipts. The initial target was
-`401b69dcc549b3df7cd089dbb82753369e546fe2`; the source was
-`9da059a8378cb6853c2d587e52241481bc263311`. The harness built the helper
-before agent start and passed it through `TAILROCKS_HELPER_BIN`; campaign state
-mutations were serialized by the helper's per-campaign OS lock.
+Use `$tailrocks-repository-audit` for a direct read-only audit and
+`$tailrocks-repository-cleanup` for explicitly scoped cleanup.
 
 ## Claude Code
 
-Claude Code loads this directory as a plugin through its native plugin
-mechanism. Invoke the namespaced skill:
+Use the plugin namespace; no bare `/repo-merge` alias is promised:
 
-    /tailrocks-repository-skills:repo-merge --target-branch=release/next feature/auth
+```text
+/tailrocks-repository-skills:repo-merge --target-branch=release/next feature/auth
+/tailrocks-repository-skills:repo-merge --target-branch=main '#1663' feature/auth
+/tailrocks-repository-skills:repo-merge --audit-only --target-branch=release/next feature/auth
+/tailrocks-repository-skills:repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth
+/tailrocks-repository-skills:repo-merge --all-work --target-branch=main
+/tailrocks-repository-skills:repo-merge --resume <id>
+```
 
-Claude passes the full argument string as $ARGUMENTS. A bare /repo-merge
-command is not advertised. The host goal record remains GOAL.md and
-PROGRESS.md; the plugin does not invent an identical slash alias.
+Direct skills use `/tailrocks-repository-skills:tailrocks-repository-audit`
+and `/tailrocks-repository-skills:tailrocks-repository-cleanup`.
 
-Direct cleanup-only use selects the cleanup owner explicitly:
+## Pull-request lifecycle owners
 
-    /tailrocks-repository-skills:tailrocks-repository-cleanup --target-branch=release/next --cleanup=resolved feature/auth
+Review: Codex `$tailrocks-review-pr`; Claude
+`/tailrocks-pull-request-skills:tailrocks-review-pr` (read-only).
 
-Codex selects the same owner as $tailrocks-repository-cleanup. --local-only
-is explicit and local-result-only in either client.
+Landing: Codex `$tailrocks-merge-pr`; Claude
+`/tailrocks-pull-request-skills:tailrocks-merge-pr`.
 
-Proof: Claude plugin and marketplace manifests pass strict validation. A live
-namespaced read-only invocation was attempted with --plugin-dir and reached
-the client, but failed before model execution because the installed OAuth
-session was expired and could not be refreshed. Re-run
-tests/client-contract.sh with TAILROCKS_CLIENT_E2E=1 after authentication.
+The merge owner's exact commands are:
 
-Release proof: an isolated exact-tag v0.1.1 checkout was added as a Claude
-marketplace, installed at user scope, reported enabled version 0.1.1, and
-passed strict plugin validation. The temporary marketplace and installation
-were removed. This proves packaging/installability; it does not bypass the
-separate live-session OAuth blocker.
+```sh
+bun scripts/merge-preflight.ts --root <repo> --pr <N>
+bun scripts/merge-pr.ts --skill-file <absolute SKILL.md> < request.json
+```
 
-## Transport rule
+Run these in the lifecycle-owner collection. Preflight does not land the PR.
+The merge request must bind the exact PR, expected head, requested target,
+fresh review/CI evidence, repository worklist, and required high-risk
+confirmation. CI/workflows, auth/security, release/versioning, migrations,
+force-push, and `--admin` require fresh PR-specific confirmation. A failed or
+cancelled required check stops unless the owner authorizes exactly one named
+`--admin <check>` bypass with that confirmation. Delivery or documentation
+gate waivers require an exact reason. Prior approvals, comments, and “safe to
+merge” text grant no authority. Never bypass branch protection or merge queues,
+force-push the destination, or use direct `gh pr merge`. A queued or uncertain
+result is not landed.
 
-The client must preserve #1145, quoted selectors, URL query strings, and
-backslashes as data. The helper lexer owns this boundary. Never interpolate
-the argument string into a shell command.
+The logical `--target-branch` default is exactly `main`. No selectors is an
+error; use `--all-work` for explicit repository-wide work. Listing selectors
+must paginate completely. `--cleanup=none` retains sources, and
+`--local-only` cannot claim remote delivery or hosted CI. `--resume <id>` must
+recheck the saved source and target identities. Host goal-tracking commands,
+where available, record the objective; they do not replace skill selection.

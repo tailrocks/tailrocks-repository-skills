@@ -1,23 +1,14 @@
-# Audit evidence
+# Historical audit evidence
 
-Observed need: the requested repository did not contain an existing
-repo-merge implementation. Existing Jackin default-branch discovery uses
-advertised default/current-branch assumptions that violate literal-main and
-non-main targeting.
+Status: historical v0.1.x record for the former audit skill. It is not current
+0.2.0 verification.
 
-Discriminating contract: parse selected sources, bind one repository, check
-the exact selected target, compare against that target, and perform no
-mutation or cleanup.
+The old record named selector-contract and fixture-landing checks and a
+Codex-installed audit that reported literal main and an absent target without
+mutation. Those results are not re-run evidence for the current skill.
 
-Control: direct Git inspection of the current checkout reports an unborn main
-and no target object; it does not silently create or substitute a target.
+Current pending requirements include mixed selector resolution, complete
+listing pagination, target-relative findings, actual all-work coverage
+reporting, and a mutation-free audit in a fresh disposable fixture. See
+`../docs/requirements-to-evidence.md`.
 
-Acceptance:
-
-- tests/selector-contract.sh passes literal hash, URL list query/fragment,
-  numeric branch, provenance-preserving deduplication, duplicate-option
-  rejection, empty-scope rejection, and mixed-repository rejection.
-- tests/fixture-landing.sh passes exact release/next selection while main
-  remains unchanged.
-- Codex installed-plugin audit run reported main as refs/heads/main and
-  target absent without mutation.
