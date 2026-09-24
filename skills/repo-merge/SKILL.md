@@ -69,8 +69,11 @@ resolving sources.
    `/pulls` and `/branches/all`, finish the complete selected listing before
    acting. Report later additions separately.
 
-2. In `--all-work`, locate accessible independent clones and linked, detached,
-   or relocated worktrees for the bound repository. Inspect their refs and
+2. In `--all-work`, enumerate and report the declared local volumes and
+   workspace, project, Git, and agent-worktree roots, then locate accessible
+   independent clones and linked, detached, or relocated worktrees for the
+   bound repository under those roots. Follow the complete discovery contract
+   in [the selector reference](../shared/selector-contract.md). Inspect their refs and
    branches, PR lineage, staged and unstaged changes, untracked files, stashes
    and recovery candidates, and valuable ignored files. Recover valid
    unfinished goals without changing original branches, clones, or worktrees:

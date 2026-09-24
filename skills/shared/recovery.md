@@ -26,6 +26,16 @@ Cleanup requires this actual restore test for all unique data in the candidate. 
 
 For all-work recovery, keep every discovered original clone, worktree, ref, and dirty file untouched. Work from a fresh, independent writable clone or repository outside the source roots, based on the freshly verified selected target object ID. Do not add a linked worktree to an original repository, because that changes its Git metadata.
 
+A goal is recoverable only when its provenance and unfinished acceptance
+criterion are explicit in the original user request, a linked issue/PR, or a
+source-local goal/handoff record; it still applies to this exact target; the
+target does not already satisfy it; and the change can be isolated with its
+dependencies and attribution clear. Recheck for later cancellation,
+supersession, reverts, or a better target implementation. Do not infer a goal
+from a dirty file or branch name alone. If the goal, value, dependency, or
+correct disposition is uncertain, preserve the original and mark that item
+blocked rather than importing it.
+
 1. Recheck and record the bound repository, exact selected target ref/object ID, and each source path, ref, and object ID before reading source data.
 2. Create one new candidate from the exact selected target. If the target is non-main, keep main unchanged; make any working branch only inside the new candidate.
 3. Import only source commits and local items whose identity and provenance are clear. For dirty or ignored data, restore from the tested snapshot into the new candidate. Never checkout, reset, stash, or repair the original source.
