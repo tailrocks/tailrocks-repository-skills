@@ -41,14 +41,14 @@ jobs:
       - name: Validate product inventory and manifest semantics
         run: |
           set -eu
-          expected_skills='repo-merge tailrocks-repository-audit tailrocks-repository-cleanup'
+          expected_skills='tailrocks-repository-merge tailrocks-repository-audit tailrocks-repository-cleanup'
           test "$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = 3
           test -z "$(find skills -mindepth 1 -maxdepth 1 ! -type d -print -quit)"
           test "$(find skills -type f -name SKILL.md | wc -l | tr -d ' ')" = 3
           for skill in $expected_skills; do
             test -s "skills/$skill/SKILL.md"
           done
-          jq -e --argjson expected '["repo-merge", "tailrocks-repository-audit", "tailrocks-repository-cleanup"]' \
+          jq -e --argjson expected '["tailrocks-repository-merge", "tailrocks-repository-audit", "tailrocks-repository-cleanup"]' \
             '.skills | type == "array" and length == 3 and sort == $expected' catalog.json >/dev/null
           jq -e '
             .name == "tailrocks-repository-skills" and

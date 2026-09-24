@@ -15,7 +15,7 @@ user-invocable: true
 This is an independently callable, manual-only cleanup capability. It removes
 only explicitly selected sources after target-relative resolution, obligation,
 ownership, quiescence, and restore proof. It never implements, merges, closes,
-or retargets PRs. `repo-merge` does not invoke this manual-only skill
+or retargets PRs. `tailrocks-repository-merge` does not invoke this manual-only skill
 programmatically; its end-to-end workflow uses a local finalization procedure
 with the same gates. An active user request may select this skill explicitly
 when a separate cleanup invocation is intended.

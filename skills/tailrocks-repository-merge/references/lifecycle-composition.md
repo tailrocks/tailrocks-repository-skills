@@ -8,7 +8,7 @@ owners. The coordinator never invokes a manual-only helper programmatically.
 ## Explicit owner selection
 
 One active user request may explicitly select a named manual-only owner for the
-same repository, source, and target. A generic `repo-merge` request does not
+same repository, source, and target. A generic `tailrocks-repository-merge` request does not
 imply review, create, or merge selection. Invoke a selected owner only through
 its native entrypoint and exact installed request schema. A review report grants
 no merge authority; it may not post, approve, merge, close, or clean.

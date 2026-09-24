@@ -17,12 +17,13 @@ codex plugin add tailrocks-repository-skills@tailrocks-repository-skills
 Invoke the qualified plugin skill:
 
 ```text
-$tailrocks-repository-skills:repo-merge --target-branch=release/next feature/auth
+$tailrocks-repository-skills:tailrocks-repository-merge --target-branch=release/next feature/auth
 $tailrocks-repository-skills:tailrocks-repository-audit --target-branch=main feature/auth
 $tailrocks-repository-skills:tailrocks-repository-cleanup --cleanup=none feature/auth
 ```
 
-The bare `$repo-merge` spelling is not the supported route for this plugin.
+The bare `$tailrocks-repository-merge` spelling is not the supported route for
+this plugin.
 Codex skill policy metadata controls implicit selection; explicit selection
 does not grant filesystem, network, merge, or deletion authority.
 
@@ -38,12 +39,12 @@ claude plugin install tailrocks-repository-skills@tailrocks-repository-skills --
 Use the plugin namespace:
 
 ```text
-/tailrocks-repository-skills:repo-merge --target-branch=release/next feature/auth
+/tailrocks-repository-skills:tailrocks-repository-merge --target-branch=release/next feature/auth
 /tailrocks-repository-skills:tailrocks-repository-audit --target-branch=main feature/auth
 /tailrocks-repository-skills:tailrocks-repository-cleanup --cleanup=none feature/auth
 ```
 
-There is no universal bare `/repo-merge` alias. The current Claude route is
+There is no universal bare `/tailrocks-repository-merge` alias. The current Claude route is
 limited to install and manifest validation when OAuth is expired; no model
 behavior pass is claimed from that route.
 
@@ -57,7 +58,7 @@ muse plugins validate /path/to/tailrocks-repository-skills --json
 muse plugins install /path/to/tailrocks-repository-skills --scope user --json
 ```
 
-In the Muse TUI, select the installed `repo-merge`,
+In the Muse TUI, select the installed `tailrocks-repository-merge`,
 `tailrocks-repository-audit`, or `tailrocks-repository-cleanup` skill and pass
 the complete argument string. A `muse exec` prompt by itself is not proof that
 the installed skill was selected. No Muse model behavior pass is claimed.
@@ -88,7 +89,7 @@ kimi --skills-dir /path/to/tailrocks-repository-skills/skills
 In the TUI, invoke a skill with its native command syntax:
 
 ```text
-/skill:repo-merge --target-branch=release/next feature/auth
+/skill:tailrocks-repository-merge --target-branch=release/next feature/auth
 /skill:tailrocks-repository-audit --target-branch=main feature/auth
 /skill:tailrocks-repository-cleanup --cleanup=none feature/auth
 ```
@@ -110,7 +111,7 @@ OpenCode configuration and require approval before loading a skill:
   },
   "permission": {
     "skill": {
-      "repo-merge": "ask",
+      "tailrocks-repository-merge": "ask",
       "tailrocks-repository-audit": "ask",
       "tailrocks-repository-cleanup": "ask"
     }
@@ -122,7 +123,7 @@ Request the skill by name in the prompt; do not use an undocumented slash
 command:
 
 ```sh
-opencode run "Use the repo-merge skill with --target-branch=release/next feature/auth."
+opencode run "Use the tailrocks-repository-merge skill with --target-branch=release/next feature/auth."
 ```
 
 OpenCode recognizes `skills.paths` and `permission.skill`, but ignores

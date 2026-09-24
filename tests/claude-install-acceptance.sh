@@ -35,7 +35,7 @@ pr_skills_head=$(git -C "$pr_skills_root" rev-parse --verify 'HEAD^{commit}') ||
 for required in \
   .claude-plugin/marketplace.json \
   .claude-plugin/plugin.json \
-  skills/repo-merge/SKILL.md \
+  skills/tailrocks-repository-merge/SKILL.md \
   skills/tailrocks-repository-audit/SKILL.md \
   skills/tailrocks-repository-cleanup/SKILL.md; do
   [ -s "$repo_root/$required" ] || blocked "repository plugin is missing required file: $required"
@@ -217,7 +217,7 @@ marketplace_matches "$owner_marketplace" "$pr_skills_root" ||
 # The repositories advertise source './'. Claude loads such plugins in place
 # from a local-directory marketplace, so check the installed skill files there.
 for required in \
-  skills/repo-merge/SKILL.md \
+  skills/tailrocks-repository-merge/SKILL.md \
   skills/tailrocks-repository-audit/SKILL.md \
   skills/tailrocks-repository-cleanup/SKILL.md; do
   [ -s "$repo_root/$required" ] || blocked "installed repository plugin skill is unavailable: $required"
@@ -239,7 +239,7 @@ printf '%s\n' \
   "PASS: Claude native CLI installed $repo_plugin_id in isolated user scope" \
   "PASS: Claude native CLI installed $owner_plugin_id from exact clean checkout $pr_skills_head" \
   "PASS: both native marketplace entries point to the exact local checkout paths" \
-  "PASS: required repo-merge/audit/cleanup/review/preflight-merge skill files exist and validate"
+  "PASS: required repository-merge/audit/cleanup/review/preflight-merge skill files exist and validate"
 claude_version=$(sed -n '1p' "$work/claude-version.txt")
 printf 'Claude Code version: %s\n' "$claude_version"
 printf 'Claude repo install receipt: '

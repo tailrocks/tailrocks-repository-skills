@@ -1,5 +1,5 @@
 ---
-name: repo-merge
+name: tailrocks-repository-merge
 description: >-
   Run the complete, target-bound repository convergence workflow for explicitly
   selected branches or pull requests, or for explicitly requested all-work.
@@ -10,9 +10,9 @@ license: Apache-2.0
 user-invocable: true
 ---
 
-# repo-merge
+# Tailrocks repository merge
 
-`repo-merge` is the sole end-to-end coordinator for selected-source
+`tailrocks-repository-merge` is the sole end-to-end coordinator for selected-source
 integration. It binds one repository, one exact destination, and one source
 scope; audits selected work; finishes justified changes; verifies the target;
 and performs only eligible final cleanup. The standalone audit and cleanup
@@ -92,7 +92,7 @@ before resolving sources.
 
 5. For remote landing, require a fresh read-only review from
    `tailrocks-review-pr` and guarded landing from `tailrocks-merge-pr`; one
-   active user request may select these manual-only owners with `repo-merge`,
+   active user request may select these manual-only owners with `tailrocks-repository-merge`,
    but a generic coordinator request cannot infer them. A review report grants
    no merge authority. If review, checks, the repository worklist, or an owner
    is unavailable, block only dependent remote landing and continue safe work.
@@ -153,8 +153,9 @@ side effect.
 
 Create or update one concise Markdown handoff outside every repository and
 candidate at `$XDG_STATE_HOME/tailrocks/repo-merge/runs/<run-id>.md`, or
-`~/.local/state/tailrocks/repo-merge/runs/<run-id>.md` when unset. If that path
-falls inside a repository or candidate, or cannot be safely created or updated,
+`~/.local/state/tailrocks/repo-merge/runs/<run-id>.md` when unset. Keep this
+state namespace across the public skill rename so old runs remain resumable.
+If that path falls inside a repository or candidate, or cannot be safely created or updated,
 stop before mutation. Resolve every path component through the state root and
 `runs/` directory canonically; reject any symlink, and require both directories
 to be owned by the active user with mode `0700`. `RUN_ID` is a basename matching
@@ -197,6 +198,6 @@ review, CI, worklist, acceptance, cleanup, retention, and coverage results.
 Claim completion only after target-relative acceptance and every required gate
 for the requested mode are accounted for.
 
-Codex example: `$tailrocks-repository-skills:repo-merge --target-branch=release/next feature/auth`.
-Claude example: `/tailrocks-repository-skills:repo-merge --target-branch=release/next feature/auth`.
-Do not advertise a universal bare `/repo-merge` command.
+Codex example: `$tailrocks-repository-skills:tailrocks-repository-merge --target-branch=release/next feature/auth`.
+Claude example: `/tailrocks-repository-skills:tailrocks-repository-merge --target-branch=release/next feature/auth`.
+Do not advertise a universal bare `/tailrocks-repository-merge` command.

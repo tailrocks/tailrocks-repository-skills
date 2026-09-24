@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "Repository Skills",
     "shortDescription": "Target-aware repository coordination, audit, and cleanup.",
-    "longDescription": "repo-merge audits selected sources against one exact destination, completes justified changes, uses explicitly selected pull-request owners for remote review and landing, verifies the target, and finalizes only proven cleanup.",
+    "longDescription": "tailrocks-repository-merge audits selected sources against one exact destination, completes justified changes, uses explicitly selected pull-request owners for remote review and landing, verifies the target, and finalizes only proven cleanup.",
     "developerName": "Tailrocks",
     "category": "Developer Tools",
     "capabilities": [

@@ -11,8 +11,8 @@
   "capabilities": {
     "skills": [
       {
-        "id": "repo-merge",
-        "path": "skills/repo-merge/SKILL.md"
+        "id": "tailrocks-repository-merge",
+        "path": "skills/tailrocks-repository-merge/SKILL.md"
       },
       {
         "id": "tailrocks-repository-audit",

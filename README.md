@@ -2,7 +2,7 @@
 
 One portable package with exactly three skills:
 
-- `repo-merge` is the sole end-to-end coordinator for selected-source
+- `tailrocks-repository-merge` is the sole end-to-end coordinator for selected-source
   integration.
 - `tailrocks-repository-audit` is an independently callable, read-only audit.
 - `tailrocks-repository-cleanup` is an independently callable,
@@ -18,15 +18,15 @@ Positional arguments are sources. `--target-branch` is the one destination;
 when omitted, it means the literal branch `main`.
 
 ```text
-repo-merge --target-branch=release/next feature/auth
-repo-merge --target-branch=main '#1663' feature/auth
-repo-merge --target-branch=main https://github.com/OWNER/REPO/pull/1103
-repo-merge --target-branch=main https://github.com/OWNER/REPO/pulls
-repo-merge --target-branch=integration https://github.com/OWNER/REPO/branches/all
-repo-merge --repo=OWNER/REPO --all-work --target-branch=main
-repo-merge --audit-only --target-branch=release/next feature/auth
-repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth
-repo-merge --resume RUN_ID
+tailrocks-repository-merge --target-branch=release/next feature/auth
+tailrocks-repository-merge --target-branch=main '#1663' feature/auth
+tailrocks-repository-merge --target-branch=main https://github.com/OWNER/REPO/pull/1103
+tailrocks-repository-merge --target-branch=main https://github.com/OWNER/REPO/pulls
+tailrocks-repository-merge --target-branch=integration https://github.com/OWNER/REPO/branches/all
+tailrocks-repository-merge --repo=OWNER/REPO --all-work --target-branch=main
+tailrocks-repository-merge --audit-only --target-branch=release/next feature/auth
+tailrocks-repository-merge --local-only --cleanup=none --target-branch=release/next feature/auth
+tailrocks-repository-merge --resume RUN_ID
 ```
 
 Sources may mix branches, qualified refs, `branch:N`, `#N`, PR numbers, PR

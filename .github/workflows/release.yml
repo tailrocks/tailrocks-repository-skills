@@ -90,7 +90,7 @@ jobs:
           root="$work/root"
           mkdir -p "$root"
           tar -xf "$PACKAGE_PATH" -C "$root"
-          expected_skills='repo-merge tailrocks-repository-audit tailrocks-repository-cleanup'
+          expected_skills='tailrocks-repository-merge tailrocks-repository-audit tailrocks-repository-cleanup'
           test "$(find "$root/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = 3
           test -z "$(find "$root/skills" -mindepth 1 -maxdepth 1 ! -type d -print -quit)"
           test "$(find "$root/skills" -type f -name SKILL.md | wc -l | tr -d ' ')" = 3
@@ -132,7 +132,7 @@ jobs:
             (.plugins | type == "array" and length == 1 and
              .[0].name == $name and .[0].source == "./" and .[0].version == $version)
           ' "$root/.claude-plugin/marketplace.json" >/dev/null
-          jq -e --argjson expected '["repo-merge", "tailrocks-repository-audit", "tailrocks-repository-cleanup"]' '
+          jq -e --argjson expected '["tailrocks-repository-merge", "tailrocks-repository-audit", "tailrocks-repository-cleanup"]' '
             (.skills | type == "array" and sort == $expected)
           ' "$root/catalog.json" >/dev/null
       - name: Independently verify package SHA-256 receipt
