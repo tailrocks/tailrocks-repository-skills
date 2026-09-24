@@ -1,9 +1,25 @@
-# Recovery and resumption
+# Recovery and unique-data restore test
 
-Campaign state lives outside the repository. Write it atomically. Freeze selectors, repository identity, target branch/ref/OID, target scope, and campaign ID before mutation. Record initial and current target OIDs, configuration digest, frozen resolved source membership, scan coverage, decisions, receipts, recovery index, and both a per-campaign lease and a repository/target lease. Journal phase transitions and external IDs.
+Before removing a branch, clone, or worktree, identify data that exists only in that candidate. Snapshot it outside every cleanup candidate. Do not change source refs or working files to make the snapshot easier.
 
-Before destructive cleanup, snapshot tracked staged and unstaged patches, ignored and untracked files, symlinks, and the exact HEAD. Restore into a disposable repository and verify bundle, HEAD, hashes, patches, and extra files. Missing patch artifacts are a restore failure, not an empty patch. A failed restore blocks deletion.
+Capture and keep separate:
 
-On interruption, resume only the recorded campaign and target. Re-observe the exact target before continuing; a changed OID is a new observation, not permission to reuse stale review or CI receipts. If the requested target differs, stop with a target conflict and start a new scoped campaign. Reconcile external state before retrying. If merge status is uncertain, inspect the PR and target; never retry a merge blindly.
+- Exact repository, full refs, current object IDs, and each worktree HEAD.
+- Staged and unstaged tracked changes as separate states.
+- Untracked files and ignored files that may contain user work, local configuration, or required output.
+- File bytes, modes, symlink targets, executable bits, and nested repository identity.
+- Stashes, reflog-reachable work, otherwise recoverable objects, and in-progress merge, rebase, cherry-pick, or revert state.
+- Required LFS content, submodule commits and worktree data, alternates, and other external object dependencies.
 
-A no-op rerun must still rebind and verify the exact target, report why every source is already represented or unresolved, and produce an idempotency receipt. Attach each review, CI, landing, verification, idempotency, and cleanup receipt with the helper's campaign-attach-receipt operation; the receipt must carry the same repository path, target ref, and initial or current target OID. Mark a campaign complete only with campaign-complete/complete after target-observed and all required phase receipts. A second active campaign for the same bound repository/target is rejected by the target lease. Campaign identity collisions across repositories, paths, requests, or targets fail closed.
+A Git bundle alone does not preserve index state, untracked files, ignored files, or unique working-copy data. Keep sensitive content only in a protected local recovery location; never copy it into reports or external systems.
+
+## Required restore test
+
+1. Restore each unique item into a disposable repository or directory, not over the original source.
+2. Recreate the relevant refs and HEAD, then restore the working tree and index.
+3. Compare ref names and object IDs, HEADs, staged and unstaged diffs, untracked and ignored paths and bytes, modes, symlink targets, and required LFS/submodule content against the snapshot inventory.
+4. Confirm that the disposable restore is independently readable and contains every unique item. Record exact paths tested and pass/fail without revealing sensitive values.
+
+Cleanup requires this actual restore test for all unique data in the candidate. A snapshot that merely exists, a successful bundle command, or a sample-file check is not enough. If an artifact is missing, bytes differ, the source is changing, or the restore cannot be verified, keep the candidate and report the specific gap.
+
+Do not reset, clean, stash-drop, prune, garbage-collect, or overwrite source data as a recovery shortcut. After interruption, re-resolve current refs and source identities and repeat the needed checks; do not rely on unverified prior prose.
