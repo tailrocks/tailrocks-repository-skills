@@ -59,10 +59,11 @@ settings, and this skill's defaults govern.
    **Complete when:** the class is stated and any needed confirm obtained.
 
 3. **Run the machine preflight.** Resolve the real path of this installed
-   `SKILL.md`; the collection root is two directories above its containing
-   skill directory. Require the merge-preflight TypeScript entrypoint under that root's scripts directory to be
-   a regular non-symlink, then run it once with the real target repository root
-   and resolved PR number. Forward `--no-poll` when requested. The command owns
+   `SKILL.md`; the consolidated package root is two directories above its
+   containing skill directory. Require that package's
+   `scripts/merge-preflight.ts` entrypoint to be a regular non-symlink, then
+   run it once with the real target repository root and resolved PR number.
+   Forward `--no-poll` when requested. The command owns
    exact PR/head/base binding, the delivery and documentation predicates, and
    required-check polling; it never merges or grants authority.
 
@@ -108,9 +109,10 @@ Resolve every relative link in this file against the directory containing this S
    no checklists), append the trailers the repository's commit convention
    requires, and confirm the squash subject carries `(#N)` when the repository
    expects it. Execute the irreversible step only through the installed
-   merge-pr TypeScript entrypoint beside the preflight entrypoint. Require the
-   same regular, non-symlink collection-root binding and pass this skill's
-   loader-provided absolute `SKILL.md` path. Feed its closed
+   consolidated package's `scripts/merge-pr.ts` entrypoint beside the
+   preflight entrypoint. Require the same regular, non-symlink package-root
+   binding and pass this skill's loader-provided absolute `SKILL.md` path.
+   Feed its closed
    request on stdin, binding the final title/body, merge subject/body, method,
    receipt target, reasoned named gate waivers, blast-radius decision, fresh
    high-risk confirmation, and at most one named admin check. The command reruns

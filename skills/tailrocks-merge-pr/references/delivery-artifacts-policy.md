@@ -1,6 +1,6 @@
 # Delivery-artifact gate policy
 
-The collection's merge-preflight command owns the six exact predicates and
+The consolidated package's merge-preflight command owns the six exact predicates and
 returns their raw findings. This skill owns what machines cannot: precedence,
 waivers, routing, and the irreversible merge decision.
 

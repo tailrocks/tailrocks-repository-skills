@@ -37,7 +37,7 @@ Resolve every relative link in this file against the directory containing this S
 
 ## Steps
 
-1. **Resolve the target.** Derive the installed package root from this
+1. **Resolve the target.** Derive the consolidated package root from this
    `SKILL.md` path. Run its `../../scripts/pr-template-target.ts` with Bun,
    `--skill-file` set to this absolute `SKILL.md`, and a JSON request on stdin:
    `schema: tailrocks.pr-template-target-request/v1`, `operation: resolve`,

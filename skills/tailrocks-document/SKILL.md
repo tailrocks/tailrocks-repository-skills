@@ -43,9 +43,10 @@ never assumed.
 ## Steps
 
 1. **Locate the documentation and its rules.** Find every documentation
-   surface. Resolve the collection-owned merge-preflight TypeScript
-   entrypoint from this installed skill as a regular non-symlink, then run its
-   `documentation` subcommand against the resolved PR number before manual
+   surface. Resolve the consolidated package's
+   `scripts/merge-preflight.ts` entrypoint from this installed skill as a
+   regular non-symlink, then run its `documentation` subcommand against the
+   resolved PR number before manual
    recon. Its typed receipt inventories the merge-base ∪ HEAD trees, so deleted
    base-only surfaces cannot disappear from the obligation set. Read every
    reported surface, governing rule, navigation file, generator marker, and
@@ -100,9 +101,10 @@ never assumed.
    holds only internal-only changes, commit nothing: report the
    nothing-to-document verdict with the per-change reasons, and leave the
    merge gate to confirm it.
-   Re-run the same collection-owned merge-preflight `documentation` subcommand
-   against the resolved PR number. It binds the live repository, base, merge
-   base, and exact local/remote head. When any doc-worthy commit exists, this
+   Re-run the same consolidated-package `scripts/merge-preflight.ts`
+   `documentation` subcommand against the resolved PR number. It binds the
+   live repository, base, merge base, and exact local/remote head. When any
+   doc-worthy commit exists, this
    shared predicate requires the trailer to descend from every doc-worthy and
    documentation-surface commit. Later source or documentation stales it;
    later tests, CI, `roadmap/`, or `delivery/` changes do not. Commit labels

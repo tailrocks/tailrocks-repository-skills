@@ -90,10 +90,11 @@ convention discovery, never an error.
    change.
    Resolve every relative link in this file against the directory containing this SKILL.md, never the plugin skills root.
 
-5. **Gate, push, create, and verify.** Resolve this installed skill's plugin
-   root from the loader-provided absolute `SKILL.md` path. Run its
-   `scripts/create-pr.ts --skill-file <that absolute path>` entrypoint with
-   one closed `tailrocks.create-pr-input/v1` JSON object on stdin. Bind the
+5. **Gate, push, create, and verify.** Resolve this installed skill's
+   consolidated package root from the loader-provided absolute `SKILL.md`
+   path. Run that package's `scripts/create-pr.ts` entrypoint with
+   `--skill-file` set to that absolute path and one closed
+   `tailrocks.create-pr-input/v1` JSON object on stdin. Bind the
    exact repository, authenticated actor, remote name and HTTPS URL, base and
    head refs and SHAs, title, external body path and SHA-256, draft flag,
    required trailer names, and gates. Include every repository-required

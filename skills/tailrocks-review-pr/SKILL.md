@@ -24,7 +24,7 @@ structural finding must name what disappears.** "Could be cleaner" and
 This skill is **unconditionally read-only**: it never edits files, posts
 comments, merges, or approves. Fixing is a separate invocation of the routed
 skill. External posting is a separate, freshly authorized transaction owned by
-the collection's post-pr-review command.
+the consolidated package's `scripts/post-pr-review.ts` command.
 
 Repository conventions come from `.tailrocks/pr.md` when present (format
 and precedence are defined with `tailrocks-create-pr`); this skill reads an
