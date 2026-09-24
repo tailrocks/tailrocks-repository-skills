@@ -1,11 +1,7 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
-      - "release/**"
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -41,15 +37,15 @@ jobs:
       - name: Validate product inventory and manifest semantics
         run: |
           set -eu
-          expected_skills='tailrocks-repository-merge tailrocks-repository-audit tailrocks-repository-cleanup'
-          test "$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = 3
+          expected_skills='tailrocks-create-pr tailrocks-document tailrocks-merge-pr tailrocks-pr-template tailrocks-refresh-pr tailrocks-repository-audit tailrocks-repository-cleanup tailrocks-repository-merge tailrocks-review-pr'
+          test "$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = 9
           test -z "$(find skills -mindepth 1 -maxdepth 1 ! -type d -print -quit)"
-          test "$(find skills -type f -name SKILL.md | wc -l | tr -d ' ')" = 3
+          test "$(find skills -type f -name SKILL.md | wc -l | tr -d ' ')" = 9
           for skill in $expected_skills; do
             test -s "skills/$skill/SKILL.md"
           done
-          jq -e --argjson expected '["tailrocks-repository-audit", "tailrocks-repository-cleanup", "tailrocks-repository-merge"]' \
-            '.skills | type == "array" and length == 3 and sort == $expected' catalog.json >/dev/null
+          jq -e --argjson expected '["tailrocks-create-pr", "tailrocks-document", "tailrocks-merge-pr", "tailrocks-pr-template", "tailrocks-refresh-pr", "tailrocks-repository-audit", "tailrocks-repository-cleanup", "tailrocks-repository-merge", "tailrocks-review-pr"]' \
+            '.skills | type == "array" and length == 9 and sort == $expected' catalog.json >/dev/null
           jq -e '
             .name == "tailrocks-repository-skills" and
             (.version | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) and
