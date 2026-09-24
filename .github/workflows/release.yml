@@ -22,6 +22,7 @@ jobs:
           tar -cf "$PACKAGE_PATH" -C "$GITHUB_WORKSPACE" \
             README.md \
             LICENSE \
+            index.ts \
             plugin.json \
             catalog.json \
             .codex-plugin \
