@@ -1,68 +1,41 @@
 ---
 name: tailrocks-repository-cleanup
 description: >-
-  Use for an explicit scoped cleanup request after repository convergence.
-  Prove exact target-relative resolution, cross-target obligations, dependency
-  safety, and restore-tested local-state preservation before deleting eligible
-  branches, clones, or worktrees.
-argument-hint: "[SOURCES] [--target-branch TARGET] [--cleanup resolved|none] [--resume ID]"
+  Use for an explicit, scoped request to remove already resolved source
+  branches, clones, or worktrees after proving exact target resolution, no
+  remaining obligations, ownership and quiescence, and actual restore safety.
+argument-hint: "[SOURCES] [--target-branch TARGET] [--cleanup resolved|none] [--all-work]"
 disable-model-invocation: true
 license: Apache-2.0
 user-invocable: true
 ---
 
-# Repository cleanup
+# Scoped repository cleanup
 
-Cleanup is a destructive workflow. It is eligible only when explicitly
-requested through cleanup=resolved or routed from a default repo-merge run
-whose request selected cleanup=resolved. cleanup=none is a hard no-delete
-decision. Audit-only never reaches this skill.
+This skill is independently callable for an explicit cleanup request. It may also be selected as the final phase of the same active, explicit `repo-merge` invocation only when that invocation is in normal mode and its effective cleanup mode is `resolved`—the documented default or an explicit `--cleanup=resolved`. That delegation preserves exactly the original repository, source selectors and resolved membership, and selected target. It adds no permission to clean related or newly discovered sources.
+
+`--audit-only` and `--cleanup=none` never delegate cleanup. A prior audit report, an older invocation, or a new source set cannot supply delegated authority. For original `--all-work`, retain the same declared scan roots and original candidate membership; report later additions without deleting them under the old request. Re-resolve every identity and eligibility condition against current state. Do not implement, merge, close, or retarget PRs as cleanup.
 
 Read:
 
-- ../shared/selector-contract.md
-- ../shared/target-and-receipts.md
-- ../shared/cleanup-eligibility.md
-- ../shared/recovery.md
+- [selector and target contract](../shared/selector-contract.md)
+- [cleanup eligibility](../shared/cleanup-eligibility.md)
+- [recovery and restore test](../shared/recovery.md)
+- [lifecycle owners](../shared/lifecycle-composition.md) when checking PR review, checks, or merge obligations
 
 ## Procedure
 
-1. Load the external campaign. Require the same repository, exact target
-   branch, target scope, frozen source selectors, and cleanup mode. A target
-   mismatch starts no cleanup.
-2. Treat selected source selectors as the cleanup scope. Do not scan or delete
-   unrelated branches, clones, or worktrees. Only --all-work authorizes the
-   original host-wide convergence scope.
-3. Recheck the exact destination and source refs/OIDs. Confirm the source is
-   landed, intentionally represented, or explicitly resolved on that target.
-   Compare target behavior, not source age or main.
-4. Inspect open PRs, declared bases, successors, dependents, unresolved
-   review/CI obligations, reverts, and other target campaigns. A source PR
-   targeting another branch remains intact even when an adaptation landed here.
-5. Snapshot each unique local clone/worktree state, including HEAD, staged and
-   unstaged changes, ignored and untracked files, and symlinks. Run the
-   restore test. A failed or incomplete receipt blocks deletion.
-6. Run a final compare-and-swap style identity check immediately before every
-   deletion. Never delete default branches, missing targets, changed refs,
-   unresolved sources, or sources still needed by another target.
-7. Delete only the proven eligible source through the repository's native
-   command. Record exact path/ref/OID, action, actor, and result. If the
-   command is uncertain, stop and inspect; do not retry blindly.
-8. Rescan the scoped source set and target. Emit a cleanup receipt that lists
-   deleted and retained candidates with evidence and reasons.
+1. Require a direct explicit cleanup request or the exact delegation described above, plus a nonempty source selector set or explicit `--all-work` as the sole scope. No selectors is a usage error, never permission to clean all work. `--cleanup=none` is a hard no-delete instruction. Treat `--cleanup=resolved` as eligibility only, never as proof.
+2. Preserve the original source selector arguments and target from `repo-merge`. Do not add prerequisites, predecessors, successors, branches found during audit, or related clones/worktrees to the cleanup candidates. Bind one repository and the exact selected target. An omitted target means literal `main`. Re-resolve the target ref and current object ID. A missing or ambiguous target stops cleanup. Never fall back to HEAD, `origin/HEAD`, a PR base, or the repository default.
+3. Resolve the exact selected source branch, PR, clone, or worktree and record repository identity, canonical path, full ref, current object ID, and PR head/base where applicable. Keep all selectors in the bound repository. Deduplicate equivalent identities while retaining each selector spelling.
+4. Prove that the whole selected contribution is resolved on this exact target. Inspect target behavior, not just ancestry or a commit identifier. Record valid goals intentionally rejected or superseded with evidence. Partial landing is not enough to delete a source that still contains accepted work.
+5. Check every remaining obligation: open or draft PRs, original PR base, required review or checks, successors, dependent work, reverts, unresolved findings, another target that still needs the source, protected or maintenance use, and current repository worklist. A PR whose base differs from the selected target stays open with its source intact until its original-target obligations are separately satisfied. An adaptation into this target does not satisfy those obligations.
+6. Prove ownership and quiescence for each filesystem candidate. It must be within the authorized repository scope, not the canonical checkout, not an active worktree, not shared with another owner or active writer, and not needed by another worktree through a common object store. Preserve any candidate whose owner, active users, nested data, or Git operation is uncertain.
+7. Before any deletion, snapshot the candidate and perform the real restore test in a disposable location as specified in the recovery reference. Restore every unique item and compare refs, HEAD, index state, staged and unstaged changes, untracked and ignored files, modes, symlinks, and required Git/LFS/submodule content. A snapshot that was not restored and checked is not sufficient.
+8. Immediately before each individual deletion, recheck the exact repository, target ref and object ID, source ref and object ID or PR head/base, canonical filesystem path, ownership, and quiescence. If anything moved, changed, or became active, retain it. For a ref update, use an operation that refuses if the expected object ID changed; if the host offers no safe conditional deletion, do not delete that remote ref.
+9. Delete only the proven candidate by exact path or full ref. Never use a wildcard, broad recursive removal, `git clean -fdx`, reset, force update, global stash clearing, or PR merge/close command. Never remove the selected target. When the target is not main, leave main untouched. Keep protected branches, other owners’ refs, and unresolved cross-target sources.
+10. Rescan the exact selected scope and recheck the selected target after the action. Report each removed and retained candidate with its identity, action, restore result, and reason. Report later or newly discovered work separately; do not imply full-repository cleanup from a targeted request.
 
-## Cross-target preservation
+## Completion
 
-If a source PR's declared destination differs from the requested target,
-preserve it and its obligations. Cleanup cannot make that PR look resolved.
-Convergence may create a scoped adaptation PR, but cleanup remains blocked until
-the original target obligations are separately satisfied.
-
-## Completion gate
-
-Complete only when every deletion has exact identity, restored local state, no
-remaining target obligation, no competing target need, and a successful final
-rescan. Reporting candidates is not deletion.
-
-Resolve relative links against this skill's directory. Shared references are
-in ../shared/.
+Cleanup is complete only for candidates whose target-relative work, obligations, ownership, quiescence, unique-data restore test, and immediate identity recheck all passed. A blocked candidate remains present. Return one concise Markdown record in the response; save it only on explicit request and outside cleanup candidates.
