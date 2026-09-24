@@ -2,6 +2,26 @@
 
 Before removing a branch, clone, or worktree, identify data that exists only in that candidate. Snapshot it outside every cleanup candidate. Do not change source refs or working files to make the snapshot easier.
 
+Use only the all-work root list and frozen source membership recorded by this
+run; do not broaden discovery while recovering or cleaning. In `--audit-only`,
+report recoverable-goal candidates and evidence gaps without making a snapshot
+copy, candidate, branch, or source change. In normal mode, preserve each
+original clone, worktree, ref, index, and file exactly as observed; recovery
+copies into a separate target-bound candidate only after provenance,
+applicability, dependencies, and attribution are verified. A failed or
+uncertain snapshot/restore blocks that source's recovery or deletion, not safe
+independent work.
+
+Before any write that could consume or replace unique local state, check for
+active writers without interrupting them: inspect Git lock/in-progress state,
+available process ownership for the canonical path, and whether refs or file
+state change across the read-only observation. Repeat quiescence and identity
+checks immediately before a dependent side effect. Never stop, signal, kill,
+or wait indefinitely for a user process. If process visibility is unavailable,
+an observed writer exists, state is changing, or exclusive ownership remains
+uncertain, retain the source and record the exact limitation; do not recover or
+clean from it.
+
 Capture and keep separate:
 
 - Exact repository, full refs, current object IDs, and each worktree HEAD.
@@ -12,6 +32,14 @@ Capture and keep separate:
 - Required LFS content, submodule commits and worktree data, alternates, and other external object dependencies.
 
 A Git bundle alone does not preserve index state, untracked files, ignored files, or unique working-copy data. Keep sensitive content only in a protected local recovery location; never copy it into reports or external systems.
+
+Recovery snapshots may contain credentials or private user work. Keep their
+contents and sensitive filenames out of prompts, logs, progress handoffs,
+commits, PRs, CI, telemetry, and uploads. Before recording remote identity,
+strip URL userinfo and omit query strings and fragments; prefer the canonical
+host/repository and a remote label. Never echo raw `git remote -v` output.
+Keep any exact sensitive-path mapping only in the protected local snapshot;
+the handoff records redacted identity and pass/fail, not secret values.
 
 ## Required restore test
 

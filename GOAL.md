@@ -39,7 +39,12 @@ CampaignState, journal, lease, and receipt engine. Do not require `cargo run`.
   staged and unstaged changes, untracked and valuable ignored files, modes,
   symlinks, and external object dependencies. Restore into a disposable
   location, verify required state, and block deletion if any material is
-  missing.
+  missing. After cleanup, rescan the same declared scope; new or changed work
+  invalidates affected decisions and re-enters analysis. Complete all-work
+  requires an accounted-for final inventory with no unresolved goals, active
+  writers, or coverage gaps. Report disabled cleanup, retained work, blocked
+  work, and recovery-required state explicitly; none implies physical
+  convergence.
 - Cleanup defaults to `resolved`; `--cleanup=none` retains selected sources.
   Resolved cleanup permits only individually proven, authorized deletion after
   current identity, landing, other-target obligations, dependencies, and
@@ -49,6 +54,19 @@ CampaignState, journal, lease, and receipt engine. Do not require `cargo run`.
   `--resume <id>` reloads a local
   target/source handoff, revalidates its scope and identities, and refuses a
   changed destination. It does not require a second campaign engine.
+- A read-only refresh during an active task repeats the audit against the same
+  repository, target, and source scope. Record the observation and delta in the
+  single Markdown handoff; do not mutate sources, change the active goal, widen
+  the frozen selection, or install a watcher.
+- Concurrent runs from one source to different targets stay isolated by exact
+  target and source identity. Use separate target-bound candidates and handoffs;
+  never reuse target-specific review, CI, landing, or cleanup evidence. Keep
+  original sources read-only; block any side effect whose shared resource
+  cannot be shown isolated. No journal, lease, or campaign engine is required.
+- After landing, run bounded target-relative acceptance. Repair a regression
+  before cleanup and repeat the applicable gates. A rerun that finds the target
+  already satisfies the goal is a verified no-op: create no duplicate commit
+  or PR and do not treat it as fresh cleanup authority.
 - A non-main target has no hidden main side effects. Preserve a source PR whose
   original base differs from the requested destination; use a scoped
   adaptation when justified and leave remaining obligations intact.
@@ -82,13 +100,17 @@ PR refresh, or target advance.
 ## Acceptance and source of truth
 
 Verify selector mixing and pagination, literal-main and non-main isolation,
-read-only audit, all-work scan coverage, snapshot/restore before deletion,
-local-only/resume behavior, actual review/CI/landing/target verification, and
-cleanup gates in disposable fixtures and supported clients. Jackin remains
-read-only. Record exact test/CI receipts, target OIDs, landing results, and
-cleanup disposition; unsupported or unverified outcomes remain pending.
+read-only audit and active-goal refresh, all-work final re-discovery and state,
+snapshot/restore before deletion, sensitive-data and credential-URL redaction,
+same-source/different-target concurrency, local-only/resume behavior,
+post-landing regression repair and no-op reruns, actual review/CI/landing/target
+verification, and cleanup gates in disposable fixtures and supported clients.
+Jackin remains read-only. Record exact test/CI evidence, target OIDs, landing
+results, and cleanup disposition; unsupported or unverified outcomes remain
+pending, never green.
 
-The complete original v2 specification is preserved unchanged in
-`tailrocks-repository-skills-development-goal-v2.md`. Keep its acceptance
-requirements and the requirement-to-evidence checklist; this file records the
-current architecture decision and does not claim those requirements passed.
+The original v2 specification remains as a historical reference in
+`tailrocks-repository-skills-development-goal-v2.md`; its architectural
+prescriptions are superseded. Preserve its compatible user capabilities and
+acceptance requirements in this goal and the requirement-to-evidence
+checklist. Neither file claims those requirements passed.

@@ -4,11 +4,11 @@ The [Tailrocks organization skills query](https://github.com/tailrocks?q=skills&
 identified the ten relevant collections. These are ownership decisions, not
 claims that any collection was modified or released by this work.
 
-Refreshed 2026-09-24: the query still returns 10 of 10 repositories. GitHub
-GraphQL confirmed each table SHA is the current `main` tip and all ten have
-zero open PRs. The target repository is still at
-`ef59c8bde4ea6869f9b4c4b83153534c5d95255a`; no target or umbrella PR existed
-before this work.
+Refreshed 2026-09-24: a live scrape of the query listed 10 of 10 repositories,
+and each repository card showed zero open pulls. Read-only `git ls-remote`
+confirmed each table SHA is the current `main` tip. The target repository is
+still at `ef59c8bde4ea6869f9b4c4b83153534c5d95255a`; no target or umbrella PR
+existed before this work.
 
 | Collection | Decision | Observed `main` | Open PRs at inspection | Ownership boundary |
 | --- | --- | --- | --- | --- |

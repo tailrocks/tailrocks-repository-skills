@@ -34,12 +34,43 @@ revalidates identities before continuing.
 4. Finish only justified work. Request independent review from
    `tailrocks-review-pr`, satisfy checks that apply to this target, then use
    `tailrocks-merge-pr` for a real PR landing. A preflight or queued merge is
-   not completion.
+   not completion. Run bounded target-relative acceptance after landing; if it
+   finds a regression, repair it and repeat applicable review/check gates
+   before cleanup. If the target already satisfies the goal, record a verified
+   no-op and create no duplicate commit or PR.
 5. Verify the exact destination and resulting tree. A non-main run has no
    hidden main updates. `--local-only` reports local verification only.
 6. Run cleanup only for selected sources whose identity, target obligations,
    dependencies, authorization, and restore proof remain valid. Otherwise
    retain and report the source.
+7. After cleanup, rediscover the same authorized `--all-work` scope and recheck
+   target-relative decisions. New or changed work invalidates affected findings
+   and returns to analysis; do not use stale membership to claim completion.
+
+## Refresh and concurrent targets
+
+During an active goal, a read-only refresh repeats the audit for the same
+repository, exact target, and source scope. Record its observation and delta in
+the one Markdown handoff. It neither changes the active goal nor authorizes a
+scope change, and it installs no watcher. A changed target/source identity
+invalidates affected conclusions before the next side effect.
+
+Two runs may analyze the same source for different targets only as separate
+target-bound operations: keep the original source read-only, use independent
+candidates and handoffs, and do not reuse review, CI, landing, or cleanup
+evidence across targets. Recheck each target and its other-target obligations
+before cleanup. If a shared mutable resource cannot be isolated, block that
+side effect; no campaign database, journal, or lease is needed.
+
+## Outcomes
+
+Keep verified remote landing, verified local-only landing, audit-only, no-op,
+rejected, blocked, and recovery-required outcomes distinct. `--all-work` is
+complete only after a fresh final scan accounts for its declared scope, all
+in-scope goals and dependencies, coverage, and the requested cleanup policy.
+Unknown coverage, unresolved in-scope work, or an active writer means partial
+or blocked, not complete. `--cleanup=none` and safety-blocked retention must be
+reported; neither implies physical cleanup or a single-checkout end state.
 
 ## Lifecycle commands and high-risk rules
 

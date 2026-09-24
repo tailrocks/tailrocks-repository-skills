@@ -2,6 +2,12 @@
 
 Revision: 2026-09-23. This is the complete replacement development specification, incorporating configurable target branches, selected-source integration, and one convenient audit-and-merge entry point. It supersedes the earlier main-only/default-branch assumptions, not the recovery, review, CI, release, or authorization requirements. This document specifies a plugin to develop; it does not claim that its commands are already implemented or installed.
 
+> Historical reference only. The active architecture in [`GOAL.md`](GOAL.md)
+> supersedes this document's architectural prescriptions, including the
+> separate converge route and transaction/state engine. Retain its user-facing
+> capabilities and acceptance requirements when compatible with the active
+> goal, but do not restore superseded architecture to satisfy them.
+
 ## 1. Goal and scope
 
 Develop, test, document, register, and release one new independently installable Tailrocks plugin collection:
