@@ -1219,7 +1219,7 @@ preview_before=$(git -C "$main_repo" rev-parse refs/heads/release/preview)
 main_refs_before="$work/main-refs.before"
 snapshot_refs "$main_repo" "$main_refs_before"
 run_agent main-landing "$main_repo" :workspace \
-  'Run tailrocks-env-probe once before changing anything. Its successful output means the injected API/cloud-token canary was absent from this generated shell. Then use $repo-merge --local-only --cleanup=none feature/main-fix. This disposable repository has no remote. The omitted target must mean the literal main branch, never current HEAD or a remote default. Actually land the justified change on main, retain the source branch, make no network calls, and report only JSON: {"outcome":"landed-local","target_branch":"main","target_oid":"<oid>"}.'
+  'Run tailrocks-env-probe once before changing anything. Its successful output means the injected API/cloud-token canary was absent from this generated shell. Then use $tailrocks-repository-skills:repo-merge --local-only --cleanup=none feature/main-fix. This disposable repository has no remote. The omitted target must mean the literal main branch, never current HEAD or a remote default. Actually land the justified change on main, retain the source branch, make no network calls, and report only JSON: {"outcome":"landed-local","target_branch":"main","target_oid":"<oid>"}.'
 test "$(cat "$TAILROCKS_ENV_POLICY_CANARY_LOG")" = absent
 test "$(git -C "$main_repo" rev-parse refs/heads/main)" != "$main_before"
 test "$(git -C "$main_repo" rev-parse refs/heads/feature/main-fix)" = "$source_main_before"
@@ -1293,7 +1293,7 @@ reverted_before=$(git -C "$release_repo" rev-parse refs/heads/feature/reverted)
 release_refs_before="$work/release-refs.before"
 snapshot_refs "$release_repo" "$release_refs_before"
 run_agent non-main-multi-source "$release_repo" :workspace \
-  'Use $repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth feature/logging feature/partial feature/already feature/reverted. Land only justified source improvements onto release/next. Preserve release-only.txt and leave main unchanged. The target already contains part of feature/partial, all of feature/already, and had equivalent feature/reverted behavior that was explicitly reverted even though REQUIREMENTS.txt still requires it. Do not duplicate existing-target-line or already-present. Preserve every source ref because cleanup is none. Return JSON with outcome landed-local and the exact target branch/OID.'
+  'Use $tailrocks-repository-skills:repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth feature/logging feature/partial feature/already feature/reverted. Land only justified source improvements onto release/next. Preserve release-only.txt and leave main unchanged. The target already contains part of feature/partial, all of feature/already, and had equivalent feature/reverted behavior that was explicitly reverted even though REQUIREMENTS.txt still requires it. Do not duplicate existing-target-line or already-present. Preserve every source ref because cleanup is none. Return JSON with outcome landed-local and the exact target branch/OID.'
 test "$(git -C "$release_repo" rev-parse refs/heads/main)" = "$release_main_before"
 test "$(git -C "$release_repo" rev-parse refs/heads/release/next)" != "$release_before"
 test "$(git -C "$release_repo" rev-parse refs/heads/feature/auth)" = "$auth_before"
@@ -1316,7 +1316,7 @@ release_after_first=$(git -C "$release_repo" rev-parse refs/heads/release/next)
 refs_before_rerun="$work/release-refs.before-rerun"
 snapshot_refs "$release_repo" "$refs_before_rerun"
 run_agent non-main-noop-rerun "$release_repo" :workspace \
-  'Repeat the exact completed request: $repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth feature/logging feature/partial feature/already feature/reverted. Verify the current target and report an idempotent no-op. Do not create a commit, branch, PR, or delete any source. Return JSON with outcome noop-local and the exact existing target OID.'
+  'Repeat the exact completed request: $tailrocks-repository-skills:repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth feature/logging feature/partial feature/already feature/reverted. Verify the current target and report an idempotent no-op. Do not create a commit, branch, PR, or delete any source. Return JSON with outcome noop-local and the exact existing target OID.'
 test "$(git -C "$release_repo" rev-parse refs/heads/release/next)" = "$release_after_first"
 assert_same_refs "$release_repo" "$refs_before_rerun"
 assert_json_final "$work/non-main-noop-rerun.final.txt" '.outcome == "noop-local" and .target_branch == "release/next" and .target_oid == "'"$release_after_first"'"'
@@ -1331,7 +1331,7 @@ branch_file "$audit_repo" feature/audit audit.txt 'audit-only-source'
 audit_before="$work/audit-refs.before"
 snapshot_refs "$audit_repo" "$audit_before"
 run_agent audit-only "$audit_repo" :workspace \
-  'Use $repo-merge --audit-only --target-branch=main feature/audit. Inspect only. Do not edit files, refs, create commits or branches, contact a remote, or clean anything. Return JSON with outcome audit-only, target_branch main, the exact observed target_oid, and mutations: [].'
+  'Use $tailrocks-repository-skills:repo-merge --audit-only --target-branch=main feature/audit. Inspect only. Do not edit files, refs, create commits or branches, contact a remote, or clean anything. Return JSON with outcome audit-only, target_branch main, the exact observed target_oid, and mutations: [].'
 assert_same_refs "$audit_repo" "$audit_before"
 test -z "$(git -C "$audit_repo" status --porcelain)"
 assert_json_final "$work/audit-only.final.txt" '.outcome == "audit-only" and .target_branch == "main" and (.mutations | length == 0)'
@@ -1353,7 +1353,7 @@ TAILROCKS_BLOCK_FIND=1
 TAILROCKS_FIND_SHIM_LOG="$no_source_find_log"
 export TAILROCKS_BLOCK_FIND TAILROCKS_FIND_SHIM_LOG
 run_agent empty-selectors "$no_source_repo" :workspace \
-  'Invoke $repo-merge --local-only --cleanup=resolved --target-branch=main with no source selectors. This is an empty-arguments/no-source request. Return a usage-error JSON result and stop before scanning, discovering, or cleaning anything. Do not reinterpret the empty source set as --all-work. Required JSON: {"outcome":"usage-error","cleanup":"not-run","scan_started":false}.'
+  'Invoke $tailrocks-repository-skills:repo-merge --local-only --cleanup=resolved --target-branch=main with no source selectors. This is an empty-arguments/no-source request. Return a usage-error JSON result and stop before scanning, discovering, or cleaning anything. Do not reinterpret the empty source set as --all-work. Required JSON: {"outcome":"usage-error","cleanup":"not-run","scan_started":false}.'
 assert_same_source_state "$no_source_repo" "$no_source_before"
 test ! -s "$no_source_find_log"
 assert_json_final "$work/empty-selectors.final.txt" '.outcome == "usage-error" and .cleanup == "not-run" and .scan_started == false'
@@ -1362,7 +1362,7 @@ no_source_sentinel_log="$XDG_STATE_HOME/no-source-sentinel-find.log"
 TAILROCKS_FIND_SHIM_LOG="$no_source_sentinel_log"
 export TAILROCKS_FIND_SHIM_LOG
 run_agent no-source-sentinel "$no_source_repo" :workspace \
-  'Use $repo-merge --no-source --local-only --cleanup=resolved --target-branch=main. Treat --no-source as an empty source request, never as --all-work or global cleanup. Reject with usage-error JSON and do not scan or mutate.'
+  'Use $tailrocks-repository-skills:repo-merge --no-source --local-only --cleanup=resolved --target-branch=main. Treat --no-source as an empty source request, never as --all-work or global cleanup. Reject with usage-error JSON and do not scan or mutate.'
 assert_same_source_state "$no_source_repo" "$no_source_before"
 test ! -s "$no_source_sentinel_log"
 assert_json_final "$work/no-source-sentinel.final.txt" '.outcome == "usage-error" and .cleanup == "not-run" and .scan_started == false'
@@ -1407,7 +1407,7 @@ TAILROCKS_BLOCK_FIND=1
 TAILROCKS_FIND_SHIM_LOG="$XDG_STATE_HOME/resume-find.log"
 export TAILROCKS_BLOCK_FIND TAILROCKS_FIND_SHIM_LOG
 run_agent resume-audit "$resume_repo" :workspace \
-  'Use $repo-merge --resume resume-fixture with no new selectors or target override. Resume the recorded audit-only run from the isolated XDG handoff, refresh its exact source and release/next target OIDs, and do not mutate or clean anything. Return JSON with outcome audit-only, target_branch release/next, target_oid, source_oid, and resumed_run_id resume-fixture.'
+  'Use $tailrocks-repository-skills:repo-merge --resume resume-fixture with no new selectors or target override. Resume the recorded audit-only run from the isolated XDG handoff, refresh its exact source and release/next target OIDs, and do not mutate or clean anything. Return JSON with outcome audit-only, target_branch release/next, target_oid, source_oid, and resumed_run_id resume-fixture.'
 assert_same_refs "$resume_repo" "$resume_refs_before"
 test "$(git -C "$resume_repo" rev-parse refs/heads/release/next)" = "$resume_target_before"
 test "$(git -C "$resume_repo" rev-parse refs/heads/feature/resume)" = "$resume_source_before"
@@ -1474,7 +1474,7 @@ retention_target_before=$(git -C "$retention_repo" rev-parse refs/heads/release/
 retention_runner="$work/retention-runner"
 mkdir -p "$retention_runner"
 run_agent retention-guards "$retention_runner" :workspace \
-  "Use \$repo-merge --repo=acme/retention-fixture --all-work --audit-only --target-branch=release/next with no source selectors. The only authorized scan root is $retention_root. Discover matching repository copies and worktrees from that root; inspect their refs, tracked/untracked/ignored changes, and active-writer indicators. This audit cannot authorize recovery or cleanup. Report any resolved source candidates, but do not mutate or stop writers. This fixture-only inventory is scoped to the declared root; do not claim host-wide coverage. Return JSON with outcome audit-only, target_oid, scan_roots, discovered_resources[{path,refs,tracked_paths,untracked_paths,ignored_paths}], retained_resources with exact reasons, coverage_complete:false, and coverage_gaps." "$retention_root"
+  "Use \$tailrocks-repository-skills:repo-merge --repo=acme/retention-fixture --all-work --audit-only --target-branch=release/next with no source selectors. The only authorized scan root is $retention_root. Discover matching repository copies and worktrees from that root; inspect their refs, tracked/untracked/ignored changes, and active-writer indicators. This audit cannot authorize recovery or cleanup. Report any resolved source candidates, but do not mutate or stop writers. This fixture-only inventory is scoped to the declared root; do not claim host-wide coverage. Return JSON with outcome audit-only, target_oid, scan_roots, discovered_resources[{path,refs,tracked_paths,untracked_paths,ignored_paths}], retained_resources with exact reasons, coverage_complete:false, and coverage_gaps." "$retention_root"
 kill -0 "$writer_pid" 2>/dev/null || {
   echo "the active fixture writer was stopped by the agent" >&2
   exit 1
@@ -1554,7 +1554,7 @@ canonical_refs_json=$(git -C "$all_repo" for-each-ref --format='{"ref":"%(refnam
 related_refs_json=$(git -C "$related_clone" for-each-ref --format='{"ref":"%(refname)","oid":"%(objectname)"}' refs | jq -s 'sort_by(.ref)')
 worktree_refs_json=$(git -C "$linked_worktree" for-each-ref --format='{"ref":"%(refname)","oid":"%(objectname)"}' refs | jq -s 'sort_by(.ref)')
 run_agent all-work-coverage "$all_runner" :workspace \
-  "Use \$repo-merge --repo=acme/all-work --all-work --audit-only --target-branch=main. The only authorized scan root is $all_root. Discover every matching repository copy and worktree from repository identity under that root. Return strict JSON with fixture_root_complete:true, coverage_complete:false, exact scan_roots, discovered_resources[{path,refs:[{ref,oid}],dirty,untracked_paths}], excluded_resources[{path,reason}], and nonempty coverage_gaps because host-wide roots are intentionally outside this fixture's scope. Do not claim host-wide coverage. Do not mutate anything." "$all_root"
+  "Use \$tailrocks-repository-skills:repo-merge --repo=acme/all-work --all-work --audit-only --target-branch=main. The only authorized scan root is $all_root. Discover every matching repository copy and worktree from repository identity under that root. Return strict JSON with fixture_root_complete:true, coverage_complete:false, exact scan_roots, discovered_resources[{path,refs:[{ref,oid}],dirty,untracked_paths}], excluded_resources[{path,reason}], and nonempty coverage_gaps because host-wide roots are intentionally outside this fixture's scope. Do not claim host-wide coverage. Do not mutate anything." "$all_root"
 assert_same_source_state "$all_repo" "$all_state_before"
 assert_same_source_state "$related_clone" "$related_state_before"
 assert_same_source_state "$linked_worktree" "$worktree_state_before"
@@ -1630,7 +1630,7 @@ snapshot_source_state "$unfinished_copy" "$unfinished_state_before"
 recovery_refs_before="$work/recovery-repo-refs.before"
 snapshot_refs "$recovery_repo" "$recovery_refs_before"
 run_agent recover-unfinished-goal "$recovery_candidate" :workspace \
-  "Use \$repo-merge --all-work --local-only --cleanup=none --target-branch=release/next. The only authorized source scan root is $recovery_root; treat it as read-only. Discover eligible repositories, source-local goals, and recovery evidence only through the installed skill within that root; do not assume or name candidate paths or object IDs. The repository selected for this invocation is the independent writable target candidate. Recover only a clearly attributable unfinished goal whose acceptance criteria still apply to release/next. First snapshot and restore-test all unique source data, including refs/HEAD, index, staged and unstaged changes, untracked work, and valuable ignored files, under the supplied recovery artifact root. Compare the restored state and bytes before importing anything. Re-read the current exact release/next ref and object ID immediately before creating a new target-based branch; preserve target behavior and apply only the explicit goal. Keep discovered original sources entirely read-only; make no recovery action there. If source provenance or snapshot/restore is incomplete, stop blocked and retain everything. Return JSON with outcome landed-local, target_branch release/next, exact target_oid, candidate_branch, recovered_goal:true, restore_test:passed, restore_test_path, and snapshot_path." "$recovery_root" "$recovery_proof"
+  "Use \$tailrocks-repository-skills:repo-merge --all-work --local-only --cleanup=none --target-branch=release/next. The only authorized source scan root is $recovery_root; treat it as read-only. Discover eligible repositories, source-local goals, and recovery evidence only through the installed skill within that root; do not assume or name candidate paths or object IDs. The repository selected for this invocation is the independent writable target candidate. Recover only a clearly attributable unfinished goal whose acceptance criteria still apply to release/next. First snapshot and restore-test all unique source data, including refs/HEAD, index, staged and unstaged changes, untracked work, and valuable ignored files, under the supplied recovery artifact root. Compare the restored state and bytes before importing anything. Re-read the current exact release/next ref and object ID immediately before creating a new target-based branch; preserve target behavior and apply only the explicit goal. Keep discovered original sources entirely read-only; make no recovery action there. If source provenance or snapshot/restore is incomplete, stop blocked and retain everything. Return JSON with outcome landed-local, target_branch release/next, exact target_oid, candidate_branch, recovered_goal:true, restore_test:passed, restore_test_path, and snapshot_path." "$recovery_root" "$recovery_proof"
 test -d "$unfinished_copy"
 test "$(git -C "$unfinished_copy" rev-parse HEAD)" = "$unfinished_head_before"
 assert_same_source_state "$unfinished_copy" "$unfinished_state_before"
@@ -1717,7 +1717,7 @@ branch_file "$cleanup_repo" feature/preserved preserved.txt 'preserve-other-sour
 cleanup_preserved_before=$(git -C "$cleanup_repo" rev-parse refs/heads/feature/preserved)
 git -C "$cleanup_repo" checkout -q main
 run_agent resolved-cleanup "$cleanup_repo" :workspace \
-  "Use \$repo-merge --local-only --cleanup=resolved --target-branch=release/next feature/resolved. This explicitly authorizes deleting only refs/heads/feature/resolved in this disposable repository, after its justified change is locally landed on exact release/next. Follow repo-merge's local lifecycle composition procedure and use its separate installed cleanup capability; the facade must not delete the ref. Before deletion create a full Git bundle snapshot at $cleanup_bundle, restore it into a disposable repository at $cleanup_restore, and verify the restored refs/heads/feature/resolved OID and resolved.txt byte-for-byte match the original source OID $cleanup_source_before. Only after that real restore test and fresh identity recheck may the cleanup capability remove the selected feature/resolved ref. Preserve main, the release/next target, feature/non-target, feature/preserved, and both recovery artifacts. No remote writes. Return JSON with outcome landed-local, exact target branch/OID, restore_test passed, snapshot_path, restored_source_oid, and deleted_refs containing only refs/heads/feature/resolved." "$cleanup_root" "$cleanup_proof"
+  "Use \$tailrocks-repository-skills:repo-merge --local-only --cleanup=resolved --target-branch=release/next feature/resolved. This explicitly authorizes deleting only refs/heads/feature/resolved in this disposable repository, after its justified change is locally landed on exact release/next. Use repo-merge's local cleanup finalization procedure; do not programmatically invoke the standalone manual-only cleanup skill. Before deletion create a full Git bundle snapshot at $cleanup_bundle, restore it into a disposable repository at $cleanup_restore, and verify the restored refs/heads/feature/resolved OID and resolved.txt byte-for-byte match the original source OID $cleanup_source_before. Only after that real restore test and fresh identity recheck may local finalization remove the selected feature/resolved ref. Preserve main, the release/next target, feature/non-target, feature/preserved, and both recovery artifacts. No remote writes. Return JSON with outcome landed-local, exact target branch/OID, restore_test passed, snapshot_path, restored_source_oid, and deleted_refs containing only refs/heads/feature/resolved." "$cleanup_root" "$cleanup_proof"
 test "$(git -C "$cleanup_repo" rev-parse refs/heads/main)" = "$cleanup_main_before"
 test "$(git -C "$cleanup_repo" rev-parse refs/heads/feature/non-target)" = "$cleanup_non_target_before"
 test "$(git -C "$cleanup_repo" rev-parse refs/heads/feature/preserved)" = "$cleanup_preserved_before"
@@ -1762,7 +1762,7 @@ GH_FIXTURE_KIND=pagination
 export GH_FIXTURE_KIND
 : >"$TAILROCKS_GH_FIXTURE_LOG"
 run_agent selector-pagination "$selector_repo" :workspace \
-  'Use $repo-merge --audit-only --target-branch=main https://github.com/acme/fixture/pulls?state=open&page=2. The installed gh client returns synthetic local fixture data only; this proves selector handling, not live GitHub state. The page=2 presentation parameter must not truncate listing membership. Return JSON with outcome audit-only, selected_prs:[{number,head_ref,head_oid,base_ref,base_oid}], included_drafts:[42], and pagination_complete:true.'
+  'Use $tailrocks-repository-skills:repo-merge --audit-only --target-branch=main https://github.com/acme/fixture/pulls?state=open&page=2. The installed gh client returns synthetic local fixture data only; this proves selector handling, not live GitHub state. The page=2 presentation parameter must not truncate listing membership. Return JSON with outcome audit-only, selected_prs:[{number,head_ref,head_oid,base_ref,base_oid}], included_drafts:[42], and pagination_complete:true.'
 assert_same_refs "$selector_repo" "$selector_refs_before"
 grep -F -q '41' "$work/selector-pagination.final.txt"
 grep -F -q '42' "$work/selector-pagination.final.txt"
@@ -1805,7 +1805,7 @@ GH_FIXTURE_KIND=selector-mix
 export GH_FIXTURE_KIND
 : >"$TAILROCKS_GH_FIXTURE_LOG"
 run_agent selector-mixed-branches-prs "$selector_mix_repo" :workspace \
-  'Use $repo-merge --audit-only --target-branch=main feature/mixed-one 44 #45 https://github.com/acme/fixture/pull/43 https://github.com/acme/fixture/branches/all?page=2. This is one mixed selector set: branch name, bare positive PR number, #N PR, PR URL, and paginated branch listing. Resolve exact head/base refs and OIDs, ignore page=2 as presentation only, fetch both /branches/all pages, exclude main as the selected target, and freeze membership. Deduplicate canonical source membership by head repository, ref, and OID; retain every originating selector in canonical_sources.selector_origins and keep one selected_prs record per PR with its full head/base provenance. This fixture uses synthetic local API data only. Return JSON with outcome audit-only, target:{ref,oid}, canonical_sources:[{head_repository,head_ref,head_oid,selector_origins}], selected_branches:[{ref,oid}], selected_prs:[{number,head_ref,head_oid,base_ref,base_oid}], pagination_complete:true. Make no writes.'
+  'Use $tailrocks-repository-skills:repo-merge --audit-only --target-branch=main feature/mixed-one 44 #45 https://github.com/acme/fixture/pull/43 https://github.com/acme/fixture/branches/all?page=2. This is one mixed selector set: branch name, bare positive PR number, #N PR, PR URL, and paginated branch listing. Resolve exact head/base refs and OIDs, ignore page=2 as presentation only, fetch both /branches/all pages, exclude main as the selected target, and freeze membership. Deduplicate canonical source membership by head repository, ref, and OID; retain every originating selector in canonical_sources.selector_origins and keep one selected_prs record per PR with its full head/base provenance. This fixture uses synthetic local API data only. Return JSON with outcome audit-only, target:{ref,oid}, canonical_sources:[{head_repository,head_ref,head_oid,selector_origins}], selected_branches:[{ref,oid}], selected_prs:[{number,head_ref,head_oid,base_ref,base_oid}], pagination_complete:true. Make no writes.'
 assert_same_refs "$selector_mix_repo" "$selector_mix_before"
 grep -F -q '/branches/all' "$TAILROCKS_GH_FIXTURE_LOG"
 grep -E -q 'pulls/43|pr view 43' "$TAILROCKS_GH_FIXTURE_LOG"
@@ -1841,7 +1841,7 @@ redaction_fragment='fixture-fragment-marker-8N6C'
 redaction_selector="https://${redaction_user}:${redaction_password}@github.com/acme/fixture/pull/43?access_token=${redaction_query}#${redaction_fragment}"
 : >"$TAILROCKS_GH_FIXTURE_LOG"
 run_agent redaction-probe "$selector_mix_repo" :workspace \
-  "Use \$repo-merge --audit-only --target-branch=main $redaction_selector. Treat userinfo, query, and fragment as sensitive synthetic canaries, not credentials. Resolve this selector through the local fixture only. Record only the canonical repository and PR identity in the isolated handoff; do not echo raw selector components or canary values. Return JSON with outcome audit-only and exactly selected PR #43 with its head/base refs and OIDs. Make no writes." \
+  "Use \$tailrocks-repository-skills:repo-merge --audit-only --target-branch=main $redaction_selector. Treat userinfo, query, and fragment as sensitive synthetic canaries, not credentials. Resolve this selector through the local fixture only. Record only the canonical repository and PR identity in the isolated handoff; do not echo raw selector components or canary values. Return JSON with outcome audit-only and exactly selected PR #43 with its head/base refs and OIDs. Make no writes." \
   "$selector_mix_repo"
 assert_same_refs "$selector_mix_repo" "$redaction_refs_before"
 redaction_handoff_dir="$XDG_STATE_HOME/tailrocks/repo-merge/runs"
@@ -1910,7 +1910,7 @@ export TAILROCKS_BLOCK_FIND TAILROCKS_FIND_SHIM_LOG
 : >"$TAILROCKS_GH_FIXTURE_LOG"
 if [ "$selected_case" = "all" ]; then
   run_agent single-pr-audit-no-path-discovery-command "$blocked_repo" :workspace \
-    'Use $repo-merge --repo=acme/blocked-fixture --audit-only --target-branch=main #77. The contract says a targeted PR must not trigger host discovery. This is scoped contract evidence only: PATH calls to find, rg, fd, fdfind, locate, and mdfind are blocked and logged; this does not prove absence of ls, du, shell globbing, Git enumeration, absolute scanner paths, or recursive grep. Read only this PR and its required review/check evidence through the synthetic local gh fixture; this is not live hosted evidence. Return JSON with outcome audit-only, pr 77, source_ref, head_oid, base_ref, base_oid, target_oid, review_decision CHANGES_REQUESTED, and required_ci pending. Do not mutate anything.'
+    'Use $tailrocks-repository-skills:repo-merge --repo=acme/blocked-fixture --audit-only --target-branch=main #77. The contract says a targeted PR must not trigger host discovery. This is scoped contract evidence only: PATH calls to find, rg, fd, fdfind, locate, and mdfind are blocked and logged; this does not prove absence of ls, du, shell globbing, Git enumeration, absolute scanner paths, or recursive grep. Read only this PR and its required review/check evidence through the synthetic local gh fixture; this is not live hosted evidence. Return JSON with outcome audit-only, pr 77, source_ref, head_oid, base_ref, base_oid, target_oid, review_decision CHANGES_REQUESTED, and required_ci pending. Do not mutate anything.'
   assert_same_refs "$blocked_repo" "$blocked_refs_before"
   test "$(git -C "$blocked_repo" status --porcelain=v2 --branch --untracked-files=all)" = "$blocked_status_before"
   test ! -s "$single_pr_find_log"
@@ -1993,7 +1993,7 @@ if [ -n "$owner_plugin_id" ]; then
 else
   record 'blocked_owner_e2e=NOT RUN; TAILROCKS_PR_SKILLS_ROOT and TAILROCKS_PR_SKILLS_SHA absent; actual lifecycle owner path remains pending; synthetic GitHub fixture is not live CI/review evidence'
   run_agent blocked-review-ci-missing-owners "$blocked_repo" :workspace \
-    'Use $repo-merge --repo=acme/blocked-fixture --target-branch=main --cleanup=none #77. The required tailrocks-pull-request-skills plugin with tailrocks-review-pr and tailrocks-merge-pr is intentionally unavailable in this isolated install. Fail closed before any landing with an explicit missing-owner blocker. Do not substitute gh, edit refs, create commits, push, approve, close, or merge. Return JSON with outcome blocked, blocked_gates containing lifecycle-owner-unavailable, and target_oid equal to the fixture main OID.'
+    'Use $tailrocks-repository-skills:repo-merge --repo=acme/blocked-fixture --target-branch=main --cleanup=none #77. The required tailrocks-pull-request-skills plugin with tailrocks-review-pr and tailrocks-merge-pr is intentionally unavailable in this isolated install. Fail closed before any landing with an explicit missing-owner blocker. Do not substitute gh, edit refs, create commits, push, approve, close, or merge. Return JSON with outcome blocked, blocked_gates containing lifecycle-owner-unavailable, and target_oid equal to the fixture main OID.'
   assert_json_final "$work/blocked-review-ci-missing-owners.final.txt" \
     '.outcome == "blocked" and .target_oid == "'"$blocked_main_before"'" and ([.blocked_gates[] | ascii_downcase] | any(test("lifecycle-owner-unavailable|owner unavailable|owner missing")))'
   case_name=blocked-review-ci-missing-owners
