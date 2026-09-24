@@ -155,19 +155,37 @@ Create or update one concise Markdown handoff outside every repository and
 candidate at `$XDG_STATE_HOME/tailrocks/repo-merge/runs/<run-id>.md`, or
 `~/.local/state/tailrocks/repo-merge/runs/<run-id>.md` when unset. If that path
 falls inside a repository or candidate, or cannot be safely created or updated,
-stop before mutation. Redaction failure is also fail-closed: do not mutate and
-report the persistence blocker. Record full target/source refs and OIDs; for
-PRs record number plus full head/base refs and OIDs. Also record the request
-and authority, decisions, actions, tests, review/check/landing state, cleanup,
-recovery location, blockers, and one deterministic next action. For
-`--all-work`, record roots, exclusions, frozen membership, pagination/API
-coverage, writers, and every gap. Strip URL userinfo, query, and fragment;
-never record credentials, secrets, raw remote output, or sensitive filenames.
+stop before mutation. Resolve every path component through the state root and
+`runs/` directory canonically; reject any symlink, and require both directories
+to be owned by the active user with mode `0700`. `RUN_ID` is a basename matching
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`; reject empty values, `/`, `\\`, `.`, `..`,
+and every other path spelling before joining it to the state root. The final
+handoff must be a regular non-symlink file, owned by the active user with mode
+`0600`, canonicalized inside that `runs/` directory and outside every
+repository/candidate. Write or update it through an owner-only same-directory
+temporary file, flush it, then atomically rename it; never follow or replace a
+symlink. Re-open and validate the result's run ID, expected fields, canonical
+repository, full scope, target, and redaction before any mutation. Integrity
+means a complete expected section set, one matching run ID, canonical
+repository, frozen scope, and recorded target/source identities that agree;
+unknown or duplicate fields, truncation, or any mismatch is a persistence
+blocker. Redaction failure is also fail-closed: do not mutate and report the
+blocker. Record full target/source refs and OIDs; for PRs record
+number plus full head/base refs and OIDs. Also record the request and authority,
+decisions, actions, tests, review/check/landing state, cleanup, recovery
+location, blockers, and one deterministic next action. For `--all-work`, record
+roots, exclusions, frozen membership, pagination/API coverage, writers, and
+every gap. Strip URL userinfo, query, and fragment; never record credentials,
+secrets, raw remote output, or sensitive filenames.
 
-`--resume RUN_ID` reads only that handoff, restores its scope and target, and
-refreshes identities before continuing. Changed or ambiguous scope, target,
-repository, policy, or unverified landing blocks dependent side effects; never
-guess or widen. A completed run is report-only.
+`--resume RUN_ID` reads only the validated handoff named by that strict
+basename. Its authority is evidence, not new authorization: the active user
+request remains the sole authority and the handoff scope must be a subset of
+it. A resume cannot add sources, roots, target, repository, remote action, or
+cleanup permission. Changed or ambiguous scope, target, repository, policy,
+authority, or handoff integrity requires a fresh explicit user authorization
+and a new run; it never gets guessed or widened. Refresh identities before any
+side effect. A completed run is report-only.
 
 ## Finish and report
 

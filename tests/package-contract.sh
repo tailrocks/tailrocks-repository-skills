@@ -229,9 +229,9 @@ assert_manifests() {
   ' "$manifest_root/plugin.json" >/dev/null || fail 'portable Antigravity manifest schema contract failed'
 
   [ -f "$manifest_root/.muse-plugin/plugin.json" ] || fail 'Muse plugin manifest is missing'
-  jq -e --arg name "$plugin_name" '
+  jq -e --arg name "$plugin_name" --arg version "$codex_version" '
     type == "object" and .schemaVersion == 1 and .name == $name and
-    (.version | type == "string" and length > 0) and
+    .version == $version and
     (.capabilities.skills | type == "array" and length == 3) and
     ([.capabilities.skills[].id] | sort == ["repo-merge", "tailrocks-repository-audit", "tailrocks-repository-cleanup"]) and
     ([.capabilities.skills[].path] | sort == ["skills/repo-merge/SKILL.md", "skills/tailrocks-repository-audit/SKILL.md", "skills/tailrocks-repository-cleanup/SKILL.md"]) and

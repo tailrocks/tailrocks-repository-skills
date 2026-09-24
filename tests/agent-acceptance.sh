@@ -47,9 +47,39 @@ codex_bin=$(command -v codex) || {
   echo "BLOCKED: Codex CLI is not installed" >&2
   exit 2
 }
-codex_home=${CODEX_HOME:-${HOME:?HOME must be set to locate Codex authentication}}
-codex_home=$(CDPATH= cd -- "$codex_home" && pwd -P)
 codex_tmp_root=$(CDPATH= cd -- "${TMPDIR:-/tmp}" && pwd -P)
+if [ -z "${CODEX_HOME+x}" ] || [ -z "${CODEX_HOME:-}" ]; then
+  echo "BLOCKED: set CODEX_HOME to an existing isolated temporary Codex home; caller-global auth/config is never used" >&2
+  exit 2
+fi
+codex_home=$(CDPATH= cd -- "$CODEX_HOME" 2>/dev/null && pwd -P) || {
+  echo "BLOCKED: CODEX_HOME must resolve to an existing directory before acceptance; no model run was attempted" >&2
+  exit 2
+}
+case "$codex_home" in
+  "$codex_tmp_root"/*) ;;
+  *)
+    echo "BLOCKED: CODEX_HOME must be strictly inside TMPDIR for isolated auth/config/cache; got $codex_home" >&2
+    exit 2
+    ;;
+esac
+caller_home=
+if [ -n "${HOME:-}" ]; then
+  caller_home=$(CDPATH= cd -- "$HOME" 2>/dev/null && pwd -P) || caller_home=
+fi
+if [ -n "$caller_home" ]; then
+  case "$codex_home" in
+    "$caller_home"|"$caller_home"/*)
+      echo "BLOCKED: CODEX_HOME overlaps caller HOME; isolated auth/config/cache are required" >&2
+      exit 2
+      ;;
+  esac
+fi
+if [ -L "$codex_home/auth.json" ] || [ -L "$codex_home/config.toml" ] ||
+  [ -L "$codex_home/plugins" ] || [ -L "$codex_home/plugins/cache" ]; then
+  echo "BLOCKED: CODEX_HOME config/cache paths must not be symlinks into caller state; no model run was attempted" >&2
+  exit 2
+fi
 codex_cli_path=${PATH:-/usr/bin:/bin}
 codex_cli_lang=${LANG:-C}
 codex_cli_lc_all=${LC_ALL:-C}
@@ -300,7 +330,7 @@ fi
 codex_user_config_before=absent
 if [ -f "$codex_user_config" ]; then codex_user_config_before=$(record_hash "$codex_user_config"); fi
 codex_plugin_cache_snapshot_ready=1
-codex_home_mode=persisted-login-in-explicit-CODEX_HOME-with-ambient-OPENAI_API_KEY-excluded
+codex_home_mode=persisted-login-in-explicit-TMPDIR-isolated-CODEX_HOME-with-ambient-OPENAI_API_KEY-excluded
 auth_report="$work/codex-auth.txt"
 if ! run_codex_cli "$codex_command_home" "$codex_home" "$codex_task_tmpdir" "" base login status >"$auth_report" 2>&1 ||
   ! grep -F -q 'Logged in' "$auth_report"; then

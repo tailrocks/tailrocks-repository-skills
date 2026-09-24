@@ -8,11 +8,13 @@ version=$(jq -er '.version' .codex-plugin/plugin.json)
 contract_tmp=$(mktemp -d "${TMPDIR:-/tmp}/release-version-contract.XXXXXX")
 trap 'rm -rf "$contract_tmp"' 0
 trap 'exit 1' HUP INT TERM
-mkdir -p "$contract_tmp/tests" "$contract_tmp/.codex-plugin" "$contract_tmp/.claude-plugin"
+mkdir -p "$contract_tmp/tests" "$contract_tmp/.codex-plugin" "$contract_tmp/.claude-plugin" "$contract_tmp/.muse-plugin"
 cp tests/release-version-guard.sh "$contract_tmp/tests/release-version-guard.sh"
 cp .codex-plugin/plugin.json "$contract_tmp/.codex-plugin/plugin.json"
 cp .claude-plugin/plugin.json "$contract_tmp/.claude-plugin/plugin.json"
 cp .claude-plugin/marketplace.json "$contract_tmp/.claude-plugin/marketplace.json"
+cp .muse-plugin/plugin.json "$contract_tmp/.muse-plugin/plugin.json"
+cp .muse-plugin/plugin.json "$contract_tmp/.muse-plugin/plugin.base.json"
 cp plugin.json "$contract_tmp/plugin.json"
 cp catalog.json "$contract_tmp/catalog.base.json"
 
@@ -50,6 +52,17 @@ if [ "$mismatch" = "$version" ]; then
 fi
 write_catalog ".version = \"$mismatch\""
 assert_catalog_rejected mismatched
+
+write_muse() {
+  jq "$1" "$contract_tmp/.muse-plugin/plugin.base.json" > "$contract_tmp/.muse-plugin/plugin.json"
+}
+
+write_muse ".version = \"$mismatch\""
+if GITHUB_REF_NAME="v$version" "$contract_tmp/tests/release-version-guard.sh" >/dev/null 2>&1; then
+  echo 'release version contract: Muse version mismatch was accepted' >&2
+  exit 1
+fi
+write_muse '.'
 
 GITHUB_REF_NAME="v$version" tests/release-version-guard.sh >/dev/null
 if GITHUB_REF_NAME="v${version%.*}.999" tests/release-version-guard.sh >/dev/null 2>&1; then
