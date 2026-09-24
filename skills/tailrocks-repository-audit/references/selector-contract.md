@@ -27,6 +27,12 @@ never pick the first match. Deduplicate by canonical identity while retaining
 every raw spelling. A branch identity includes repository, full ref, and OID;
 a PR identity includes base repository and number.
 
+For a `/pulls` listing, the default membership is every open PR, including
+drafts; preserve any supported state filter and never silently drop drafts. For
+a `/branches/all` listing, select canonical-repository remote branch heads and
+exclude the exact selected destination branch. The destination exclusion is
+applied after pagination, even if the listing contains that branch.
+
 For listings, preserve supported semantic filters, reject unsupported filters,
 fetch every page, and record observation time, page/cursor coverage, and the
 frozen membership. An empty valid listing is empty selection, not all-work.
@@ -50,12 +56,12 @@ report-only.
 ## All-work coverage
 
 Only `--all-work` authorizes broad local discovery. Build and freeze a finite
-root list from the bound checkout, the current user's canonical home, roots
-explicitly declared by the request or workspace, client-advertised
-project/worktree roots, configured Git/agent roots, and OS-reported local data
-volumes after classifying exact exclusions. Do not invent `/` or a parent
-fallback, follow arbitrary symlinks, or crawl remote/pseudo filesystems. An
-inaccessible or unclassifiable declared root is a coverage gap.
+authorized root list from the bound checkout plus roots explicitly declared by
+the active request, workspace, client project/worktree configuration, or
+authorized Git/agent configuration. Do not infer a home directory, crawl OS
+volume roots, invent `/` or a parent fallback, follow arbitrary symlinks, or
+crawl remote/pseudo filesystems. An inaccessible, unclassifiable, or
+undeclared candidate root is a coverage gap; report it rather than adding it.
 
 Within frozen roots, locate Git directories, pointer files, bare repositories,
 nested repositories, and Git-recorded worktrees. Resolve each with read-only

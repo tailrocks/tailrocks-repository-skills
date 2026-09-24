@@ -34,6 +34,16 @@ canonical_path() {
   fi
 }
 
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum -- "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 -- "$1" | awk '{print $1}'
+  else
+    fail 'no SHA-256 utility is available for the release receipt'
+  fi
+}
+
 inside_path() {
   case "$1" in
     "$2"|"$2"/*) return 0 ;;
@@ -377,6 +387,19 @@ if [ -n "${TAILROCKS_PACKAGE_OUTPUT:-}" ]; then
   mkdir -p "$package_output_parent"
   cp "$artifact" "$package_output"
   [ -s "$package_output" ] || fail "package artifact was not written: $package_output"
+fi
+if [ -n "${TAILROCKS_PACKAGE_CHECKSUM_OUTPUT:-}" ]; then
+  [ -n "${TAILROCKS_PACKAGE_OUTPUT:-}" ] || fail 'checksum receipt requires TAILROCKS_PACKAGE_OUTPUT'
+  package_checksum_output=$TAILROCKS_PACKAGE_CHECKSUM_OUTPUT
+  package_checksum_parent=$(dirname -- "$package_checksum_output")
+  mkdir -p "$package_checksum_parent"
+  package_basename=$(basename -- "$package_output")
+  package_digest=$(sha256_file "$package_output")
+  printf '%s  %s\n' "$package_digest" "$package_basename" >"$package_checksum_output"
+  [ "$(awk -v name="$package_basename" '$2 == name { print $1; exit }' "$package_checksum_output")" = "$package_digest" ] ||
+    fail 'SHA-256 receipt does not match the tested package artifact'
+  [ "$(sha256_file "$package_output")" = "$package_digest" ] ||
+    fail 'package artifact changed after SHA-256 receipt generation'
 fi
 
 printf 'package contract: PASS (three skills, manifests, local resources, deleted artifacts, symlinks, and fresh relocation verified)\n'

@@ -63,12 +63,12 @@ necessary lineage and dependencies, but unrelated work remains report-only.
 ## All-work discovery and coverage
 
 Only `--all-work` authorizes broad local discovery. Build and freeze a finite
-root list from the bound checkout, the user's canonical home, roots explicitly
-declared by the request or workspace, client-advertised project and worktree
-roots, configured Git/agent roots, and OS-reported local data volumes after
-classifying exact exclusions. Do not invent `/` or a parent fallback, follow
-arbitrary symlinks, or crawl remote/pseudo filesystems. An inaccessible or
-unclassifiable declared root is a coverage gap.
+authorized root list from the bound checkout plus roots explicitly declared by
+the active request, workspace, client project/worktree configuration, or
+authorized Git/agent configuration. Do not infer a home directory, crawl OS
+volume roots, invent `/` or a parent fallback, follow arbitrary symlinks, or
+crawl remote/pseudo filesystems. An inaccessible, unclassifiable, or
+undeclared candidate root is a coverage gap; report it rather than adding it.
 
 Within frozen roots, locate Git directories, pointer files, bare repositories,
 nested repositories, and Git-recorded worktrees. Resolve each candidate with

@@ -154,13 +154,15 @@ side effect.
 Create or update one concise Markdown handoff outside every repository and
 candidate at `$XDG_STATE_HOME/tailrocks/repo-merge/runs/<run-id>.md`, or
 `~/.local/state/tailrocks/repo-merge/runs/<run-id>.md` when unset. If that path
-falls inside a repository or candidate, stop before mutation. Record the
-request and authority, repository, exact target/source identities, decisions,
-actions, tests, review/check/landing state, cleanup, recovery location,
-blockers, and one deterministic next action. For `--all-work`, record roots,
-exclusions, frozen membership, pagination/API coverage, writers, and every
-gap. Strip URL userinfo, query, and fragment; never record credentials,
-secrets, raw remote output, or sensitive filenames.
+falls inside a repository or candidate, or cannot be safely created or updated,
+stop before mutation. Redaction failure is also fail-closed: do not mutate and
+report the persistence blocker. Record full target/source refs and OIDs; for
+PRs record number plus full head/base refs and OIDs. Also record the request
+and authority, decisions, actions, tests, review/check/landing state, cleanup,
+recovery location, blockers, and one deterministic next action. For
+`--all-work`, record roots, exclusions, frozen membership, pagination/API
+coverage, writers, and every gap. Strip URL userinfo, query, and fragment;
+never record credentials, secrets, raw remote output, or sensitive filenames.
 
 `--resume RUN_ID` reads only that handoff, restores its scope and target, and
 refreshes identities before continuing. Changed or ambiguous scope, target,

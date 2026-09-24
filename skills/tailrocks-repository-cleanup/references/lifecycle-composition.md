@@ -12,17 +12,10 @@ original-target obligations. A review report is evidence, not merge authority.
 An adaptation into the selected target does not resolve a PR targeting another
 branch.
 
-For any remote landing used as evidence, require the installed merge owner and
-its `merge-preflight.ts`/`merge-pr.ts` entrypoints to atomically guard the exact
-target branch name and OID during mutation and to prove the landed target OID.
-Preflight, final metadata, or post-merge reads cannot replace that guard. If
-runtime capability is absent, retain the source and report the blocker; do not
-add guessed fields, call a second owner, retarget manually, or use direct
-`gh pr merge`.
-
-Use the installed merge request keys exactly. The contract requires
-`expectedTitle` and `expectedBody`; `title` and `body` are invalid. Do not
-invent authorization, review, check, target, or landing fields. Required
-review, CI, worklist, and any high-risk confirmation remain owner gates.
-Preserve original source branches and PRs until their complete obligations are
-resolved.
+Record full PR head/base refs and OIDs, review findings, required-check state,
+repository worklist, successors, dependencies, reverts, and original-target
+obligations. Missing or stale lifecycle evidence is an unresolved obligation,
+so retain the source. Cleanup never invokes a review, create, or merge owner,
+supplies authorization, or treats a preflight/metadata read as a landing
+receipt. Preserve original source branches and PRs until their complete
+obligations are resolved.

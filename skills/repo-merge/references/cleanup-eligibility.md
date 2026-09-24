@@ -28,10 +28,12 @@ A candidate is eligible only when every gate passes against the exact target:
 
 Never remove the selected target, protected/default branch, another owner's
 fork ref, canonical checkout, active worktree, shared object store, nested
-user data, or unresolved source. Prefer conditional expected-OID ref updates.
-If a remote host cannot condition deletion, retain its ref. Filesystem cleanup
-uses one exact canonical path after the final check; never use wildcards or
-broad recursive deletion.
+user data, or unresolved source. Delete a local full ref only with a
+compare-and-delete operation such as `git update-ref -d <full-ref>
+<expected-old-oid>` (or an equivalent CAS). If a remote host cannot condition
+deletion on the expected OID, retain its ref. Filesystem cleanup uses one
+exact canonical path after the final check; never use wildcards or broad
+recursive deletion.
 
 After every deletion, rescan the selected scope and target. Report removed and
 retained identities and reasons. Any failure or uncertainty means retain.

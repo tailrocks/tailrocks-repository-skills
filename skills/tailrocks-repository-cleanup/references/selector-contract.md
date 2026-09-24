@@ -17,6 +17,10 @@ Accept branch names, `refs/heads/...`, qualified remote refs, `branch:NAME`,
 `/branches/all` listings. Bare numbers always mean PRs. Resolve URL forms
 before ambiguous local names; report path, remote, full ref, and OID for
 duplicates. Deduplicate canonical identities while retaining raw spellings.
+For `/pulls`, default membership is every open PR, including drafts; preserve
+supported state filters and never silently drop drafts. For `/branches/all`,
+membership is canonical-repository remote branch heads except the exact
+selected destination branch, which is excluded after all pages are fetched.
 Fetch every listing page, preserve supported filters, reject unsupported ones,
 and freeze membership with observation time and page/cursor coverage. Empty
 valid listing is empty selection, not all-work.
@@ -33,13 +37,14 @@ error. `--all-work` cannot be mixed with selectors. Targeted cleanup never
 widens to newly discovered work. Freeze repository, target, source membership,
 roots, exclusions, and identities before any deletion.
 
-Only `--all-work` authorizes broad local discovery. Use finite roots from the
-bound checkout, the current user's canonical home, roots explicitly declared
-by the request or workspace, client-advertised project/worktree roots,
-configured Git/agent roots, and classified local data volumes. Do not invent
-`/`, follow arbitrary symlinks, or crawl remote/pseudo filesystems. Inventory
-Git directories, pointer files, bare/nested repositories,
-linked/detached/relocated worktrees, refs/OIDs, worktree state, ignored and
-untracked data, stashes, recoverable objects, in-progress operations,
-submodules, LFS, alternates, shared object stores, locks, and visible writers.
-Unknown roots, identities, pages, ownership, or writers block cleanup.
+Only `--all-work` authorizes broad local discovery. Use a finite authorized
+root list from the bound checkout plus roots explicitly declared by the active
+request, workspace, client project/worktree configuration, or authorized
+Git/agent configuration. Do not infer a home directory, crawl OS volume
+roots, invent `/`, follow arbitrary symlinks, or crawl remote/pseudo
+filesystems. Inventory Git directories, pointer files, bare/nested
+repositories, linked/detached/relocated worktrees, refs/OIDs, worktree state,
+ignored and untracked data, stashes, recoverable objects, in-progress
+operations, submodules, LFS, alternates, shared object stores, locks, and
+visible writers. Unknown, inaccessible, unclassifiable, or undeclared roots,
+identities, pages, ownership, or writers block cleanup.

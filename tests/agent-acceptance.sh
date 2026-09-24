@@ -792,13 +792,8 @@ run_agent() {
     all-work-coverage|retention-guards|all-work-resolved-retention|recover-unfinished-goal) all_work_case=1 ;;
   esac
   if [ "$all_work_case" = "1" ]; then
-    for authorized_root in "$canonical_cwd" "$canonical_xdg_state_home" "$canonical_task_tmpdir" \
-      "$canonical_cwd/plugins" "$canonical_cwd/.agents/plugins" "$canonical_cwd/.codex"; do
-      if paths_overlap "$authorized_root" "$canonical_scan_root"; then
-        echo "BLOCKED: all-work writable path overlaps its read-only scan root: $authorized_root" >&2
-        return 2
-      fi
-    done
+    tailrocks_all_work_scope_guard "$canonical_work" "$canonical_cwd" "$canonical_scan_root" \
+      "$canonical_xdg_state_home" "$canonical_task_tmpdir" || return 2
   fi
   writable_scan_root_count=0
   writable_scan_roots_file="$work/$label.writable-scan-roots"
@@ -1204,6 +1199,7 @@ assert_json_final() {
 }
 
 . "$repo_root/tests/fixtures/all-work-resolved-retention.sh"
+TAILROCKS_ALL_WORK_SCOPE_LIBRARY=1 . "$repo_root/tests/fixtures/all-work-scope.sh"
 
 if [ "$selected_case" = "all" ]; then
 # Main landing through the installed skill.
@@ -1336,6 +1332,28 @@ assert_same_refs "$audit_repo" "$audit_before"
 test -z "$(git -C "$audit_repo" status --porcelain)"
 assert_json_final "$work/audit-only.final.txt" '.outcome == "audit-only" and .target_branch == "main" and (.mutations | length == 0)'
 record 'verified=audit-only preserved all refs and the clean tree'
+
+# Direct audit skill must preserve target, source, index, and worktree state.
+direct_audit_repo="$work/direct-audit-fixture"
+make_repo "$direct_audit_repo"
+printf 'base\n' >"$direct_audit_repo/README.md"
+commit_all "$direct_audit_repo" 'fixture direct audit base'
+branch_file "$direct_audit_repo" feature/direct-audit direct-audit.txt 'direct-audit-source'
+git -C "$direct_audit_repo" checkout -q -b release/next main
+printf 'target\n' >"$direct_audit_repo/TARGET.txt"
+commit_all "$direct_audit_repo" 'fixture direct audit target'
+git -C "$direct_audit_repo" checkout -q main
+printf 'staged-but-preserved\n' >"$direct_audit_repo/staged.txt"
+git -C "$direct_audit_repo" add staged.txt
+printf 'untracked-but-preserved\n' >"$direct_audit_repo/untracked.txt"
+direct_audit_state_before="$work/direct-audit-state.before"
+snapshot_source_state "$direct_audit_repo" "$direct_audit_state_before"
+run_agent direct-audit "$direct_audit_repo" :workspace \
+  'Use $tailrocks-repository-skills:tailrocks-repository-audit directly for feature/direct-audit against exact target release/next. Read its local selector, lifecycle, and recovery references first. Do not invoke repo-merge or cleanup. This is a read-only disposable fixture: do not edit files, refs, index, worktree, or remote. Return a concise audit-only result with exact source/target OIDs and no-mutation status.'
+assert_same_source_state "$direct_audit_repo" "$direct_audit_state_before"
+test "$(git -C "$direct_audit_repo" rev-parse refs/heads/release/next)" = "$(awk '$1 == "refs/heads/release/next" { print $2 }' "$direct_audit_state_before.refs")"
+git -C "$direct_audit_repo" show-ref --verify --quiet refs/heads/feature/direct-audit
+record 'verified=direct tailrocks-repository-audit preserved target/source refs, index, staged content, untracked content, and worktree state'
 
 # An empty source set is a usage error, never an implicit all-work cleanup.
 no_source_repo="$work/no-source-fixture"
@@ -1717,7 +1735,7 @@ branch_file "$cleanup_repo" feature/preserved preserved.txt 'preserve-other-sour
 cleanup_preserved_before=$(git -C "$cleanup_repo" rev-parse refs/heads/feature/preserved)
 git -C "$cleanup_repo" checkout -q main
 run_agent resolved-cleanup "$cleanup_repo" :workspace \
-  "Use \$tailrocks-repository-skills:repo-merge --local-only --cleanup=resolved --target-branch=release/next feature/resolved. This explicitly authorizes deleting only refs/heads/feature/resolved in this disposable repository, after its justified change is locally landed on exact release/next. Use repo-merge's local cleanup finalization procedure; do not programmatically invoke the standalone manual-only cleanup skill. Before deletion create a full Git bundle snapshot at $cleanup_bundle, restore it into a disposable repository at $cleanup_restore, and verify the restored refs/heads/feature/resolved OID and resolved.txt byte-for-byte match the original source OID $cleanup_source_before. Only after that real restore test and fresh identity recheck may local finalization remove the selected feature/resolved ref. Preserve main, the release/next target, feature/non-target, feature/preserved, and both recovery artifacts. No remote writes. Return JSON with outcome landed-local, exact target branch/OID, restore_test passed, snapshot_path, restored_source_oid, and deleted_refs containing only refs/heads/feature/resolved." "$cleanup_root" "$cleanup_proof"
+  "Use \$tailrocks-repository-skills:repo-merge --local-only --cleanup=resolved --target-branch=release/next feature/resolved. This explicitly authorizes deleting only refs/heads/feature/resolved in this disposable repository, after its justified change is locally landed on exact release/next. Use repo-merge's local cleanup finalization procedure; do not programmatically invoke the standalone manual-only cleanup skill. Before deletion create a full Git bundle snapshot at $cleanup_bundle, restore it into a disposable repository at $cleanup_restore, and verify the restored refs/heads/feature/resolved OID and resolved.txt byte-for-byte match the original source OID $cleanup_source_before. Delete the selected ref only with an expected-OID compare-and-swap against $cleanup_source_before; if the ref changed, reject deletion and preserve the replacement. Only after that real restore test and fresh identity recheck may local finalization remove the selected feature/resolved ref. Preserve main, the release/next target, feature/non-target, feature/preserved, and both recovery artifacts. No remote writes. Return JSON with outcome landed-local, exact target branch/OID, restore_test passed, snapshot_path, restored_source_oid, and deleted_refs containing only refs/heads/feature/resolved." "$cleanup_root" "$cleanup_proof"
 test "$(git -C "$cleanup_repo" rev-parse refs/heads/main)" = "$cleanup_main_before"
 test "$(git -C "$cleanup_repo" rev-parse refs/heads/feature/non-target)" = "$cleanup_non_target_before"
 test "$(git -C "$cleanup_repo" rev-parse refs/heads/feature/preserved)" = "$cleanup_preserved_before"
@@ -1740,6 +1758,29 @@ test "$(jq -r '.target_oid' "$work/resolved-cleanup.final.txt")" = "$cleanup_tar
 test "$(jq -r '.snapshot_path' "$work/resolved-cleanup.final.txt")" = "$cleanup_bundle"
 test "$(jq -r '.restored_source_oid' "$work/resolved-cleanup.final.txt")" = "$cleanup_source_before"
 record 'verified=selected-source deletion and restore test independently observed; distinct cleanup-owner invocation not independently receipted'
+
+# Direct cleanup skill must retain an unresolved source and preserve all local state.
+direct_cleanup_repo="$work/direct-cleanup-unresolved-fixture"
+make_repo "$direct_cleanup_repo"
+printf 'base\n' >"$direct_cleanup_repo/README.md"
+printf 'release/next requires unresolved.txt\n' >"$direct_cleanup_repo/REQUIREMENTS.txt"
+commit_all "$direct_cleanup_repo" 'fixture direct cleanup base'
+git -C "$direct_cleanup_repo" checkout -q -b release/next main
+printf 'target requirement remains\n' >"$direct_cleanup_repo/TARGET.txt"
+commit_all "$direct_cleanup_repo" 'fixture direct cleanup target'
+git -C "$direct_cleanup_repo" checkout -q main
+branch_file "$direct_cleanup_repo" feature/unresolved unresolved.txt 'unresolved-source-content'
+printf 'preserve staged state\n' >"$direct_cleanup_repo/preserved-staged.txt"
+git -C "$direct_cleanup_repo" add preserved-staged.txt
+printf 'preserve untracked state\n' >"$direct_cleanup_repo/preserved-untracked.txt"
+direct_cleanup_state_before="$work/direct-cleanup-unresolved-state.before"
+snapshot_source_state "$direct_cleanup_repo" "$direct_cleanup_state_before"
+run_agent direct-cleanup-unresolved "$direct_cleanup_repo" :workspace \
+  'Use $tailrocks-repository-skills:tailrocks-repository-cleanup directly for feature/unresolved with --target-branch=release/next --cleanup=resolved. Read its local selector, cleanup-eligibility, lifecycle, and recovery references first. The selected source is unresolved because unresolved.txt is not resolved on exact release/next, so fail closed: do not delete refs/heads/feature/unresolved, do not edit files, refs, index, worktree, or remote, and report the source retained with a blocker.'
+assert_same_source_state "$direct_cleanup_repo" "$direct_cleanup_state_before"
+git -C "$direct_cleanup_repo" show-ref --verify --quiet refs/heads/feature/unresolved
+test "$(git -C "$direct_cleanup_repo" rev-parse refs/heads/release/next)" = "$(awk '$1 == "refs/heads/release/next" { print $2 }' "$direct_cleanup_state_before.refs")"
+record 'verified=direct tailrocks-repository-cleanup retained unresolved source and preserved target/source refs, index, staged content, untracked content, and worktree state'
 
 # A deterministic, local GitHub API fixture supplies two pages (including a
 # draft). The installed skill must freeze both pages for a /pulls selector.
@@ -2016,7 +2057,7 @@ else
   record 'result=verified-local-installed-skill-acceptance-with-pinned-pr-owners; GitHub inputs are synthetic fixture data only and no live hosted evidence is claimed'
 fi
 if [ "$selected_case" = "all" ]; then
-  completed_cases="main-default-landing,non-main-multi-source,partial,already-landed,reverted,no-op-rerun,audit-only,empty-selectors,no-source-sentinel,resume,dirty-and-ignored-retention,active-writer,all-work-scoped-coverage,all-work-normal-cleanup-retention,unfinished-goal-recovery-with-restore-test,cleanup-resolved-with-restore-test,pulls-pagination,mixed-branch-pr-branches-all,single-pr-no-path-discovery-command,$case_name"
+  completed_cases="main-default-landing,non-main-multi-source,partial,already-landed,reverted,no-op-rerun,audit-only,direct-audit,empty-selectors,no-source-sentinel,resume,dirty-and-ignored-retention,active-writer,all-work-scoped-coverage,all-work-normal-cleanup-retention,unfinished-goal-recovery-with-restore-test,cleanup-resolved-with-restore-test,direct-cleanup-unresolved,pulls-pagination,mixed-branch-pr-branches-all,single-pr-no-path-discovery-command,$case_name"
 else
   completed_cases=blocked-owner-preflight
 fi

@@ -69,11 +69,12 @@ when checking PR review, checks, or other obligations.
 
 8. Immediately before each individual deletion, recheck repository identity,
    target ref/OID, source ref/OID or PR head/base, canonical path, ownership,
-   and quiescence. Delete only the exact proven path or full ref with a
-   conditional expected-OID operation where supported. Never use wildcards,
-   broad recursive deletion, `git clean -fdx`, reset, force update, global
-   stash clearing, or merge/close commands. If a remote host cannot condition
-   deletion on expected identity, retain the remote ref.
+   and quiescence. Delete a local full ref only with a compare-and-delete
+   operation such as `git update-ref -d <full-ref> <expected-old-oid>` or an
+   equivalent CAS. Delete a filesystem candidate only by its exact proven path.
+   Never use wildcards, broad recursive deletion, `git clean -fdx`, reset, force
+   update, global stash clearing, or merge/close commands. If a remote host
+   cannot condition deletion on expected identity, retain the remote ref.
 
 9. Rescan the selected scope and target after each action. Report every removed
    and retained candidate with identity, restore result, action, and reason.

@@ -22,9 +22,22 @@ Use the installed review owner for a fresh read-only review at the final
 candidate head and target diff. Use the installed create owner only for an
 explicit cross-target adaptation based on the exact selected target. Preserve
 the original source PR and branch when its declared base differs from the
-selected target. The native create entrypoint is
-`bun scripts/create-pr.ts --skill-file <absolute loader SKILL.md> < request.json>`;
-verify its opened PR's exact repository, head, base, and OIDs before review.
+selected target. `tailrocks-create-pr` is manual-only and its native entrypoint
+is:
+
+```text
+bun scripts/create-pr.ts --skill-file <absolute loader SKILL.md> < request.json
+```
+
+Send one closed `tailrocks.create-pr-input/v1` JSON object on stdin. Bind the
+exact repository, authenticated actor, remote name and HTTPS URL, base/head
+refs and SHAs, title, external body path and SHA-256, draft state, required
+trailers, and every required gate. Each gate must carry absolute command argv
+and absolute proof argv; each proof must emit exactly one
+`tailrocks.gate-proof/v1` object with positive `units`. Require one
+`tailrocks.create-pr/v1` receipt with outcome `opened`, then verify its exact
+repository, head, base, and OIDs before review. Do not call `git push`,
+`gh pr create`, or `gh pr edit` separately.
 
 ## Merge owner and schema
 
@@ -40,17 +53,24 @@ bun scripts/merge-pr.ts --skill-file <absolute loader SKILL.md> < request.json
 
 Bind repository, PR number, expected head, declared base, merge base, method,
 final text, review/check/worklist evidence, and target in the handoff according
-to the installed contract. A changed head/base, failed or pending required
-check, unfinished worklist, changed policy, or missing exact PR identity stops
-the action. Any high-risk merge requires the owner's exact high-risk
-confirmation; do not bypass it with an admin waiver.
+to the installed contract. A changed head/base, missing exact PR identity, or
+unfinished worklist stops the action. Required checks must be green: pending,
+missing, cancelled, skipped, or otherwise non-terminal/non-green is not a
+pass. A failed required check stops unless the fresh invocation names exactly
+one failed check with `--admin <check>` and supplies the required high-risk
+confirmation for that exact PR. High-risk classification always requires one
+fresh confirmation for that exact PR; an admin bypass cannot waive that
+confirmation.
 
 The installed Tailrocks merge request contract uses `expectedTitle` and
 `expectedBody`; `title` and `body` are invalid. Its required fields include
 `schema`, `root`, `repository`, `pr`, `head`, `base`, `mergeBase`, `method`,
 `expectedTitle`, `expectedBody`, `mergeSubject`, `mergeBody`, `blastRadius`,
-`highBlastRadiusConfirmed`, and `waivers`; `adminCheck` is optional. Do not
-add guessed target, authorization, review, CI, worklist, or landing fields.
+`highBlastRadiusConfirmed`, and `waivers`; `adminCheck` is optional. Waivers
+may name only one each of the owner's `delivery` or `documentation` gates and
+cannot waive PR/head/base/target identity, required checks, worklist,
+authorization, or high-risk confirmation. Do not add guessed target,
+authorization, review, CI, worklist, or landing fields.
 
 Before remote mutation, the installed owner must atomically guard the exact
 selected target branch name and OID during mutation and return proof of the
