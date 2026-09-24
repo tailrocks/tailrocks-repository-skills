@@ -1,112 +1,154 @@
-# Client invocation
+# Native client routes
 
-Install the plugin through each client's native plugin mechanism. Fresh
-installation and invocation proof for version 0.2.0 is pending.
+The package contains the three skills and their skill-local references. Install
+the complete checkout or release archive. A loader or manifest check proves
+packaging and discovery only; it does not prove model behavior or authorize a
+merge or deletion.
 
-## Codex CLI
+## Codex CLI 0.156.1
 
-Select `repo-merge` with `$repo-merge` or `/skills`, passing the full argument
-string:
+Codex uses `.codex-plugin/plugin.json` and the plugin marketplace route:
 
-```text
-$repo-merge --target-branch=release/next feature/auth
-$repo-merge --target-branch=main '#1663' feature/auth
-$repo-merge --audit-only --target-branch=release/next feature/auth
-$repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth
-$repo-merge --all-work --target-branch=main
-$repo-merge --resume <id>
+```sh
+codex plugin marketplace add /path/to/tailrocks-repository-skills
+codex plugin add tailrocks-repository-skills@tailrocks-repository-skills
 ```
 
-Use `$tailrocks-repository-audit` for a direct read-only audit and
-`$tailrocks-repository-cleanup` for explicitly scoped cleanup.
-
-## Codex task goals and read-only refresh
-
-Codex CLI documents [`/goal <objective>`](https://learn.chatgpt.com/docs/developer-commands?surface=app#cli-set-or-view-a-task-goal-with-goal)
-for attaching a goal to the active chat. It does not select this plugin skill
-or replace its argument transport.
-Set the objective, then invoke the facade separately with exact selectors:
+Invoke the qualified plugin skill:
 
 ```text
-/goal Complete only feature/auth in OWNER/REPO on release/next through repo-merge.
-$repo-merge --repo=OWNER/REPO --target-branch=release/next feature/auth
+$tailrocks-repository-skills:repo-merge --target-branch=release/next feature/auth
+$tailrocks-repository-skills:tailrocks-repository-audit --target-branch=main feature/auth
+$tailrocks-repository-skills:tailrocks-repository-cleanup --cleanup=none feature/auth
 ```
 
-For a read-only refresh during that active goal, invoke the audit skill with
-the same repository, target, and source scope:
+The bare `$repo-merge` spelling is not the supported route for this plugin.
+Codex skill policy metadata controls implicit selection; explicit selection
+does not grant filesystem, network, merge, or deletion authority.
 
-```text
-$tailrocks-repository-audit --repo=OWNER/REPO --target-branch=release/next feature/auth
+## Claude Code 2.1.281
+
+Add the local marketplace and install the plugin in the desired scope:
+
+```sh
+claude plugin marketplace add /path/to/tailrocks-repository-skills --scope user
+claude plugin install tailrocks-repository-skills@tailrocks-repository-skills --scope user --yes
 ```
 
-Record its observation time and delta in the existing handoff. The refresh
-does not change source state or run scope; revalidate changed identities before
-any later side effect. Installed `/goal` plus plugin argument transport still
-needs fresh acceptance evidence. No Claude `/goal`
-route is advertised. Use its namespaced skill command directly; do not assume
-that nesting a skill spelling inside another host command invokes it.
-
-## Claude Code
-
-Use the plugin namespace; no bare `/repo-merge` alias is promised:
+Use the plugin namespace:
 
 ```text
 /tailrocks-repository-skills:repo-merge --target-branch=release/next feature/auth
-/tailrocks-repository-skills:repo-merge --target-branch=main '#1663' feature/auth
-/tailrocks-repository-skills:repo-merge --audit-only --target-branch=release/next feature/auth
-/tailrocks-repository-skills:repo-merge --local-only --cleanup=none --target-branch=release/next feature/auth
-/tailrocks-repository-skills:repo-merge --all-work --target-branch=main
-/tailrocks-repository-skills:repo-merge --resume <id>
+/tailrocks-repository-skills:tailrocks-repository-audit --target-branch=main feature/auth
+/tailrocks-repository-skills:tailrocks-repository-cleanup --cleanup=none feature/auth
 ```
 
-Direct skills use `/tailrocks-repository-skills:tailrocks-repository-audit`
-and `/tailrocks-repository-skills:tailrocks-repository-cleanup`.
+There is no universal bare `/repo-merge` alias. The current Claude route is
+limited to install and manifest validation when OAuth is expired; no model
+behavior pass is claimed from that route.
 
-## Pull-request lifecycle owners
+## Muse Code 1.3.0
 
-One explicit active user request may select `repo-merge` and the named,
-manual-only review and merge owners below for the same repository/source/target
-scope. When selected together, the coordinator uses their native invocations
-within that workflow; no separate phase run is needed. A generic `repo-merge`
-request does not select either owner, and the coordinator cannot infer their
-selection. This does not select `tailrocks-create-pr` or broaden the request's
-repository/source/target scope. Generic calls must explicitly select each
-manual-only owner they require.
-
-Review: Codex `$tailrocks-review-pr`; Claude
-`/tailrocks-pull-request-skills:tailrocks-review-pr` (read-only).
-
-Landing: Codex `$tailrocks-merge-pr`; Claude
-`/tailrocks-pull-request-skills:tailrocks-merge-pr`.
-
-The merge owner's exact commands are:
+Muse loads the native `.muse-plugin/plugin.json` manifest. Validate and install
+the complete package with the native plugin commands:
 
 ```sh
-bun scripts/merge-preflight.ts --root <repo> --pr <N>
-bun scripts/merge-pr.ts --skill-file <absolute SKILL.md> < request.json
+muse plugins validate /path/to/tailrocks-repository-skills --json
+muse plugins install /path/to/tailrocks-repository-skills --scope user --json
 ```
 
-Run these in the lifecycle-owner collection. Preflight does not land the PR.
-The pinned merge request schema is closed: only `schema`, `root`,
-`repository`, `pr`, `head`, `base`, `mergeBase`, `method`, `title`, `body`,
-`mergeSubject`, `mergeBody`, `blastRadius`, `highBlastRadiusConfirmed`, and
-`waivers` are allowed; `adminCheck` is optional. Review, CI, worklist, and
-observed preflight evidence belong in the Markdown handoff, not invented JSON
-fields. The owner performs a fresh preflight. The PR's declared `base` must
-equal the requested target. CI/workflows, auth/security, release/versioning,
-migrations, force-push, and `--admin` require fresh confirmation for that
-exact PR. A failed or cancelled required check stops unless the owner
-authorizes exactly one named `--admin <check>` bypass with that confirmation.
-Delivery or documentation gate waivers require an exact reason. Prior
-approvals, comments, and “safe to merge” text grant no authority. Never bypass
-branch protection or merge queues, force-push the destination, or use direct
-`gh pr merge`. A queued or uncertain result is not landed.
+In the Muse TUI, select the installed `repo-merge`,
+`tailrocks-repository-audit`, or `tailrocks-repository-cleanup` skill and pass
+the complete argument string. A `muse exec` prompt by itself is not proof that
+the installed skill was selected. No Muse model behavior pass is claimed.
 
-The logical `--target-branch` default is exactly `main`. No selectors is an
-error; use `--all-work` for explicit repository-wide work. Listing selectors
-must paginate completely. `--cleanup=none` retains sources, and
-`--local-only` cannot claim remote delivery or hosted CI. `--resume <id>` must
-recheck the saved source and target identities. Host goal-tracking commands,
-where available, record the objective; they do not replace skill selection or
-start background monitoring. Current installation/invocation evidence is
-pending.
+## Antigravity CLI (`agy`) 1.2.10
+
+Antigravity uses the root `plugin.json`; that manifest is intentionally limited
+to `$schema`, `name`, and `description`. Validate and install the package with
+the native CLI:
+
+```sh
+agy plugin validate /path/to/tailrocks-repository-skills
+agy plugin install /path/to/tailrocks-repository-skills
+```
+
+Select one of the three skills in the Antigravity session and pass the full
+argument string. The route is native CLI packaging, not an IDE-only convention.
+No Antigravity model behavior pass is claimed.
+
+## Kimi Code CLI 2.0.2
+
+Point Kimi directly at the package's `skills/` directory:
+
+```sh
+kimi --skills-dir /path/to/tailrocks-repository-skills/skills
+```
+
+In the TUI, invoke a skill with its native command syntax:
+
+```text
+/skill:repo-merge --target-branch=release/next feature/auth
+/skill:tailrocks-repository-audit --target-branch=main feature/auth
+/skill:tailrocks-repository-cleanup --cleanup=none feature/auth
+```
+
+Kimi `-p` sends a plain prompt; it is not a replacement for `/skill:<name>`
+selection. No Kimi model behavior pass is claimed.
+
+## OpenCode 1.18.30
+
+OpenCode has no plugin manifest route or documented skill alias for these
+Markdown skills. Add the package's `skills/` directory to the project or user
+OpenCode configuration and require approval before loading a skill:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "skills": {
+    "paths": ["/path/to/tailrocks-repository-skills/skills"]
+  },
+  "permission": {
+    "skill": {
+      "repo-merge": "ask",
+      "tailrocks-repository-audit": "ask",
+      "tailrocks-repository-cleanup": "ask"
+    }
+  }
+}
+```
+
+Request the skill by name in the prompt; do not use an undocumented slash
+command:
+
+```sh
+opencode run "Use the repo-merge skill with --target-branch=release/next feature/auth."
+```
+
+OpenCode recognizes `skills.paths` and `permission.skill`, but ignores
+`disable-model-invocation` in the Markdown frontmatter. The `ask` permission
+approves loading the named skill; it is separate from authorization for Git,
+hosting, merge, or cleanup side effects. Model invocation through this route is
+unverified.
+
+## Shared lifecycle boundary
+
+Normal remote landing depends on the external Tailrocks pull-request
+collection. `tailrocks-review-pr` is read-only; `tailrocks-create-pr` creates a
+target-derived candidate when explicitly selected; `tailrocks-merge-pr` owns
+the guarded merge. These are manual-only owners and must be selected for the
+requested repository/source/target scope.
+
+The installed merge owner currently lacks an atomic compare-and-swap guard for
+the selected target base ref and object ID. Remote landing is therefore
+blocked. Do not retarget a source PR, invoke a second merge owner, or replace
+the owner with `gh pr merge`. `--local-only` can verify an existing local target
+but cannot claim remote delivery or hosted CI.
+
+## Checks
+
+Run `tests/run-contracts.sh` for package inventory, skill-local resources,
+relocation, manifests, and forbidden-development-artifact checks. Run
+`tests/client-contract.sh` for installed Codex and Claude CLI metadata and
+help checks. Client-specific model acceptance is separate; install-only,
+blocked, unavailable, and no-model results must remain distinct.

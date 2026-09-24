@@ -16,7 +16,7 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
-      - name: Run deterministic source contracts (no client or agent result claimed)
+      - name: Run deterministic package and source contracts (no client or agent result claimed)
         run: tests/run-contracts.sh
       - name: Check shell syntax
         run: |
@@ -25,10 +25,4 @@ jobs:
           done
       - name: Validate JSON manifests
         run: |
-          jq -e . plugin.json .codex-plugin/plugin.json .claude-plugin/plugin.json .claude-plugin/marketplace.json catalog.json
-      - name: Validate skill inventory
-        run: |
-          test "$(find skills -name SKILL.md | wc -l | tr -d ' ')" = 3
-          test "$(jq -r '.skills | length' catalog.json)" = 3
-          grep -F 'name: repo-merge' skills/repo-merge/SKILL.md
-          grep -F 'disable-model-invocation: true' skills/repo-merge/SKILL.md
+          jq -e . plugin.json .codex-plugin/plugin.json .claude-plugin/plugin.json .claude-plugin/marketplace.json .muse-plugin/plugin.json catalog.json

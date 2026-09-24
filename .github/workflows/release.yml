@@ -16,7 +16,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Verify exact tag matches plugin versions
         run: tests/release-version-guard.sh
-      - name: Verify deterministic source contracts (no client or agent result claimed)
+      - name: Verify deterministic package and source contracts (no client or agent result claimed)
+        env:
+          TAILROCKS_PACKAGE_OUTPUT: ${{ github.workspace }}/tailrocks-repository-skills-${{ github.ref_name }}.tar
         run: |
           for script in tests/*.sh tests/fixtures/*.sh; do
             sh -n "$script"
@@ -29,3 +31,4 @@ jobs:
           files: |
             plugin.json
             catalog.json
+            tailrocks-repository-skills-${{ github.ref_name }}.tar

@@ -21,11 +21,4 @@ claude plugin marketplace remove --help | grep -F -- 'local' >/dev/null
 claude plugin validate --strict --json .claude-plugin/plugin.json >/dev/null
 claude plugin validate --strict --json .claude-plugin/marketplace.json >/dev/null
 
-grep -F '/tailrocks-repository-skills:repo-merge' skills/repo-merge/SKILL.md >/dev/null
-grep -F '$repo-merge' skills/repo-merge/SKILL.md >/dev/null
-if grep -Eq '^[[:space:]]*/repo-merge([[:space:]]|$)' README.md skills/repo-merge/SKILL.md; then
-  echo "advertised bare /repo-merge alias" >&2
-  exit 1
-fi
-
-echo "client packaging contract: PASS (CLI metadata only; no model invoked)"
+echo "client packaging contract: PASS (installed Codex/Claude CLI metadata only; no model invoked)"

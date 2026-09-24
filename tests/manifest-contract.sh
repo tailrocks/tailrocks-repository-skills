@@ -5,7 +5,7 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_root"
 
 jq -e . plugin.json .codex-plugin/plugin.json .claude-plugin/plugin.json \
-  .claude-plugin/marketplace.json catalog.json >/dev/null
+  .claude-plugin/marketplace.json .muse-plugin/plugin.json catalog.json >/dev/null
 
 plugin_name=$(jq -er '.name' .codex-plugin/plugin.json)
 codex_version=$(jq -er '.version' .codex-plugin/plugin.json)
