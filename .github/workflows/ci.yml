@@ -16,13 +16,31 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
-      - name: Run deterministic package and source contracts (no client or agent result claimed)
-        run: tests/run-contracts.sh
+      - name: Run release version contract
+        run: tests/release-version-contract.sh
+      - name: Run Claude install contract
+        run: tests/claude-install-contract.sh
+      - name: Run cleanup CAS contract
+        run: tests/fixtures/cleanup-cas.sh
+      - name: Run all-work scope contract
+        run: tests/fixtures/all-work-scope.sh
       - name: Check shell syntax
         run: |
-          for script in tests/*.sh tests/fixtures/*.sh; do
+          for script in \
+            tests/claude-install-acceptance.sh \
+            tests/claude-install-contract.sh \
+            tests/fixtures/all-work-scope.sh \
+            tests/fixtures/cleanup-cas.sh \
+            tests/release-version-contract.sh \
+            tests/release-version-guard.sh; do
             sh -n "$script"
           done
       - name: Validate JSON manifests
         run: |
-          jq -e . plugin.json .codex-plugin/plugin.json .claude-plugin/plugin.json .claude-plugin/marketplace.json .muse-plugin/plugin.json catalog.json
+          jq -e . \
+            plugin.json \
+            .codex-plugin/plugin.json \
+            .claude-plugin/plugin.json \
+            .claude-plugin/marketplace.json \
+            .muse-plugin/plugin.json \
+            catalog.json

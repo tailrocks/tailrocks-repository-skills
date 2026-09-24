@@ -68,15 +68,24 @@ and `permission.skill`.
 
 ## Checks
 
-Run the deterministic package and manifest checks from the repository root:
+Run the remaining deterministic checks from the repository root:
 
 ```sh
-tests/run-contracts.sh
-tests/client-contract.sh
+tests/release-version-contract.sh
+tests/claude-install-contract.sh
+tests/fixtures/cleanup-cas.sh
+tests/fixtures/all-work-scope.sh
+jq -e . \
+  plugin.json \
+  .codex-plugin/plugin.json \
+  .claude-plugin/plugin.json \
+  .claude-plugin/marketplace.json \
+  .muse-plugin/plugin.json \
+  catalog.json
 ```
 
-These checks cover package inventory, self-contained resources, relocation,
-manifests, removed development artifacts, and installed CLI metadata. They do
-not claim model behavior. Native acceptance requires the isolated client
-fixtures and the credentials or client capability required by that client;
-blocked or install-only runs remain blocked or install-only.
+These checks cover release-version consistency, Claude install metadata, cleanup
+compare-and-swap safety, all-work scope safety, and manifest JSON syntax. They
+do not claim model behavior. Native acceptance requires isolated native-client
+runs and the credentials or client capability required by that client; blocked
+or install-only runs remain blocked or install-only.

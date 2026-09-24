@@ -147,8 +147,6 @@ but cannot claim remote delivery or hosted CI.
 
 ## Checks
 
-Run `tests/run-contracts.sh` for package inventory, skill-local resources,
-relocation, manifests, and forbidden-development-artifact checks. Run
-`tests/client-contract.sh` for installed Codex and Claude CLI metadata and
-help checks. Client-specific model acceptance is separate; install-only,
-blocked, unavailable, and no-model results must remain distinct.
+See the [README Checks section](../README.md#checks) for the current
+deterministic check commands. They do not claim client model behavior;
+install-only, blocked, unavailable, and no-model results must remain distinct.

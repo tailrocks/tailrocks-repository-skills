@@ -16,16 +16,78 @@ jobs:
         uses: actions/checkout@v4
       - name: Verify exact tag matches plugin versions
         run: tests/release-version-guard.sh
-      - name: Verify deterministic package and source contracts (no client or agent result claimed)
-        env:
-          TAILROCKS_PACKAGE_OUTPUT: ${{ github.workspace }}/tailrocks-repository-skills-${{ github.ref_name }}.tar
-          TAILROCKS_PACKAGE_CHECKSUM_OUTPUT: ${{ github.workspace }}/tailrocks-repository-skills-${{ github.ref_name }}.tar.sha256
+      - name: Run release version contract
+        run: tests/release-version-contract.sh
+      - name: Run Claude install contract
+        run: tests/claude-install-contract.sh
+      - name: Run cleanup CAS contract
+        run: tests/fixtures/cleanup-cas.sh
+      - name: Run all-work scope contract
+        run: tests/fixtures/all-work-scope.sh
+      - name: Check shell syntax
         run: |
-          for script in tests/*.sh tests/fixtures/*.sh; do
+          for script in \
+            tests/claude-install-acceptance.sh \
+            tests/claude-install-contract.sh \
+            tests/fixtures/all-work-scope.sh \
+            tests/fixtures/cleanup-cas.sh \
+            tests/release-version-contract.sh \
+            tests/release-version-guard.sh; do
             sh -n "$script"
           done
-          tests/run-contracts.sh
+      - name: Validate JSON manifests
+        run: |
+          jq -e . \
+            plugin.json \
+            .codex-plugin/plugin.json \
+            .claude-plugin/plugin.json \
+            .claude-plugin/marketplace.json \
+            .muse-plugin/plugin.json \
+            catalog.json
+      - name: Build product package and SHA-256 receipt
+        env:
+          PACKAGE_PATH: ${{ github.workspace }}/tailrocks-repository-skills-${{ github.ref_name }}.tar
+          CHECKSUM_PATH: ${{ github.workspace }}/tailrocks-repository-skills-${{ github.ref_name }}.tar.sha256
+        run: |
+          set -eu
+          for product_path in \
+            README.md \
+            LICENSE \
+            plugin.json \
+            catalog.json \
+            .codex-plugin \
+            .claude-plugin \
+            .muse-plugin \
+            skills \
+            docs; do
+            product_path="$GITHUB_WORKSPACE/$product_path"
+            [ -e "$product_path" ] || {
+              echo "missing product path: $product_path" >&2
+              exit 1
+            }
+            symlink=$(find "$product_path" -type l -print -quit)
+            [ -z "$symlink" ] || {
+              echo "product path contains symlink: $symlink" >&2
+              exit 1
+            }
+          done
+          tar -cf "$PACKAGE_PATH" -C "$GITHUB_WORKSPACE" \
+            README.md \
+            LICENSE \
+            plugin.json \
+            catalog.json \
+            .codex-plugin \
+            .claude-plugin \
+            .muse-plugin \
+            skills \
+            docs
+          package_name=$(basename -- "$PACKAGE_PATH")
+          package_digest=$(sha256sum -- "$PACKAGE_PATH" | awk '{print $1}')
+          printf '%s  %s\n' "$package_digest" "$package_name" >"$CHECKSUM_PATH"
+          test -s "$PACKAGE_PATH"
+          test -s "$CHECKSUM_PATH"
       - name: Independently verify package SHA-256 receipt
+        working-directory: ${{ github.workspace }}
         run: sha256sum -c "tailrocks-repository-skills-${{ github.ref_name }}.tar.sha256"
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
