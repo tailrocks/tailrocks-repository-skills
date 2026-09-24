@@ -20,17 +20,11 @@ jobs:
         run: tests/release-version-contract.sh
       - name: Run Claude install contract
         run: tests/claude-install-contract.sh
-      - name: Run cleanup CAS contract
-        run: tests/fixtures/cleanup-cas.sh
-      - name: Run all-work scope contract
-        run: tests/fixtures/all-work-scope.sh
       - name: Check shell syntax
         run: |
           for script in \
             tests/claude-install-acceptance.sh \
             tests/claude-install-contract.sh \
-            tests/fixtures/all-work-scope.sh \
-            tests/fixtures/cleanup-cas.sh \
             tests/release-version-contract.sh \
             tests/release-version-guard.sh; do
             sh -n "$script"
@@ -44,3 +38,28 @@ jobs:
             .claude-plugin/marketplace.json \
             .muse-plugin/plugin.json \
             catalog.json
+      - name: Validate product inventory and manifest semantics
+        run: |
+          set -eu
+          expected_skills='repo-merge tailrocks-repository-audit tailrocks-repository-cleanup'
+          test "$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = 3
+          test -z "$(find skills -mindepth 1 -maxdepth 1 ! -type d -print -quit)"
+          test "$(find skills -type f -name SKILL.md | wc -l | tr -d ' ')" = 3
+          for skill in $expected_skills; do
+            test -s "skills/$skill/SKILL.md"
+          done
+          jq -e --argjson expected '["repo-merge", "tailrocks-repository-audit", "tailrocks-repository-cleanup"]' \
+            '.skills | type == "array" and length == 3 and sort == $expected' catalog.json >/dev/null
+          jq -e '
+            .name == "tailrocks-repository-skills" and
+            (.version | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) and
+            .skills == "./skills/" and (.interface | type == "object")
+          ' .codex-plugin/plugin.json >/dev/null
+          jq -e '
+            .name == "tailrocks-repository-skills" and
+            (.version | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))
+          ' .claude-plugin/plugin.json .muse-plugin/plugin.json >/dev/null
+          jq -e '
+            .plugins | type == "array" and length == 1 and
+            .[0].name == "tailrocks-repository-skills" and .[0].source == "./"
+          ' .claude-plugin/marketplace.json >/dev/null

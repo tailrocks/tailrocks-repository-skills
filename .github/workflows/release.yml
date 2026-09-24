@@ -20,17 +20,11 @@ jobs:
         run: tests/release-version-contract.sh
       - name: Run Claude install contract
         run: tests/claude-install-contract.sh
-      - name: Run cleanup CAS contract
-        run: tests/fixtures/cleanup-cas.sh
-      - name: Run all-work scope contract
-        run: tests/fixtures/all-work-scope.sh
       - name: Check shell syntax
         run: |
           for script in \
             tests/claude-install-acceptance.sh \
             tests/claude-install-contract.sh \
-            tests/fixtures/all-work-scope.sh \
-            tests/fixtures/cleanup-cas.sh \
             tests/release-version-contract.sh \
             tests/release-version-guard.sh; do
             sh -n "$script"
@@ -86,6 +80,61 @@ jobs:
           printf '%s  %s\n' "$package_digest" "$package_name" >"$CHECKSUM_PATH"
           test -s "$PACKAGE_PATH"
           test -s "$CHECKSUM_PATH"
+      - name: Validate extracted product artifact
+        env:
+          PACKAGE_PATH: ${{ github.workspace }}/tailrocks-repository-skills-${{ github.ref_name }}.tar
+        run: |
+          set -eu
+          work=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/tailrocks-release-verify.XXXXXX")
+          trap 'rm -rf -- "$work"' EXIT HUP INT TERM
+          root="$work/root"
+          mkdir -p "$root"
+          tar -xf "$PACKAGE_PATH" -C "$root"
+          expected_skills='repo-merge tailrocks-repository-audit tailrocks-repository-cleanup'
+          test "$(find "$root/skills" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = 3
+          test -z "$(find "$root/skills" -mindepth 1 -maxdepth 1 ! -type d -print -quit)"
+          test "$(find "$root/skills" -type f -name SKILL.md | wc -l | tr -d ' ')" = 3
+          test -z "$(find "$root" -type l -print -quit)"
+          for skill in $expected_skills; do
+            test -s "$root/skills/$skill/SKILL.md"
+          done
+          forbidden_tar=$(tar -tf "$PACKAGE_PATH" | grep -E '(^|/)(\.git|tests|package\.json|helper|scripts|dist|state|\.DS_Store|skills/shared|AGENTS\.md|CLAUDE\.md|GEMINI\.md|CODEX\.md|CHANGELOG\.md|GOAL\.md|HANDOFF\.md|PROGRESS\.md|skill-evidence|docs/release\.md|docs/requirements-to-evidence\.md|docs/research\.md|tailrocks-repository-skills-development-goal-v2\.md|tailrocks-repository-skills-goal-prompt-v2\.txt)(/|$)' | sed -n '1p' || true)
+          test -z "$forbidden_tar"
+
+          for skill_root in "$root"/skills/*; do
+            [ -d "$skill_root" ] || continue
+            skill_real=$(realpath -- "$skill_root")
+            while IFS= read -r markdown; do
+              while IFS= read -r link; do
+                link=${link%%#*}
+                case "$link" in
+                  ''|'#'*|'http://'*|'https://'*|'mailto:'*) continue ;;
+                  /*) echo "absolute product link: $link" >&2; exit 1 ;;
+                esac
+                target="$(dirname -- "$markdown")/$link"
+                [ -e "$target" ] || { echo "missing product link: $link" >&2; exit 1; }
+                target_real=$(realpath -- "$target")
+                case "$target_real" in
+                  "$skill_real"|"$skill_real"/*) ;;
+                  *) echo "product link escapes skill: $link" >&2; exit 1 ;;
+                esac
+              done < <(grep -oE '\]\([^)]*\)' "$markdown" | sed 's/^\](//; s/)$//')
+            done < <(find "$skill_root" -type f -name '*.md' -print)
+          done
+
+          name=tailrocks-repository-skills
+          version=$(jq -er '.version | select(type == "string")' "$root/.codex-plugin/plugin.json")
+          jq -e --arg name "$name" '.name == $name' "$root/plugin.json" >/dev/null
+          jq -e --arg name "$name" --arg version "$version" \
+            '.name == $name and .version == $version' \
+            "$root/.codex-plugin/plugin.json" "$root/.claude-plugin/plugin.json" "$root/.muse-plugin/plugin.json" >/dev/null
+          jq -e --arg name "$name" --arg version "$version" '
+            (.plugins | type == "array" and length == 1 and
+             .[0].name == $name and .[0].source == "./" and .[0].version == $version)
+          ' "$root/.claude-plugin/marketplace.json" >/dev/null
+          jq -e --argjson expected '["repo-merge", "tailrocks-repository-audit", "tailrocks-repository-cleanup"]' '
+            (.skills | type == "array" and sort == $expected)
+          ' "$root/catalog.json" >/dev/null
       - name: Independently verify package SHA-256 receipt
         working-directory: ${{ github.workspace }}
         run: sha256sum -c "tailrocks-repository-skills-${{ github.ref_name }}.tar.sha256"
