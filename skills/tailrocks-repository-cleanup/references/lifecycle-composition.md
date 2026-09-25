@@ -27,7 +27,9 @@ repository worklist, successors, dependencies, reverts, and original-target
 obligations. Missing or stale lifecycle evidence is an unresolved obligation,
 so retain the source. Cleanup never invokes a review, create, or merge owner,
 supplies authorization, or treats a preflight/metadata read as a landing
-receipt. If landing readiness depends on the imported merge owner, record its
-separate capability gap: it guards the PR head but does not provide selected
-target branch-name/OID CAS or landed target-ref proof. Preserve original source
-branches and PRs until their complete obligations are resolved.
+receipt. If landing readiness depends on the current merge owner, record its
+separate capability gap: it only observes the PR head through read-only
+preflight, does not guard or mutate any ref, and does not provide selected
+target branch-name/OID CAS or landed target-ref proof. Remote landing stays
+blocked until both guarantees exist. Preserve original source branches and PRs
+until their complete obligations are resolved.

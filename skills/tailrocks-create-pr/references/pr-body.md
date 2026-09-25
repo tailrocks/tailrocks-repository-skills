@@ -2,8 +2,8 @@
 
 How `tailrocks-create-pr` sources the body skeleton and what the prose in it
 must and must not do. `tailrocks-refresh-pr` applies the same rules when it
-reconciles a body, and `tailrocks-merge-pr` when it checks metadata at the
-gate.
+reconciles a body. The bundled `tailrocks-merge-pr` owner currently runs only
+a read-only preflight and does not consume this body contract.
 
 ## Template discovery — default before config
 

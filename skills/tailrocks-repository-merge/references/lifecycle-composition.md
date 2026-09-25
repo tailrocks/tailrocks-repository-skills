@@ -2,9 +2,10 @@
 
 The coordinator owns source comparison, target selection, local audit, and
 local cleanup finalization. It does not create another review or merge policy.
-Review, PR creation, and remote landing stay with the explicitly selected
-owners imported in this package. The coordinator never invokes a manual-only
-helper programmatically.
+Review and PR creation stay with the explicitly selected owners imported in
+this package. The named merge owner currently exposes read-only preflight
+only; this package provides no remote-landing operation. The coordinator
+never invokes a manual-only helper programmatically.
 
 ## Same-package owner binding
 
@@ -18,7 +19,7 @@ this coordinator:
 | --- | --- | --- |
 | `tailrocks-review-pr` | `<PACKAGE_ROOT>/skills/tailrocks-review-pr/SKILL.md` | Explicit skill selection; read-only review |
 | `tailrocks-create-pr` | `<PACKAGE_ROOT>/skills/tailrocks-create-pr/SKILL.md` | `scripts/create-pr.ts` with `tailrocks.create-pr-input/v1` |
-| `tailrocks-merge-pr` | `<PACKAGE_ROOT>/skills/tailrocks-merge-pr/SKILL.md` | `scripts/merge-preflight.ts` and `scripts/merge-pr.ts` |
+| `tailrocks-merge-pr` | `<PACKAGE_ROOT>/skills/tailrocks-merge-pr/SKILL.md` | Read-only `scripts/merge-preflight.ts`; blocked compatibility endpoint `scripts/merge-pr.ts` |
 
 The owner skill file and its scripts must resolve beneath this one package
 root. A separately installed pull-request package, sibling checkout, global
@@ -60,57 +61,45 @@ and absolute proof argv; each proof must emit exactly one
 repository, head, base, and OIDs before review. Do not call `git push`,
 `gh pr create`, or `gh pr edit` separately.
 
-## Merge owner and schema
+## Merge owner and read-only preflight
 
-Use the same-package `tailrocks-merge-pr` owner and its native preflight
-followed by its guarded entrypoint. Inspect the owner and scripts at runtime;
-do not assume a frozen version or receipt. Its interfaces are the imported
-`merge-preflight.ts` and `merge-pr.ts` entrypoints:
+Use the same-package `tailrocks-merge-pr` owner for its native, read-only
+preflight. The current owner exposes no metadata-lookup endpoint, merge-policy
+or waiver consumer, or remote-landing operation. Its only permitted entrypoint
+is the imported `merge-preflight.ts` command:
 
 ```text
 bun <PACKAGE_ROOT>/scripts/merge-preflight.ts --root <repo> --pr <N> --no-poll
-bun <PACKAGE_ROOT>/scripts/merge-pr.ts --skill-file <PACKAGE_ROOT>/skills/tailrocks-merge-pr/SKILL.md < request.json
 ```
 
-Bind repository, PR number, expected head, declared base, merge base, method,
-final text, review/check/worklist evidence, and target in the handoff according
-to the imported contract. A changed head/base, missing exact PR identity, or
-unfinished worklist stops the action. Required checks must be green: pending,
-missing, cancelled, skipped, or otherwise non-terminal/non-green is not a
-pass. A failed required check stops unless the fresh invocation names exactly
-one failed check with `--admin <check>` and supplies the required high-risk
-confirmation for that exact PR. High-risk classification always requires one
-fresh confirmation for that exact PR; an admin bypass cannot waive that
-confirmation.
+The command derives and binds the repository, PR number, head, base, merge
+base, and hosted-check state from the target repository and PR. A changed
+head/base, missing exact PR identity, or failing delivery/documentation
+predicate stops the report.
+Required checks must be green: pending, missing, cancelled, skipped, or
+otherwise non-terminal/non-green is not a pass. The receipt provides no merge
+bypass, admin override, authorization, policy decision, or waiver.
 
-The imported Tailrocks merge request contract uses `expectedTitle` and
-`expectedBody`; `title` and `body` are invalid. Its required fields include
-`schema`, `root`, `repository`, `pr`, `head`, `base`, `mergeBase`, `method`,
-`expectedTitle`, `expectedBody`, `mergeSubject`, `mergeBody`, `blastRadius`,
-`highBlastRadiusConfirmed`, and `waivers`; `adminCheck` is optional. Waivers
-may name only one each of the owner's `delivery` or `documentation` gates and
-cannot waive PR/head/base/target identity, required checks, worklist,
-authorization, or high-risk confirmation. Do not add guessed target,
-authorization, review, CI, worklist, or landing fields.
+Do not invoke the bundled `merge-pr.ts` compatibility endpoint, construct a
+low-level merge request, or add guessed target, authorization, review, CI,
+worklist, policy, waiver, or landing fields. Those paths cannot change the
+owner's read-only boundary.
 
-Before remote mutation, the same-package owner must atomically guard the exact
-selected target branch name and OID during mutation and return proof of the
-landed target OID. A preflight base-OID comparison, final metadata read, or
-post-merge inspection cannot replace that guard. If runtime inspection shows
-the owner only guards the head or fails to compare the target name/OID, block
-remote landing and report the owner/capability gap. Do not add guessed fields,
-invoke a second merge owner, retarget manually, or use direct `gh pr merge`.
+Remote landing is unconditionally blocked until the same-package owner can
+atomically guard the exact selected target branch name and OID during mutation
+and return proof of the landed target OID. A preflight base-OID comparison,
+final metadata read, or post-merge inspection cannot replace that guard. The
+current owner only performs the read-only preflight, so report the
+owner/capability gap. Do not invoke a second merge owner, retarget manually,
+or use direct `gh pr merge`.
 
-## Target CAS gap (separate owner work)
+## Landing capability condition
 
-The imported `tailrocks-merge-pr` request interface
-(`tailrocks.merge-pr-request/v1`) binds the repository, PR, PR head/base, and
-merge base, and its GraphQL mutation supplies `expectedHeadOid`. It has no
-field for the selected target branch name or its expected current OID, and its
-receipt does not prove the landed target branch OID. The returned PR
-`baseRefOid` is not that target-ref CAS proof. This is a separate owner change;
-until it exists, repository-merge must block remote landing even when the
-owner's head and PR checks pass.
+The blocked compatibility endpoint's request schema binds the PR and its
+head/base values, but it has no selected target-ref CAS and cannot prove the
+landed target OID. Until a future owner exposes both guards, repository-merge
+must block remote landing even when the read-only preflight passes.
 
-After any accepted landing, re-read the exact remote target and run bounded
-target-relative acceptance. A queued or uncertain merge is not landing.
+If a future owner supplies those guards, re-read the exact remote target and
+require proof of the guarded landed OID; a queued or uncertain merge is not
+landing.

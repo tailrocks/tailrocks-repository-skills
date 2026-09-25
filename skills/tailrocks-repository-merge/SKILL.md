@@ -15,9 +15,11 @@ user-invocable: true
 `tailrocks-repository-merge` is the sole end-to-end coordinator for selected-source
 integration. It binds one repository, one exact destination, and one source
 scope; audits selected work; finishes justified changes; verifies the target;
-and performs only eligible final cleanup. The standalone audit and cleanup
-skills remain independently callable. This coordinator uses the local audit
-and cleanup procedures below; it never asks the host to invoke a manual-only
+and performs only eligible final cleanup. Hosted remote landing is currently
+fail-closed: the bundled landing owner lacks an atomic target-base guard and
+proof of the landed target object. The standalone audit and cleanup skills
+remain independently callable. This coordinator uses the local audit and
+cleanup procedures below; it never asks the host to invoke a manual-only
 helper as a nested programmatic phase. Pull-request review, PR creation, and
 remote landing remain owned by the explicitly selected lifecycle owners
 imported in this same package: `tailrocks-review-pr`, `tailrocks-create-pr`,
@@ -94,9 +96,10 @@ before resolving sources.
    another target or obligation.
 
 5. For remote landing, require a fresh read-only review from the same-package
-   `tailrocks-review-pr` owner and guarded landing from the same-package
-   `tailrocks-merge-pr` owner; one
-   active user request may select these manual-only owners with `tailrocks-repository-merge`,
+   `tailrocks-review-pr` owner and consult the same-package
+   `tailrocks-merge-pr` landing policy/preflight. Hosted landing is currently
+   blocked pending that owner's atomic target-base guard and landed-target
+   proof; one active user request may select these manual-only owners with `tailrocks-repository-merge`,
    but a generic coordinator request cannot infer them. A review report grants
    no merge authority. If review, checks, the repository worklist, or an owner
    is unavailable, block only dependent remote landing and continue safe work.

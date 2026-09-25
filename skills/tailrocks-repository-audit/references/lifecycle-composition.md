@@ -24,10 +24,12 @@ fresh review, check state, worklist, or lifecycle owner is unavailable, report
 that landing blocker rather than claiming approval.
 
 If the report discusses landing readiness, record whether the same-package
-owner can guard the exact target branch name and OID during mutation and prove
-the landed target OID. The imported merge owner currently guards the PR head
-but does not expose selected target branch-name/OID CAS or landed target-ref
-proof; record that owner gap as a landing blocker and separate owner work. A
-preflight or metadata read is evidence, not an atomic guard and not merge
-authority. A source whose declared base differs from the selected target
-remains cross-target evidence with its original obligation.
+owner can atomically guard the exact target branch name and OID during mutation
+and prove the landed target OID. The current owner only observes the PR head
+through its read-only preflight; it does not guard a ref, mutate remotely, or
+provide selected target branch-name/OID CAS or landed target-ref proof. Record
+that owner gap as a landing blocker and separate owner work. Remote landing
+stays blocked until both guarantees exist. A preflight or metadata read is
+evidence, not an atomic guard and not merge authority. A source whose declared
+base differs from the selected target remains cross-target evidence with its
+original obligation.

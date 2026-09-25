@@ -38,17 +38,22 @@ listed here is still binding prose for the stage it names.
 
 | Section | Read by | Carries |
 |---|---|---|
-| `## Base branch` | create, merge | Target branch for PRs when not the repository default. |
+| `## Base branch` | create | Target branch for PRs when not the repository default. |
 | `## Branching` | create | Branch naming: prefixes, ticket-id pattern, examples. |
-| `## Commits` | create, merge | Subject convention, body rules, required trailers (`Signed-off-by`, `Co-authored-by`, custom). |
+| `## Commits` | create | Subject convention, body rules, required trailers (`Signed-off-by`, `Co-authored-by`, custom). |
 | `## Body` | create, refresh | Template path when nonstandard; a generator command whose stdout is the body skeleton; required sections; how-to-verify policy. |
-| `## Checks` | create, merge | Local gates to run before opening; checks that must be green beyond GitHub's required set. |
-| `## Blast radius` | merge | Path patterns or change classes that force an explicit confirm before merge. |
-| `## Before merge` | merge | Repo-specific worklist at merge time: changelog entry, docs retirement, version checks. A line reading `Delivery-artifact check: off — <reason>` switches off `tailrocks-merge-pr`'s roadmap-consistency gate for this repository; `Documentation gate: off — <reason>` switches off its tailrocks-document coverage gate. |
-| `## Merge` | merge | Merge method, squash-title format, merge-commit body rules, post-merge steps. |
+| `## Checks` | create, pr-template | Local gates to run before opening; checks that shape the generated template. |
+| `## Blast radius` | future landing owner | Path patterns or change classes for a future explicit landing policy. |
+| `## Before merge` | future landing owner | Repo-specific worklist and optional waiver policy for a future landing owner. |
+| `## Merge` | future landing owner | Merge method, squash-title format, merge-commit body rules, and post-merge steps for a future landing owner. |
 
 `tailrocks-pr-template` reads `## Body` and `## Checks` so the template it
 generates agrees with them.
+
+The bundled `tailrocks-merge-pr` owner currently runs only a read-only
+preflight. It exposes no metadata-lookup endpoint, does not consume the
+landing-policy sections or apply waivers, and does not land a PR; keep those
+sections only for a future owner that explicitly implements those capabilities.
 
 Body default when `## Body` is absent: the repository's own
 `.github/PULL_REQUEST_TEMPLATE.md` (or GitHub's alternate locations), read

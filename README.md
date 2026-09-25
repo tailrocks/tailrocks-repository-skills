@@ -11,7 +11,8 @@ One portable package with exactly nine public skills:
   gates pass.
 - `tailrocks-refresh-pr` reconciles an existing pull request with its branch.
 - `tailrocks-review-pr` performs a read-only, evidence-based review.
-- `tailrocks-merge-pr` owns the guarded pull-request landing procedure.
+- `tailrocks-merge-pr` owns the guarded pull-request landing policy; hosted
+  landing is currently fail-closed.
 - `tailrocks-document` updates documentation required by a pull request.
 - `tailrocks-pr-template` creates or reconciles a repository pull-request
   template.
@@ -74,10 +75,20 @@ when required. A review report does not authorize a merge, and loading a skill
 does not authorize side effects.
 
 The current merge owner does not atomically compare-and-swap the selected
-target base ref and object ID during mutation. Remote landing therefore stays
-blocked until that owner supplies the required guard. Do not replace it with
-`gh pr merge`. `--local-only` remains available for explicit disposable/local
-work and never claims hosted delivery.
+target base ref and object ID during mutation, and it does not yet prove that
+the landed target is that guarded object. Remote landing therefore stays
+blocked until the owner supplies both guarantees. The bundled preflight is a
+read-only inspection only:
+
+```sh
+bun /path/to/tailrocks-repository-skills/scripts/merge-preflight.ts \
+  --root /path/to/target-repository --pr 1663 --no-poll
+```
+
+A `ready` receipt is not merge authority. Do not invoke
+`scripts/merge-pr.ts`, `gh pr merge`, a direct hosting API merge, a direct ref
+update/push, or another skill to bypass the owner. `--local-only` remains
+available for explicit disposable/local work and never claims hosted delivery.
 
 ## Native clients
 

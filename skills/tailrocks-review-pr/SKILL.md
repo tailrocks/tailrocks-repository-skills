@@ -70,7 +70,9 @@ result.
 - The PR is closed or merged → report that and stop; review targets open
   work.
 - Asked to fix, approve, or merge → refuse the action, name the owning
-  skill (`tailrocks-merge-pr` merges; the routed skill fixes), finish the
+  skill (`tailrocks-merge-pr` is the sole landing owner, but only performs
+  a read-only preflight and blocks remote landing until atomic target-base
+  CAS and landed-target proof exist; the routed skill fixes), finish the
   review.
 - An accepted finding never infers posting, an edit, or an approval.
 
