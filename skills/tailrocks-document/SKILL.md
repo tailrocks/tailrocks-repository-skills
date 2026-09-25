@@ -45,11 +45,16 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
 ## Steps
 
 1. **Locate the documentation and its rules.** Find every documentation
-   surface. Resolve the consolidated package's
-   `scripts/merge-preflight.ts` entrypoint from this installed skill as a
-   regular non-symlink, then run its `documentation` subcommand against the
-   resolved PR number before manual
-   recon. Its typed receipt inventories the merge-base ∪ HEAD trees, so deleted
+   surface. Resolve the canonical repository with
+   `gh repo view --json nameWithOwner,url`; store its exact `nameWithOwner` as
+   `REPO`. Resolve the consolidated package's `scripts/merge-preflight.ts`
+   entrypoint from this installed skill as a regular non-symlink, then run its
+   `documentation` subcommand against the resolved PR number with
+   `--repo "$REPO"` before manual recon:
+   `bun "$PACKAGE_ROOT/scripts/merge-preflight.ts" documentation --root "$ROOT" --pr "$PR" --repo "$REPO"`.
+   Require the typed receipt's `repository` field to equal `REPO` exactly;
+   an absent or mismatched identity stops the skill. Its typed receipt
+   inventories the merge-base ∪ HEAD trees, so deleted
    base-only surfaces cannot disappear from the obligation set. Read every
    reported surface, governing rule, navigation file, generator marker, and
    command source; inspect those sources for the exact generation and
@@ -104,9 +109,10 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
    nothing-to-document verdict with the per-change reasons, and leave the
    read-only preflight to report it.
    Re-run the same consolidated-package `scripts/merge-preflight.ts`
-   `documentation` subcommand against the resolved PR number. This is the
-   package's read-only preflight; it binds the live repository, base, merge
-   base, and exact local/remote head. When any
+   `documentation` subcommand against the resolved PR number with
+   `--repo "$REPO"`. This is the package's read-only preflight; require its
+   receipt repository to equal `REPO` exactly. It binds the live repository,
+   base, merge base, and exact local/remote head. When any
    doc-worthy commit exists, this
    shared predicate requires the trailer to descend from every doc-worthy and
    documentation-surface commit. Later source or documentation stales it;

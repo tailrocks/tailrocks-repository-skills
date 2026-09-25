@@ -38,14 +38,27 @@ Before any action, read
 - Remote landing is blocked until the owner can atomically compare-and-swap
   the selected target base ref and object ID and prove that the landed target
   is that guarded object.
-- Never invoke `scripts/merge-pr.ts`, `gh pr merge`, a direct hosting API
-  merge, a direct ref update/push, or another skill to bypass this owner.
+- Bind one canonical base repository before reading PR metadata. Resolve the
+  current repository once with `gh repo view --json nameWithOwner,url`; store
+  its exact `nameWithOwner` as `REPO`. Every `gh pr` command, including
+  read-only reads and diffs, must pass `--repo "$REPO"`. Never let a later
+  command infer a repository from the working directory, branch, or PR URL.
+  If repository resolution fails or returns no canonical name, stop before
+  reading the PR.
+- Never invoke `scripts/merge-pr.ts`, `gh pr merge --repo "$REPO"`, a direct
+  hosting API merge, a direct ref update/push, or another skill to bypass this
+  owner.
 
 ## Steps
 
-1. **Resolve the PR.** Use the current branch's PR or the argument. Read
-   `gh pr view <PR>` and `gh pr diff <PR>` to identify the repository, target,
-   head, and shipped changes.
+1. **Resolve the PR.** Resolve the canonical repository first with
+   `gh repo view --json nameWithOwner,url`; store its exact `nameWithOwner` as
+   `REPO`. Use the current branch's PR or the argument. Read
+   `gh pr view <PR> --repo "$REPO"` and `gh pr diff <PR> --repo "$REPO"` to
+   identify the target, head, base, and shipped changes. Check the returned PR
+   number and target metadata (head/base refs and object IDs) against the
+   requested PR; if either command fails or those values mismatch, stop before
+   continuing.
 
 2. **Classify blast radius.** Use the repository's `## Blast radius` patterns;
    default high-risk classes include workflow, authentication, security,
@@ -56,8 +69,12 @@ Before any action, read
    installed `SKILL.md`; the consolidated package root is two directories
    above its containing skill directory. Require the package's
    `scripts/merge-preflight.ts` entrypoint to be a regular non-symlink, then
-   run it once with the real target repository root and resolved PR number.
-   Forward `--no-poll` when requested.
+   run it once with the real target repository root and resolved PR number,
+   passing `--repo "$REPO"`:
+   `bun "$PACKAGE_ROOT/scripts/merge-preflight.ts" --root "$ROOT" --pr "$PR" --repo "$REPO"`.
+   Forward `--no-poll` when requested. Require the parsed receipt's
+   `repository` field to equal `REPO` exactly; an absent or mismatched
+   identity stops the skill before reporting any result.
 
    The command binds the repository, PR, head, base, delivery/documentation
    predicates, and hosted-check observation. Read
