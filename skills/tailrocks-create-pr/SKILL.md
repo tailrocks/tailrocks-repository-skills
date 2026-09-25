@@ -112,7 +112,7 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
    writes confined to the copy. It fails closed before mutation when the sandbox is
    unavailable or a gate fails or proves zero units. On success it proves the
    target base SHA and absence of an existing PR, rechecks live repository
-   identity, pushes the immutable head SHA to the exact HTTPS URL without force, and verifies the remote SHA. It repeats the
+   identity, pushes the immutable head SHA to the exact HTTPS URL with an explicit empty expected-value lease for a create-only push (never overwriting an existing branch), and verifies the remote SHA. It repeats the
    remote pre-create proof, rechecks the exact remote head immediately before
    creation, streams the fatal-UTF-8-validated and already-hashed body bytes through
    `--body-file -`, and verifies body, head SHA, base, URL, title, draft state,
