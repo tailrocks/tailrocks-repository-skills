@@ -1,7 +1,7 @@
 {
   "name": "tailrocks-repository-skills",
-  "description": "Target-bound repository orchestration plus fail-closed pull-request creation, refresh, review, documentation, templates, landing, audit, and cleanup.",
-  "version": "0.2.0",
+  "description": "Target-bound repository orchestration plus fail-closed pull-request lifecycle, audit, and cleanup.",
+  "version": "0.2.1",
   "author": {
     "name": "tailrocks",
     "url": "https://github.com/tailrocks"
