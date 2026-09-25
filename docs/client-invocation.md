@@ -2,8 +2,8 @@
 
 The release contains nine public skills and their skill-local references and
 templates. Install this repository as one package; do not install or checkout
-a separate source collection. A loader or manifest check proves packaging and
-discovery only. It does not authorize a merge, cleanup, or other side effect.
+a separate source collection. Discovery does not authorize a merge, cleanup,
+or other side effect.
 
 ## Runtime requirements
 
@@ -251,4 +251,4 @@ the selected target base ref and object ID. Remote landing is therefore
 blocked until that owner supplies the required guard. Do not retarget a source
 PR, invoke a second merge owner, or replace the owner with `gh pr merge`.
 `--local-only` can inspect an existing local target but cannot claim remote
-delivery or hosted CI.
+delivery.

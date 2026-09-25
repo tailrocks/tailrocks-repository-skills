@@ -22,6 +22,9 @@ source-collection checkout or installation is required. Install the complete
 package or release archive. Do not copy an individual `SKILL.md` out of its
 skill directory.
 
+This package intentionally has no `tests/` directory and no GitHub Actions
+workflows. Releases are published manually from tagged commits.
+
 ## Runtime requirements
 
 Git is required for repository operations. Bun runs the bundled lifecycle
@@ -58,7 +61,7 @@ read-only. `--local-only` reports only an existing local target. Resume
 revalidates the saved repository, source, and target identities. Cleanup is
 source-specific; `--cleanup=none` retains sources, and resolved cleanup needs
 current target, obligation, ownership, quiescence, identity, authorization,
-and restore-test proof.
+and data-restore proof.
 
 ## Lifecycle boundary
 
@@ -74,7 +77,7 @@ The current merge owner does not atomically compare-and-swap the selected
 target base ref and object ID during mutation. Remote landing therefore stays
 blocked until that owner supplies the required guard. Do not replace it with
 `gh pr merge`. `--local-only` remains available for explicit disposable/local
-work and never claims hosted delivery or CI.
+work and never claims hosted delivery.
 
 ## Native clients
 
