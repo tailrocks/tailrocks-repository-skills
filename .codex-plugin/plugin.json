@@ -1,7 +1,7 @@
 {
   "name": "tailrocks-repository-skills",
-  "version": "0.2.0",
-  "description": "Target-bound repository orchestration plus fail-closed pull-request creation, refresh, review, documentation, templates, landing, audit, and cleanup.",
+  "version": "0.2.1",
+  "description": "Target-bound repository orchestration plus fail-closed pull-request creation, refresh, review, documentation, templates, merge preflight, audit, and cleanup.",
   "author": {
     "name": "tailrocks",
     "url": "https://github.com/tailrocks"
@@ -21,19 +21,19 @@
   "interface": {
     "displayName": "Repository Skills",
     "shortDescription": "Target-aware repository coordination, audit, and cleanup.",
-    "longDescription": "tailrocks-repository-merge audits selected sources against one exact destination, while the bundled pull-request skills create, refresh, review, document, template, and land changes under explicit gates; audit and cleanup remain independently callable.",
+    "longDescription": "tailrocks-repository-merge audits selected sources against one exact destination, while the bundled pull-request skills create, refresh, review, document, template, and preflight landing eligibility; remote landing remains blocked until atomic target-base CAS and landed-target proof are available; audit and cleanup remain independently callable.",
     "developerName": "Tailrocks",
     "category": "Developer Tools",
     "capabilities": [
       "Audit",
       "Pull Request",
-      "Merge",
+      "Merge preflight",
       "Cleanup"
     ],
     "websiteURL": "https://github.com/tailrocks/tailrocks-repository-skills",
     "defaultPrompt": [
       "Coordinate these sources into the exact selected repository target.",
-      "Review, create, refresh, document, template, or merge this pull request under its gates.",
+      "Review, create, refresh, document, template, or run the read-only merge preflight for this pull request; remote landing remains blocked until atomic target-base CAS and landed-target proof are available.",
       "Audit these repository sources against the selected target.",
       "Clean up these resolved sources only after their evidence is verified."
     ]

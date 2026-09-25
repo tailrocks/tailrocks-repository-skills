@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "tailrocks-repository-skills",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "displayName": "Tailrocks Repository Skills",
   "description": "Target-bound repository orchestration and fail-closed pull-request lifecycle skills.",
   "compat": {

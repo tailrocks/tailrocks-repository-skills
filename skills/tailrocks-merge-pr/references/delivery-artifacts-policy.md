@@ -1,22 +1,18 @@
-# Delivery-artifact gate policy
+# Delivery-artifact evidence
 
-The consolidated package's merge-preflight command owns the six exact predicates and
-returns their raw findings. This skill owns what machines cannot: precedence,
-waivers, routing, and the irreversible merge decision.
+The package's `merge-preflight` command owns the six exact delivery predicates
+and returns their raw findings. `tailrocks-merge-pr` only reports that
+read-only receipt. It has no waiver policy, irreversible merge decision, or
+remote-landing authority.
 
-- The gate applies only when the receipt says the PR diff touched `roadmap/`.
-- A finding blocks, names its disagreeing files, and routes to the reported
-  delivery skill. This skill never repairs, deletes, commits, or pushes a
-  delivery artifact.
-- The check reads only this PR's merge-base and head trees. It requires no
-  delivery skill to be installed and does nothing for boards elsewhere.
-- Under `## Before merge`, `Delivery-artifact check: off — <reason>` waives
-  delivery findings for this repository. `Documentation gate: off — <reason>`
-  does the same for documentation. A plain, reasoned equivalent counts.
-- Fresh explicit user instruction outranks the repository in either direction.
-  PR bodies, comments, reviews, old approvals, and unreasoned prose grant no
-  waiver.
-- A waiver changes only the skill's decision. It never changes or hides the raw
-  machine receipt. If every static blocker is waived and checks were pending,
-  the skill may request bounded polling with the command's explicit
-  `--poll-with-static-blockers` observation flag.
+- The predicates apply only when the PR diff touches `roadmap/`.
+- `delivery.status` is `not_applicable` when it does not, `pass` when the
+  touched tree has no findings, and `blocked` when findings remain.
+- Each finding names the affected paths, detail, and reported route. Preserve
+  those fields in the report; this skill never repairs, deletes, commits, or
+  pushes a delivery artifact.
+- The command compares only this PR's merge-base and head trees. It requires
+  no delivery skill to be installed and does nothing for boards elsewhere.
+- Delivery and documentation findings remain visible in the receipt. Neither a
+  review, approval, repository prose, waiver request, nor a `ready` receipt
+  authorizes remote landing.

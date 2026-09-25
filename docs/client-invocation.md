@@ -243,12 +243,23 @@ distinct: `tailrocks-review-pr` reports only, `tailrocks-create-pr` creates a
 candidate, `tailrocks-refresh-pr` reconciles its metadata,
 `tailrocks-document` handles documentation coverage,
 `tailrocks-pr-template` manages the repository template, and
-`tailrocks-merge-pr` owns guarded landing. Select the owner explicitly for the
-requested repository, source, and target scope.
+`tailrocks-merge-pr` owns the guarded landing policy; hosted landing is
+currently fail-closed. Select the owner explicitly for the requested
+repository, source, and target scope.
 
-The installed merge owner currently lacks an atomic compare-and-swap guard for
-the selected target base ref and object ID. Remote landing is therefore
-blocked until that owner supplies the required guard. Do not retarget a source
-PR, invoke a second merge owner, or replace the owner with `gh pr merge`.
-`--local-only` can inspect an existing local target but cannot claim remote
-delivery.
+The installed merge owner currently lacks both required remote-landing
+guarantees: an atomic compare-and-swap guard for the selected target base ref
+and object ID, and proof that the landed target is that guarded object. Remote
+landing is therefore blocked until the owner supplies both. The bundled
+preflight is read-only and is the only available hosted check:
+
+```sh
+bun /path/to/tailrocks-repository-skills/scripts/merge-preflight.ts \
+  --root /path/to/target-repository --pr 1663 --no-poll
+```
+
+A `ready` receipt does not authorize mutation. Do not invoke
+`scripts/merge-pr.ts`, `gh pr merge`, a direct hosting API merge, a direct ref
+update/push, retarget a source PR, invoke a second merge owner, or use another
+skill to bypass this owner. `--local-only` can inspect an existing local target
+but cannot claim remote delivery.

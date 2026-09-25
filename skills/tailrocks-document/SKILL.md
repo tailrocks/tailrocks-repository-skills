@@ -102,10 +102,11 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
    (what was rewritten, added, reorganized, and why). When the inventory
    holds only internal-only changes, commit nothing: report the
    nothing-to-document verdict with the per-change reasons, and leave the
-   merge gate to confirm it.
+   read-only preflight to report it.
    Re-run the same consolidated-package `scripts/merge-preflight.ts`
-   `documentation` subcommand against the resolved PR number. It binds the
-   live repository, base, merge base, and exact local/remote head. When any
+   `documentation` subcommand against the resolved PR number. This is the
+   package's read-only preflight; it binds the live repository, base, merge
+   base, and exact local/remote head. When any
    doc-worthy commit exists, this
    shared predicate requires the trailer to descend from every doc-worthy and
    documentation-surface commit. Later source or documentation stales it;
@@ -119,17 +120,19 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
 then reports unresolved obligations without writing. It never claims the
 branch is documented when the final-order trailer is absent or stale.
 
-## Merge contract
+## Read-only preflight contract
 
-`tailrocks-merge-pr` consumes the same discovery and command predicate. When a pull request
-has any doc-worthy commit, every doc-worthy and documentation-surface commit
-must be covered by a descendant `Tailrocks-Skill: tailrocks-document` commit or
-merge stops and routes here. A diff with nothing doc-worthy passes with the
-machine reason; repository waiver policy remains merge-owned.
+`tailrocks-merge-pr` exposes the same discovery and command predicate through
+its read-only preflight. When a pull request has any doc-worthy commit, every
+doc-worthy and documentation-surface commit must be covered by a descendant
+`Tailrocks-Skill: tailrocks-document` commit or the preflight reports the
+blocker. A diff with nothing doc-worthy passes with the machine reason; the
+receipt does not authorize landing or consume waiver policy.
 
-Repository waiver policy lives in `.tailrocks/pr.md` `## Before merge` (format
-and precedence: `tailrocks-create-pr`'s `references/repo-conventions.md`) and
-is applied by `tailrocks-merge-pr`, never here.
+Repository waiver policy may be documented in `.tailrocks/pr.md` `## Before
+merge` (format and precedence: `tailrocks-create-pr`'s
+`references/repo-conventions.md`) for a future landing owner. The current
+bundled owner does not consume or apply it.
 
 ## Final gate
 
