@@ -574,6 +574,20 @@ function external(
   return { kind, command, outcome, proof };
 }
 
+async function runRemoteWithReceipt(
+  runner: CreatePrRunner,
+  request: CreatePrCommandRequest,
+  kind: ExternalReceipt["kind"],
+  receipts: ExternalReceipt[],
+): Promise<CreatePrCommandResult> {
+  try {
+    return await runner(request);
+  } catch (error) {
+    receipts.push(external(kind, request.command, "uncertain", ""));
+    throw error;
+  }
+}
+
 async function proveRemotePreconditions(
   input: CreatePrInput,
   ghExecutable: string,
@@ -582,7 +596,12 @@ async function proveRemotePreconditions(
   receipts: ExternalReceipt[],
 ): Promise<void> {
   const actorCommand = [ghExecutable, "api", "user", "--jq", ".login"];
-  const actorResult = await runner({ command: actorCommand, cwd: root });
+  const actorResult = await runRemoteWithReceipt(
+    runner,
+    { command: actorCommand, cwd: root },
+    "actor",
+    receipts,
+  );
   if (!commandSucceeded(actorResult) || actorResult.stdout.trim() !== input.actor) {
     receipts.push(external("actor", actorCommand, "failed", digest(actorResult.stdout)));
     throw new Error("authenticated GitHub actor differs from declared actor");
@@ -595,7 +614,12 @@ async function proveRemotePreconditions(
     "--jq",
     "{ref:.ref,sha:.object.sha,type:.object.type}",
   ];
-  const baseResult = await runner({ command: baseCommand, cwd: root });
+  const baseResult = await runRemoteWithReceipt(
+    runner,
+    { command: baseCommand, cwd: root },
+    "base_ref",
+    receipts,
+  );
   let base: Record<string, unknown> | null = null;
   try {
     base = object(JSON.parse(baseResult.stdout) as unknown, "base ref receipt");
@@ -629,7 +653,12 @@ async function proveRemotePreconditions(
     "--paginate",
     "--slurp",
   ];
-  const existingResult = await runner({ command: existingCommand, cwd: root });
+  const existingResult = await runRemoteWithReceipt(
+    runner,
+    { command: existingCommand, cwd: root },
+    "existing_pr",
+    receipts,
+  );
   let existing: unknown = null;
   try {
     existing = JSON.parse(existingResult.stdout) as unknown;
@@ -659,10 +688,16 @@ export async function createPullRequest(
   const externalActions: ExternalReceipt[] = [];
   let executedUnits = 0;
   let pushed = false;
+  let pushAttempted = false;
   let created = false;
   let url = "";
   let gateParent = "";
   let pushParent = "";
+  let receipt: CreatePrReceipt | undefined;
+  const remember = (value: CreatePrReceipt): CreatePrReceipt => {
+    receipt = value;
+    return value;
+  };
   try {
     const root = path.resolve(input.repo_root);
     const rootInfo = await lstat(root);
@@ -699,13 +734,13 @@ export async function createPullRequest(
           units: 0,
           output_sha256: digest(result.stdout),
         });
-        return {
+        return remember({
           ...baseReceipt("gate_failed", `gate failed: ${gate.id}`),
           repository: input.repository,
           branch: input.head_branch,
           head: input.head_sha,
           gates,
-        };
+        });
       }
       const proof = await gateRunner({ command: gate.proof_command, cwd: gateWorkspace });
       const units = commandSucceeded(proof) ? parseProof(proof.stdout) : 0;
@@ -718,13 +753,13 @@ export async function createPullRequest(
         output_sha256: digest(result.stdout),
       });
       if (units === 0)
-        return {
+        return remember({
           ...baseReceipt("gate_vacuous", `gate proof is zero or malformed: ${gate.id}`),
           repository: input.repository,
           branch: input.head_branch,
           head: input.head_sha,
           gates,
-        };
+        });
       executedUnits += units;
     }
     await repositorySnapshot(input, gitExecutable, localRunner);
@@ -752,7 +787,12 @@ export async function createPullRequest(
       input.remote_url,
       `refs/heads/${input.head_branch}`,
     ];
-    const remoteRefBeforePush = await remoteRunner({ command: remoteRef, cwd: pushWorkspace });
+    const remoteRefBeforePush = await runRemoteWithReceipt(
+      remoteRunner,
+      { command: remoteRef, cwd: pushWorkspace },
+      "remote_ref",
+      externalActions,
+    );
     if (!commandSucceeded(remoteRefBeforePush) || remoteRefBeforePush.stdout.trim() !== "") {
       externalActions.push(
         external(
@@ -762,7 +802,7 @@ export async function createPullRequest(
           digest(remoteRefBeforePush.stdout),
         ),
       );
-      return {
+      return remember({
         ...baseReceipt(
           "remote_ref_failed",
           "remote branch is present or its absence is unproven; create-only push refused",
@@ -773,7 +813,7 @@ export async function createPullRequest(
         executed_units: executedUnits,
         gates,
         external_actions: externalActions,
-      };
+      });
     }
     externalActions.push(external("remote_ref", remoteRef, "success", "absent"));
 
@@ -786,7 +826,13 @@ export async function createPullRequest(
       input.remote_url,
       `${input.head_sha}:refs/heads/${input.head_branch}`,
     ];
-    const pushResult = await remoteRunner({ command: push, cwd: pushWorkspace });
+    pushAttempted = true;
+    const pushResult = await runRemoteWithReceipt(
+      remoteRunner,
+      { command: push, cwd: pushWorkspace },
+      "push",
+      externalActions,
+    );
     externalActions.push(
       external(
         "push",
@@ -795,8 +841,44 @@ export async function createPullRequest(
         digest(pushResult.stdout),
       ),
     );
-    const remoteRefResult = await remoteRunner({ command: remoteRef, cwd: pushWorkspace });
+    const remoteRefResult = await runRemoteWithReceipt(
+      remoteRunner,
+      { command: remoteRef, cwd: pushWorkspace },
+      "remote_ref",
+      externalActions,
+    );
     const expectedRef = `${input.head_sha}\trefs/heads/${input.head_branch}`;
+    const pushSucceeded = commandSucceeded(pushResult);
+    if (!pushSucceeded) {
+      const remoteRefMatches =
+        commandSucceeded(remoteRefResult) && remoteRefResult.stdout.trim() === expectedRef;
+      const absent = commandSucceeded(remoteRefResult) && remoteRefResult.stdout.trim() === "";
+      externalActions.push(
+        external(
+          "remote_ref",
+          remoteRef,
+          remoteRefMatches || absent ? "success" : "uncertain",
+          remoteRefMatches ? input.head_sha : absent ? "absent" : digest(remoteRefResult.stdout),
+        ),
+      );
+      return remember({
+        ...baseReceipt(
+          "push_failed",
+          remoteRefMatches
+            ? "push failed but the expected remote branch was observed; PR creation refused"
+            : absent
+              ? "push failed and exact remote discovery proved the branch absent"
+              : "push failed and pushed branch identity is unproven",
+        ),
+        outcome: "recovery_required",
+        repository: input.repository,
+        branch: input.head_branch,
+        head: input.head_sha,
+        executed_units: executedUnits,
+        gates,
+        external_actions: externalActions,
+      });
+    }
     if (!commandSucceeded(remoteRefResult) || remoteRefResult.stdout.trim() !== expectedRef) {
       const absent = commandSucceeded(remoteRefResult) && remoteRefResult.stdout.trim() === "";
       externalActions.push(
@@ -807,7 +889,7 @@ export async function createPullRequest(
           absent ? "absent" : digest(remoteRefResult.stdout),
         ),
       );
-      return {
+      return remember({
         ...baseReceipt(
           commandSucceeded(pushResult) ? "remote_ref_failed" : "push_failed",
           absent && !commandSucceeded(pushResult)
@@ -821,17 +903,22 @@ export async function createPullRequest(
         executed_units: executedUnits,
         gates,
         external_actions: externalActions,
-      };
+      });
     }
     pushed = true;
     externalActions.push(external("remote_ref", remoteRef, "success", input.head_sha));
     await proveRemotePreconditions(input, ghExecutable, root, remoteRunner, externalActions);
-    const finalRemoteRefResult = await remoteRunner({ command: remoteRef, cwd: pushWorkspace });
+    const finalRemoteRefResult = await runRemoteWithReceipt(
+      remoteRunner,
+      { command: remoteRef, cwd: pushWorkspace },
+      "remote_ref",
+      externalActions,
+    );
     if (!commandSucceeded(finalRemoteRefResult) || finalRemoteRefResult.stdout.trim() !== expectedRef) {
       externalActions.push(
         external("remote_ref", remoteRef, "uncertain", digest(finalRemoteRefResult.stdout)),
       );
-      return {
+      return remember({
         ...baseReceipt("remote_ref_failed", "remote head changed immediately before PR creation"),
         outcome: "recovery_required",
         repository: input.repository,
@@ -840,7 +927,7 @@ export async function createPullRequest(
         executed_units: executedUnits,
         gates,
         external_actions: externalActions,
-      };
+      });
     }
     externalActions.push(external("remote_ref", remoteRef, "success", input.head_sha));
     const create = [
@@ -859,11 +946,16 @@ export async function createPullRequest(
       "-",
       ...(input.draft ? ["--draft"] : []),
     ];
-    const createResult = await remoteRunner({ command: create, cwd: root, stdin: bodyBytes });
+    const createResult = await runRemoteWithReceipt(
+      remoteRunner,
+      { command: create, cwd: root, stdin: bodyBytes },
+      "create",
+      externalActions,
+    );
     url = createResult.stdout.trim();
     if (!commandSucceeded(createResult) || !exactPrUrl(url, input.repository)) {
       externalActions.push(external("create", create, createResult.timedOut ? "uncertain" : "failed", ""));
-      return {
+      return remember({
         ...baseReceipt("create_failed", "PR creation failed or returned an untrusted URL"),
         outcome: "recovery_required",
         repository: input.repository,
@@ -872,7 +964,7 @@ export async function createPullRequest(
         executed_units: executedUnits,
         gates,
         external_actions: externalActions,
-      };
+      });
     }
     created = true;
     externalActions.push(external("create", create, "success", url));
@@ -886,7 +978,12 @@ export async function createPullRequest(
       "--json",
       "body,headRefName,headRefOid,baseRefName,baseRefOid,url,title,isDraft,author,state",
     ];
-    const renderResult = await remoteRunner({ command: render, cwd: root });
+    const renderResult = await runRemoteWithReceipt(
+      remoteRunner,
+      { command: render, cwd: root },
+      "render",
+      externalActions,
+    );
     let rendered: Record<string, unknown> | null = null;
     try {
       rendered = object(JSON.parse(renderResult.stdout) as unknown, "render receipt");
@@ -927,7 +1024,7 @@ export async function createPullRequest(
       (rendered.author as Record<string, unknown>).login !== input.actor
     ) {
       externalActions.push(external("render", render, "uncertain", digest(renderResult.stdout)));
-      return {
+      return remember({
         ...baseReceipt("render_failed", "created PR render or identity is unproven"),
         outcome: "recovery_required",
         repository: input.repository,
@@ -937,10 +1034,10 @@ export async function createPullRequest(
         executed_units: executedUnits,
         gates,
         external_actions: externalActions,
-      };
+      });
     }
     externalActions.push(external("render", render, "success", digest(body)));
-    return {
+    return remember({
       schema: createPrReceiptSchema,
       outcome: "success",
       code: "opened",
@@ -952,11 +1049,11 @@ export async function createPullRequest(
       gates,
       external_actions: externalActions,
       detail: "non-vacuous gates, exact push, PR creation, and render proved",
-    };
+    });
   } catch (error) {
-    return {
+    return remember({
       ...baseReceipt("state_drift", error instanceof Error ? error.message : "pre-open state drifted"),
-      outcome: pushed || created ? "recovery_required" : "refused",
+      outcome: pushed || pushAttempted || created ? "recovery_required" : "refused",
       repository: input.repository,
       branch: input.head_branch,
       head: input.head_sha,
@@ -964,10 +1061,26 @@ export async function createPullRequest(
       executed_units: executedUnits,
       gates,
       external_actions: externalActions,
-    };
+    });
   } finally {
-    if (pushParent) await rm(pushParent, { recursive: true, force: true });
-    if (gateParent) await rm(gateParent, { recursive: true, force: true });
+    const cleanupErrors: unknown[] = [];
+    for (const parent of [pushParent, gateParent]) {
+      if (!parent) continue;
+      try {
+        await rm(parent, { recursive: true, force: true });
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+    if (cleanupErrors.length !== 0 && receipt) {
+      const mutationOccurred = pushed || pushAttempted || created;
+      const wasSuccessful = receipt.outcome === "success";
+      Object.assign(receipt, {
+        outcome: mutationOccurred ? "recovery_required" : receipt.outcome,
+        code: mutationOccurred && wasSuccessful ? "state_drift" : receipt.code,
+        detail: `${receipt.detail}; temporary workspace cleanup failed`,
+      });
+    }
   }
 }
 

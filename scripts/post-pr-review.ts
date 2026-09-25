@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { lstat, mkdir, readFile, realpath, rename, writeFile } from "node:fs/promises";
+import { lstat, mkdir, opendir, readFile, realpath, rename, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -104,6 +104,11 @@ interface Challenge {
 }
 
 const markerPrefix = "<!-- tailrocks-review:v1:";
+const maximumExpiredChallengeScan = 256;
+const maximumExpiredChallengeDeleteAttempts = 64;
+const maximumChallengeBytes = 2_000_000;
+const challengeFileName =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:\.claimed-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})?\.json$/i;
 
 export const defaultReviewRunner: ReviewRunner = ({ command, cwd, stdin }) =>
   runTrustedCommand({ command, cwd, stdin });
@@ -418,6 +423,54 @@ async function authorityRoot(input?: string): Promise<string> {
   return directory;
 }
 
+async function cleanupExpiredChallenges(directory: string, now: number): Promise<void> {
+  let handle: Awaited<ReturnType<typeof opendir>>;
+  try {
+    handle = await opendir(directory);
+  } catch {
+    return;
+  }
+  let scanned = 0;
+  let deleteAttempts = 0;
+  try {
+    for await (const entry of handle) {
+      if (scanned >= maximumExpiredChallengeScan) break;
+      scanned += 1;
+      if (!challengeFileName.test(entry.name)) continue;
+      const file = path.join(directory, entry.name);
+      try {
+        const stats = await lstat(file);
+        if (
+          !stats.isFile() ||
+          stats.isSymbolicLink() ||
+          (stats.mode & 0o777) !== 0o600 ||
+          stats.size > maximumChallengeBytes
+        )
+          continue;
+        const challenge = parseChallenge(JSON.parse(await readFile(file, "utf8")));
+        if (challenge.expiresAt > now) continue;
+        if (deleteAttempts >= maximumExpiredChallengeDeleteAttempts) break;
+        deleteAttempts += 1;
+        try {
+          await unlink(file);
+        } catch {
+          // The bounded cleanup must not suppress the preparation receipt.
+        }
+      } catch {
+        // Malformed or concurrently consumed files stay out of the deletion path.
+      }
+    }
+  } catch {
+    // Directory iteration is opportunistic and must not suppress the receipt.
+  } finally {
+    try {
+      await handle.close();
+    } catch {
+      // The iterator may have closed the handle after its bounded break.
+    }
+  }
+}
+
 function baseReceipt(
   code: PostReviewCode,
   outcome: PostReviewReceipt["outcome"],
@@ -519,6 +572,8 @@ export async function preparePostReview(
         items,
       };
     const now = (runtime.now ?? Date.now)();
+    const directory = await authorityRoot(runtime.authorityDirectory);
+    await cleanupExpiredChallenges(directory, now);
     const authorityId = randomUUID();
     const challenge: Challenge = {
       schema: "tailrocks.post-pr-review-challenge/v1",
@@ -528,7 +583,6 @@ export async function preparePostReview(
       report,
       expiresAt: now + 5 * 60_000,
     };
-    const directory = await authorityRoot(runtime.authorityDirectory);
     const challengeBytes = JSON.stringify(challenge);
     await writeFile(path.join(directory, `${authorityId}.json`), challengeBytes, {
       flag: "wx",
@@ -632,16 +686,22 @@ export async function postPreparedReview(
   if (!authorityMatch)
     return baseReceipt("authority_missing", "refused", commands, "authority token is malformed");
   let challenge: Challenge;
-  let claimed: string;
+  let claimed: string | undefined;
   try {
     const directory = await authorityRoot(runtime.authorityDirectory);
     const source = path.join(directory, `${authorityMatch[1]}.json`);
-    claimed = path.join(directory, `${authorityMatch[1]}.claimed-${randomUUID()}.json`);
-    await rename(source, claimed);
-    const stats = await lstat(claimed);
-    if (!stats.isFile() || stats.isSymbolicLink() || (stats.mode & 0o777) !== 0o600)
+    const claim = path.join(directory, `${authorityMatch[1]}.claimed-${randomUUID()}.json`);
+    await rename(source, claim);
+    claimed = claim;
+    const stats = await lstat(claim);
+    if (
+      !stats.isFile() ||
+      stats.isSymbolicLink() ||
+      (stats.mode & 0o777) !== 0o600
+    )
       throw new Error("claimed authority is not an owner-only regular file");
-    const challengeBytes = await readFile(claimed, "utf8");
+    if (stats.size > maximumChallengeBytes) throw new Error("claimed authority exceeds its size bound");
+    const challengeBytes = await readFile(claim, "utf8");
     if (digest(challengeBytes) !== authorityMatch[2]) throw new Error("authority challenge bytes changed");
     challenge = parseChallenge(JSON.parse(challengeBytes));
   } catch (error) {
@@ -651,6 +711,15 @@ export async function postPreparedReview(
       commands,
       error instanceof Error ? error.message : String(error),
     );
+  } finally {
+    if (claimed) {
+      try {
+        await unlink(claimed);
+      } catch {
+        // The rename above already consumed one-use authority; cleanup must not
+        // replace the receipt with a cleanup error.
+      }
+    }
   }
   const report = challenge.report;
   if ((runtime.now ?? Date.now)() >= challenge.expiresAt)
