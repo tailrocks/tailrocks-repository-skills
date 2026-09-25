@@ -1,12 +1,5 @@
 import { createHash } from "node:crypto";
 
-import { runTrustedCommand } from "./bounded-command";
-import {
-  runMergePreflight,
-  type CommandResult as PreflightCommandResult,
-  type MergePreflightReceipt,
-} from "./merge-preflight";
-
 export const mergeRequestSchema = "tailrocks.merge-pr-request/v1" as const;
 export const mergeReceiptSchema = "tailrocks.merge-pr/v1" as const;
 
@@ -34,45 +27,13 @@ export interface MergeRequest {
   readonly adminCheck?: string;
 }
 
-export interface MergeCommandRequest {
-  readonly command: readonly string[];
-  readonly cwd: string;
-  readonly stdin?: string;
-}
-
-export interface MergeCommandResult {
-  readonly code: number;
-  readonly stdout: string;
-  readonly stderr: string;
-  readonly timedOut?: boolean;
-  readonly saturated?: boolean;
-}
-
-export type MergeRunner = (request: MergeCommandRequest) => Promise<MergeCommandResult>;
-
-interface MergeProof {
-  readonly number: number;
-  readonly merged: true;
-  readonly mergedAt: string;
-  readonly headRefOid: string;
-  readonly baseRefOid: string;
-  readonly mergeCommit: { readonly oid: string };
-  readonly method: MergeMethod;
-  readonly commitText: "applied" | "not_applicable_for_rebase";
-}
-
 export interface MergeReceipt {
   readonly schema: typeof mergeReceiptSchema;
-  readonly outcome: "success" | "blocked" | "refused" | "failed" | "uncertain";
+  readonly outcome: "blocked" | "refused";
   readonly code:
-    | "merged"
     | "invalid_request"
     | "authority_missing"
-    | "target_mismatch"
-    | "metadata_mismatch"
-    | "preflight_blocked"
-    | "lookup_failed"
-    | "merge_uncertain";
+    | "target_cas_unavailable";
   readonly repository?: string;
   readonly pr?: number;
   readonly head?: string;
@@ -85,22 +46,10 @@ export interface MergeReceipt {
   readonly bodyDigest?: string;
   readonly adminCheck?: string;
   readonly waivers?: MergeRequest["waivers"];
-  readonly preflight?: MergePreflightReceipt;
   readonly mergeAttempted: boolean;
-  readonly mergeCommand?: readonly string[];
-  readonly mergeExitCode?: number;
-  readonly mergeTimedOut?: boolean;
-  readonly proof?: MergeProof;
   readonly commands: readonly (readonly string[])[];
   readonly detail: string;
 }
-
-interface Runtime {
-  readonly runner?: MergeRunner;
-}
-
-export const defaultMergeRunner: MergeRunner = ({ command, cwd, stdin }) =>
-  runTrustedCommand({ command, cwd, stdin, timeoutMilliseconds: 120_000 });
 
 function exactKeys(value: Record<string, unknown>, expected: readonly string[], label: string): void {
   const actual = Object.keys(value).sort();
@@ -204,92 +153,6 @@ function baseReceipt(
   return { schema: mergeReceiptSchema, outcome, code, mergeAttempted: false, commands, detail };
 }
 
-async function invoke(
-  runner: MergeRunner,
-  commands: (readonly string[])[],
-  root: string,
-  command: readonly string[],
-  stdin?: string,
-): Promise<MergeCommandResult> {
-  commands.push(command);
-  try {
-    return await runner({ command, cwd: root, ...(stdin === undefined ? {} : { stdin }) });
-  } catch (error) {
-    return { code: 127, stdout: "", stderr: error instanceof Error ? error.message : String(error) };
-  }
-}
-
-function parseMetadata(raw: string, request: MergeRequest): string {
-  const value = JSON.parse(raw) as unknown;
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("metadata is invalid");
-  const record = value as Record<string, unknown>;
-  exactKeys(record, ["baseRefOid", "body", "headRefOid", "id", "number", "state", "title"], "metadata");
-  if (
-    record.number !== request.pr ||
-    record.state !== "OPEN" ||
-    record.headRefOid !== request.head ||
-    record.baseRefOid !== request.base
-  )
-    throw new Error("TARGET_MISMATCH: pull request metadata identity changed");
-  if (record.title !== request.expectedTitle || record.body !== request.expectedBody)
-    throw new Error("METADATA_MISMATCH: title or body differs from the authorized bytes");
-  return safeText(record.id, "pull request node ID", 512);
-}
-
-function parseProof(raw: string, request: MergeRequest): MergeProof | undefined {
-  try {
-    const value = JSON.parse(raw) as unknown;
-    if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
-    const record = value as Record<string, unknown>;
-    exactKeys(record, ["data"], "merge proof");
-    if (!record.data || typeof record.data !== "object" || Array.isArray(record.data)) return undefined;
-    const data = record.data as Record<string, unknown>;
-    exactKeys(data, ["mergePullRequest"], "merge proof data");
-    if (
-      !data.mergePullRequest ||
-      typeof data.mergePullRequest !== "object" ||
-      Array.isArray(data.mergePullRequest)
-    )
-      return undefined;
-    const payload = data.mergePullRequest as Record<string, unknown>;
-    exactKeys(payload, ["pullRequest"], "merge proof payload");
-    if (!payload.pullRequest || typeof payload.pullRequest !== "object" || Array.isArray(payload.pullRequest))
-      return undefined;
-    const pullRequest = payload.pullRequest as Record<string, unknown>;
-    exactKeys(
-      pullRequest,
-      ["baseRefOid", "headRefOid", "mergeCommit", "merged", "mergedAt", "number"],
-      "merge proof pull request",
-    );
-    if (
-      pullRequest.number !== request.pr ||
-      pullRequest.merged !== true ||
-      pullRequest.headRefOid !== request.head ||
-      typeof pullRequest.mergedAt !== "string" ||
-      !Number.isFinite(Date.parse(pullRequest.mergedAt)) ||
-      typeof pullRequest.baseRefOid !== "string" ||
-      !pullRequest.mergeCommit ||
-      typeof pullRequest.mergeCommit !== "object" ||
-      Array.isArray(pullRequest.mergeCommit)
-    )
-      return undefined;
-    const mergeCommit = pullRequest.mergeCommit as Record<string, unknown>;
-    exactKeys(mergeCommit, ["oid"], "merge proof commit");
-    return {
-      number: request.pr,
-      merged: true,
-      mergedAt: pullRequest.mergedAt,
-      headRefOid: request.head,
-      baseRefOid: safeSha(pullRequest.baseRefOid, "proof base"),
-      mergeCommit: { oid: safeSha(mergeCommit.oid, "merge commit") },
-      method: request.method,
-      commitText: request.method === "rebase" ? "not_applicable_for_rebase" : "applied",
-    };
-  } catch {
-    return undefined;
-  }
-}
-
 function targetFields(request: MergeRequest) {
   return {
     repository: request.repository,
@@ -307,7 +170,7 @@ function targetFields(request: MergeRequest) {
   };
 }
 
-export async function mergePullRequest(value: unknown, runtime: Runtime = {}): Promise<MergeReceipt> {
+export async function mergePullRequest(value: unknown): Promise<MergeReceipt> {
   const commands: (readonly string[])[] = [];
   let request: MergeRequest;
   try {
@@ -334,164 +197,17 @@ export async function mergePullRequest(value: unknown, runtime: Runtime = {}): P
       ...baseReceipt("refused", "authority_missing", commands, "admin bypass requires high blast radius"),
       ...fields,
     };
-  const runner = runtime.runner ?? defaultMergeRunner;
-  const preflightRunner = async ({
-    command,
-    cwd,
-  }: {
-    command: readonly string[];
-    cwd: string;
-  }): Promise<PreflightCommandResult> => runner({ command, cwd });
-  const preflight = await runMergePreflight(
-    { root: request.root, pr: request.pr, noPoll: true },
-    { runner: preflightRunner },
-  );
-  commands.push(...preflight.commands);
-  const bindingMatches =
-    preflight.repository === request.repository &&
-    preflight.pr === request.pr &&
-    preflight.head === request.head &&
-    preflight.base === request.base &&
-    preflight.mergeBase === request.mergeBase;
-  if (!bindingMatches)
-    return {
-      ...baseReceipt("refused", "target_mismatch", commands, "preflight does not match authorized target"),
-      ...fields,
-      preflight,
-    };
-  const failedChecks = preflight.checks.filter(
-    (check) => check.bucket === "fail" || check.bucket === "cancel",
-  );
-  const pendingChecks = preflight.checks.filter((check) => check.bucket === "pending");
-  const waived = new Set(request.waivers.map((waiver) => waiver.gate));
-  const deliveryBlocked = preflight.delivery?.status === "blocked";
-  const documentationBlocked = preflight.documentation?.status === "blocked";
-  const staticAllowed =
-    (!deliveryBlocked || waived.has("delivery")) && (!documentationBlocked || waived.has("documentation"));
-  const unusedWaiver =
-    (waived.has("delivery") && !deliveryBlocked) || (waived.has("documentation") && !documentationBlocked);
-  const adminAuthorized =
-    request.adminCheck !== undefined &&
-    preflight.code === "checks_failed" &&
-    failedChecks.length === 1 &&
-    failedChecks[0]!.name === request.adminCheck &&
-    staticAllowed;
-  const checksPass = failedChecks.length === 0 && pendingChecks.length === 0;
-  const preflightShapeAllowsMerge =
-    preflight.outcome === "ready" ||
-    preflight.code === "delivery_blocked" ||
-    preflight.code === "documentation_blocked" ||
-    preflight.code === "multiple_blockers" ||
-    preflight.code === "checks_failed";
-  if (unusedWaiver)
-    return {
-      ...baseReceipt("refused", "authority_missing", commands, "waiver names a gate that is not blocking"),
-      ...fields,
-      preflight,
-    };
-  if (!preflightShapeAllowsMerge || !staticAllowed || (!checksPass && !adminAuthorized))
-    return {
-      ...baseReceipt("blocked", "preflight_blocked", commands, "fresh preflight does not authorize merge"),
-      ...fields,
-      preflight,
-    };
-  if (failedChecks.length === 0 && request.adminCheck !== undefined)
-    return {
-      ...baseReceipt(
-        "refused",
-        "authority_missing",
-        commands,
-        "admin bypass was requested without its named failing check",
-      ),
-      ...fields,
-      preflight,
-    };
-  const metadataCommand = [
-    "gh",
-    "pr",
-    "view",
-    String(request.pr),
-    "--repo",
-    request.repository,
-    "--json",
-    "number,state,headRefOid,baseRefOid,id,title,body",
-  ];
-  const metadata = await invoke(runner, commands, request.root, metadataCommand);
-  if (metadata.code !== 0 || metadata.timedOut || metadata.saturated)
-    return {
-      ...baseReceipt("failed", "lookup_failed", commands, "final metadata lookup failed"),
-      ...fields,
-      preflight,
-    };
-  let pullRequestId: string;
-  try {
-    pullRequestId = parseMetadata(metadata.stdout, request);
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    return {
-      ...baseReceipt(
-        "refused",
-        detail.startsWith("METADATA_MISMATCH") ? "metadata_mismatch" : "target_mismatch",
-        commands,
-        detail,
-      ),
-      ...fields,
-      preflight,
-    };
-  }
-  const mergeCommand = ["gh", "api", "graphql", "--input", "-"];
-  const mutation = `mutation MergePullRequest($input: MergePullRequestInput!) {
-  mergePullRequest(input: $input) {
-    pullRequest {
-      number
-      merged
-      mergedAt
-      headRefOid
-      baseRefOid
-      mergeCommit { oid }
-    }
-  }
-}`;
-  const mutationInput = JSON.stringify({
-    query: mutation,
-    variables: {
-      input: {
-        pullRequestId,
-        expectedHeadOid: request.head,
-        mergeMethod: request.method.toUpperCase(),
-        ...(request.method === "rebase"
-          ? {}
-          : { commitHeadline: request.mergeSubject, commitBody: request.mergeBody }),
-      },
-    },
-  });
-  const merge = await invoke(runner, commands, request.root, mergeCommand, mutationInput);
-  const proof =
-    merge.code === 0 && !merge.timedOut && !merge.saturated ? parseProof(merge.stdout, request) : undefined;
-  const attempted = {
-    ...fields,
-    preflight,
-    mergeAttempted: true,
-    mergeCommand,
-    mergeExitCode: merge.code,
-    mergeTimedOut: merge.timedOut === true,
-    commands,
-  };
-  if (proof)
-    return {
-      schema: mergeReceiptSchema,
-      outcome: "success",
-      code: "merged",
-      ...attempted,
-      proof,
-      detail: "expected-head merge mutation returned its exact commit receipt",
-    };
+  // GitHub's PR merge mutation can guard only the head OID. It cannot atomically
+  // bind the selected base ref to request.base, so this owner must fail closed
+  // before any command or remote mutation when target CAS is unavailable.
   return {
-    schema: mergeReceiptSchema,
-    outcome: "uncertain",
-    code: "merge_uncertain",
-    ...attempted,
-    detail: "merge was attempted but exact merged-state proof is unavailable; do not retry blindly",
+    ...baseReceipt(
+      "blocked",
+      "target_cas_unavailable",
+      commands,
+      "selected target ref/OID CAS is unavailable in the GitHub PR merge API; remote merge was not attempted",
+    ),
+    ...fields,
   };
 }
 

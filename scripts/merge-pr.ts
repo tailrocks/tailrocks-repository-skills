@@ -30,6 +30,7 @@ async function verifyInstalled(entrypoint: string, skillFile: string): Promise<v
   }
 }
 
+// Compatibility endpoint for prior callers: validates requests and emits a receipt, but never mutates a remote.
 if (import.meta.main) {
   let receipt: Record<string, unknown>;
   try {

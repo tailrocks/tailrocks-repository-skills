@@ -1,6 +1,6 @@
 interface:
   display_name: "Tailrocks: Merge PR"
-  short_description: "Merge a pull request fail-closed through the repo's gates"
-  default_prompt: "Use $tailrocks-merge-pr to run the pre-merge gates and merge this pull request."
+  short_description: "Run a fail-closed read-only preflight before PR landing"
+  default_prompt: "Use $tailrocks-merge-pr to run the read-only preflight; block landing until atomic target-base CAS and landed-target proof are available."
 policy:
   allow_implicit_invocation: false
