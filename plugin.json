@@ -1,5 +1,5 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "tailrocks-repository-skills",
-  "description": "Repository source orchestration with read-only audit, one end-to-end merge workflow, and proof-gated cleanup."
+  "description": "Target-bound repository orchestration plus fail-closed pull-request creation, refresh, review, documentation, templates, landing, audit, and cleanup."
 }

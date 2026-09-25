@@ -1,0 +1,6 @@
+interface:
+  display_name: "Tailrocks: Repository Audit"
+  short_description: "Inspect repository sources without mutation"
+  default_prompt: "Use $tailrocks-repository-skills:tailrocks-repository-audit for an explicit read-only, target-relative repository audit. Report scope, evidence, gaps, and blockers."
+policy:
+  allow_implicit_invocation: false

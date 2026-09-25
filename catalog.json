@@ -1,7 +1,13 @@
 {
   "skills": [
-    "repo-merge",
+    "tailrocks-repository-merge",
     "tailrocks-repository-audit",
-    "tailrocks-repository-cleanup"
+    "tailrocks-repository-cleanup",
+    "tailrocks-create-pr",
+    "tailrocks-refresh-pr",
+    "tailrocks-review-pr",
+    "tailrocks-merge-pr",
+    "tailrocks-document",
+    "tailrocks-pr-template"
   ]
 }

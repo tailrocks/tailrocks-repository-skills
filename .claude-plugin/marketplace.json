@@ -11,7 +11,7 @@
     {
       "name": "tailrocks-repository-skills",
       "source": "./",
-      "description": "Repository source audit, single-entry coordination, and proof-gated cleanup.",
+      "description": "Target-bound repository orchestration and fail-closed pull-request lifecycle skills.",
       "version": "0.2.0",
       "category": "Repository Skills"
     }

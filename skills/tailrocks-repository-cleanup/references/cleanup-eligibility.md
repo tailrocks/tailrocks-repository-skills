@@ -1,0 +1,40 @@
+# Cleanup eligibility
+
+Cleanup applies only to explicitly selected sources. `--all-work` is required
+for repository-wide candidates. `--cleanup=none` prohibits deletion;
+`--cleanup=resolved` permits consideration but never proves eligibility.
+Discoveries made during an audit do not join the selected set.
+
+A candidate is eligible only when every gate passes against the exact target:
+
+1. **Exact target:** the requested target exists at its full ref with a fresh
+   OID; omission means literal `main`. Missing or ambiguous target stops.
+2. **Resolved source:** complete accepted contribution is present in target
+   behavior, or every valid goal has an evidenced disposition. Ancestry or a
+   shared commit alone is not proof; partial landing retains the source.
+3. **No obligation:** no unresolved finding, open/draft PR, required review or
+   check, successor, dependency, revert, original-base obligation, other target
+   need, protected use, or unfinished worklist depends on it.
+4. **Cross-target preservation:** adapting a source into this target does not
+   satisfy its original target. Keep the original branch/PR until those
+   obligations are separately resolved.
+5. **Ownership and quiescence:** candidate is not a canonical checkout, active
+   worktree, shared object store, nested repository, another owner's work, or
+   active Git/process writer. Uncertainty means retain.
+6. **Unique-data restore:** every unique local item is outside the candidate and
+   passes the disposable restore test in [recovery](recovery.md).
+7. **Immediate identity:** immediately before each action recheck repository,
+   target ref/OID, source ref/OID or PR head/base, canonical path, ownership,
+   and quiescence. Any change invalidates the candidate.
+
+Never remove the selected target, protected/default branch, another owner's
+fork ref, canonical checkout, active worktree, shared object store, nested user
+data, or unresolved source. Delete a local full ref only with a
+compare-and-delete operation such as `git update-ref -d <full-ref>
+<expected-old-oid>` (or an equivalent CAS). If a remote host cannot condition
+deletion on the expected OID, retain its ref. Filesystem deletion is one exact
+canonical path after the final check; never use wildcards or broad recursive
+deletion.
+
+After each action, rescan the selected scope and target. Report removed and
+retained identities and reasons. Any failure or uncertainty means retain.
