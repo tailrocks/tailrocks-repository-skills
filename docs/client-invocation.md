@@ -281,7 +281,7 @@ preflight is read-only and is the only available hosted check:
 
 ```sh
 bun /path/to/tailrocks-repository-skills/scripts/merge-preflight.ts \
-  --root /path/to/target-repository --pr 1663 --no-poll
+  --root /path/to/target-repository --repo OWNER/REPO --pr 1663 --no-poll
 ```
 
 A `ready` receipt does not authorize mutation. Do not invoke
