@@ -1144,6 +1144,22 @@ export async function runMergePreflight(
   }
   try {
     await verifyTarget(root, options.pr, target, runner, commands, options.repo);
+    if (checks.length === 0 || checks.some((check) => check.bucket !== "pass"))
+      return {
+        ...baseReceipt(
+          "checks_failed",
+          "blocked",
+          commands,
+          checks.length === 0
+            ? "required check lookup returned no checks; green status is unproven"
+            : "one or more required checks are not passing",
+        ),
+        ...target,
+        checkAttempts: attempts,
+        checks,
+        delivery,
+        documentation,
+      };
     if (staticCode)
       return {
         ...baseReceipt(staticCode, "blocked", commands, staticDetail),
