@@ -44,7 +44,7 @@ const authenticationEnvironmentKeys = [
   "GITHUB_ENTERPRISE_TOKEN",
 ] as const;
 const executableNamePattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const hostnameLabelPattern = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
+const githubHost = "github.com";
 
 function trustedEnvironment(pathValue: string): Record<string, string> {
   const environment: Record<string, string> = {
@@ -63,17 +63,10 @@ function trustedEnvironment(pathValue: string): Record<string, string> {
       environment[key] = value;
     }
   }
-  const host = process.env.GH_HOST;
-  if (host !== undefined) {
-    const labels = host.split(".");
-    if (
-      host.length > 253 ||
-      labels.length === 0 ||
-      labels.some((label) => !hostnameLabelPattern.test(label))
-    )
-      throw new Error("trusted environment variable is invalid: GH_HOST");
-    environment.GH_HOST = host.toLowerCase();
-  }
+  const host = process.env.GH_HOST?.toLowerCase();
+  if (host !== undefined && host !== githubHost)
+    throw new Error("trusted environment variable is invalid: GH_HOST");
+  environment.GH_HOST = githubHost;
   return environment;
 }
 
