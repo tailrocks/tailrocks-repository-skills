@@ -1,8 +1,9 @@
 # Native client routes
 
-The release contains nine public skills and their skill-local references and
-templates. Install this repository as one package; do not install or checkout
-a separate source collection. Discovery does not authorize a merge, cleanup,
+The release contains nine public skills and their skill-local references,
+templates, and package-level helper scripts. Install this repository as one
+package; do not install or checkout a separate source collection. Discovery
+does not authorize a merge, cleanup,
 or other side effect.
 
 ## Runtime requirements
@@ -30,13 +31,15 @@ tailrocks-pr-template
 
 Codex uses `.codex-plugin/plugin.json` and its plugin marketplace route:
 
+For the published repository:
+
 ```sh
-codex plugin marketplace add /path/to/tailrocks-repository-skills
+codex plugin marketplace add tailrocks/tailrocks-repository-skills
 codex plugin add tailrocks-repository-skills@tailrocks-repository-skills
 ```
 
-For a published checkout, replace the path with the repository source accepted
-by the installed Codex CLI. Invoke a qualified plugin skill:
+For a local checkout or extracted package, replace the marketplace source with
+`/path/to/tailrocks-repository-skills`. Invoke a qualified plugin skill:
 
 ```text
 $tailrocks-repository-skills:tailrocks-repository-merge --target-branch=release/next feature/auth
@@ -54,9 +57,18 @@ filesystem, network, merge, or deletion authority.
 Add the local marketplace and install the complete plugin in the desired
 scope:
 
+For the published repository:
+
+```sh
+claude plugin marketplace add tailrocks/tailrocks-repository-skills
+claude plugin install tailrocks-repository-skills@tailrocks-repository-skills --scope user
+```
+
+For a local marketplace, use its path:
+
 ```sh
 claude plugin marketplace add /path/to/tailrocks-repository-skills
-claude plugin install tailrocks-repository-skills@tailrocks-repository-skills --scope user --yes
+claude plugin install tailrocks-repository-skills@tailrocks-repository-skills --scope user
 ```
 
 Use the plugin namespace:
@@ -83,7 +95,7 @@ directory:
 ```sh
 mkdir -p .amp/plugins/tailrocks-repository-skills
 cp -R /path/to/extracted/tailrocks-repository-skills-release/. .amp/plugins/tailrocks-repository-skills/
-amp skills list
+amp plugins list
 ```
 
 The adapter registers the nine skills under the qualified names
@@ -95,7 +107,7 @@ Use the tailrocks-repository-skills:tailrocks-repository-merge skill with --targ
 Use the tailrocks-repository-skills:tailrocks-review-pr skill on #1663. Report only; do not post or merge.
 ```
 
-Use `amp skills list --json` to inspect discovery. Amp's per-skill importer
+Use `amp plugins list` to inspect discovery. Amp's per-skill importer
 does not retain arbitrary repository-root files; do not use that route for this
 package because lifecycle skills need the bundled root helpers. Amp may mask a
 same-named skill from a higher-precedence local or personal directory; inspect
@@ -143,21 +155,24 @@ muse plugins validate /path/to/tailrocks-repository-skills --json
 muse plugins install /path/to/tailrocks-repository-skills --scope user --json
 ```
 
-In the Muse TUI, type `/` to open the skill picker, select the installed skill,
-then enter its complete argument string. For example, select
-`tailrocks-repository-merge` and enter
-`--target-branch=release/next feature/auth`.
+In the Muse TUI, type `/` to open the skill picker, then invoke the installed
+skill. Use the qualified form when a bare name collides:
 
-The native plugin command is the supported installation route. A plain
-`muse exec` prompt is not proof that the installed skill was selected.
+```text
+/tailrocks-repository-skills:tailrocks-repository-merge --target-branch=release/next feature/auth
+/tailrocks-repository-skills:tailrocks-review-pr #1663
+```
+
+The native plugin command is the supported installation route. Project and
+user skills can shadow a bare plugin skill; a plain `muse exec` prompt is
+not deterministic skill selection.
 
 ## Antigravity CLI (`agy`)
 
 Antigravity uses the root `plugin.json`, intentionally limited to its native
-schema. Validate and install the package:
+schema. Install the package:
 
 ```sh
-agy plugin validate /path/to/tailrocks-repository-skills
 agy plugin install /path/to/tailrocks-repository-skills
 ```
 
@@ -169,7 +184,9 @@ Select a skill in the Antigravity session with its native slash command:
 /tailrocks-merge-pr #1663
 ```
 
-This is the native CLI plugin route, not an IDE-only convention.
+This is the native CLI plugin route, not an IDE-only convention. The
+current CLI docs expose bare skill IDs; use `/skills` to inspect collisions
+rather than assuming a `plugin:skill` qualifier.
 
 ## Kimi Code CLI
 
@@ -178,6 +195,11 @@ Point Kimi at the consolidated package's `skills/` directory:
 ```sh
 kimi --skills-dir /path/to/tailrocks-repository-skills/skills
 ```
+
+`--skills-dir` replaces Kimi's automatically discovered user and project
+skill directories for that launch; repeat the flag for any additional
+directories you need. Keep the package root intact because skill-local
+resources and sibling `scripts/` files are required.
 
 Invoke with Kimi's native skill command:
 
@@ -190,12 +212,16 @@ Invoke with Kimi's native skill command:
 `kimi -p` sends a plain prompt; it is not a replacement for explicit
 `/skill:<name>` selection when deterministic routing is required.
 
-## OpenCode
+## OpenCode v1
 
-OpenCode discovers Markdown skills from the project `.opencode/skills/`
-directory. Install the complete skill directories and their bundled helper
+OpenCode v1 discovers Markdown skills from the project `.opencode/skills/`
+directory and uses `permission.skill`. It has no `skills.paths` setting;
+do not use the v2 `permissions`/`action` schema with a v1 client. Install
+the complete skill directories and their bundled helper
 scripts from an extracted release package; do not install a separate source
-collection. Configure skill approval separately:
+collection. V1 ignores `disable-model-invocation` and `user-invocable` skill
+frontmatter; use `permission.skill` and the skill body as the safety boundary.
+Configure skill approval separately:
 
 ```json
 {

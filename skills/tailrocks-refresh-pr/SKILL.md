@@ -40,6 +40,17 @@ command whose stdout is the fresh skeleton for the current diff.
   Use the returned `nameWithOwner` as `REPO` for every subsequent GitHub CLI
   command. Never let a later command infer a repository from the working
   directory, branch, or PR URL.
+- Bind the local Git fetch remote to the resolved repository URL before
+  gathering the diff. Enumerate `git remote` and inspect each fetch URL; do
+  not assume the remote is named `origin`. Before using a discovered name,
+  require `GIT_REMOTE` to match `^[A-Za-z0-9][A-Za-z0-9._-]*$`; pass it as
+  one argv value, never as shell-interpolated source text. Normalize only the
+  optional trailing slash and `.git`, then require exactly one matching remote
+  whose URL is `https://github.com/<REPO>` with no credentials, port, query, or
+  fragment. Store its name as `GIT_REMOTE` and its validated URL. If no
+  remote, multiple remotes, or any malformed/mismatched URL prevents an
+  unambiguous binding, stop before fetching. Re-read and require the same
+  remote URL immediately before use; a change is drift and must abort.
 - Every `gh pr` command, including reads, diffs, verification, and edits, must
   pass `--repo "$REPO"`. The mutation binding is the tuple
   `(REPO, PR number, headRefName, headRefOid, baseRefName, baseRefOid)`.
@@ -66,13 +77,24 @@ command whose stdout is the fresh skeleton for the current diff.
    repository identity. If the returned number or repository binding is not
    the requested one, stop before gathering or writing anything. Keep the
    initial title/body bytes or digests for drift detection.
+   Store `BASE` as `baseRefName` and `BASE_OID` as its complete `baseRefOid`.
+   Require `BASE` to be non-empty, not start with `-`, contain no `..` or
+   `@{`, pass `git check-ref-format -- "refs/heads/$BASE"`, and be passed to Git as
+   one argv value. Require `BASE_OID` to be a complete hexadecimal Git object
+   ID. If either value is malformed, stop before fetching.
    **Complete when:** you have the canonical repository identity, PR number,
-   head ref/OID, base ref/OID, title, and body.
+   head ref/OID, base ref/OID, title, body, and option-safe `GIT_REMOTE`/`BASE`.
 
-2. **Gather the fresh shape.** `git fetch origin <base>`, then read
-   `gh pr diff <PR> --repo "$REPO"` and `git log origin/<base>..HEAD --oneline`. Build the
-   fresh skeleton the current diff would get: run the conventions file's body
-   generator when one is named, else re-read the repository's own
+2. **Gather the fresh shape.** After the remote binding is complete and still
+   exact, run `git fetch --no-tags "$GIT_REMOTE" "refs/heads/$BASE"` with
+   each value as a separate argv item. Read the fetched `FETCH_HEAD` OID and
+   require `git rev-parse --verify 'FETCH_HEAD^{commit}'` to equal `BASE_OID`;
+   any mismatch is drift and must abort.
+   Then read
+   `gh pr diff <PR> --repo "$REPO"` and
+   `git log "$BASE_OID..HEAD" --oneline`. Build the fresh skeleton
+   the current diff would get: run the conventions file's body generator when
+   one is named, else re-read the repository's own
    `.github/PULL_REQUEST_TEMPLATE.md` at runtime (with no template anywhere,
    the minimal fallback skeleton from `tailrocks-create-pr`'s body rules).
    **Complete when:** you can say what the change *is* now and which

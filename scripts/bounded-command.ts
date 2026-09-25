@@ -179,10 +179,12 @@ async function inspectPathChain(
   return inspectCanonicalPath(canonical, workingDirectory, leaf);
 }
 
-async function resolveTrustedExecutable(
+export async function resolveTrustedExecutable(
   name: string,
   workingDirectory: string,
 ): Promise<{ readonly executable: string; readonly path: string }> {
+  if (process.platform === "win32")
+    throw new Error("trusted lifecycle executable resolution is unsupported on Windows");
   // Never inherit PATH: search only standard system, Homebrew, and MacPorts
   // dirs, with every raw candidate and parent checked before use.
   if (!executableNamePattern.test(name) || (name !== "git" && name !== "gh"))
