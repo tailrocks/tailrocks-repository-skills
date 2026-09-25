@@ -22,6 +22,13 @@ source-collection checkout or installation is required. Install the complete
 package or release archive. Do not copy an individual `SKILL.md` out of its
 skill directory.
 
+## Runtime requirements
+
+Git is required for repository operations. Bun runs the bundled lifecycle
+helpers. Remote pull-request lifecycle owners also require an authenticated
+`gh` session with access to the target repository; local-only and read-only
+audits can remain local.
+
 ## Select sources and target
 
 Positional arguments are sources. `--target-branch` is the one destination;

@@ -5,6 +5,13 @@ templates. Install this repository as one package; do not install or checkout
 a separate source collection. A loader or manifest check proves packaging and
 discovery only. It does not authorize a merge, cleanup, or other side effect.
 
+## Runtime requirements
+
+All repository workflows require Git. Lifecycle helper scripts require Bun.
+Hosted pull-request creation, refresh, review, and landing require an
+authenticated `gh` session with access to the target repository; local-only
+and read-only audit routes may not need it.
+
 The public skill names are:
 
 ```text
@@ -48,7 +55,7 @@ Add the local marketplace and install the complete plugin in the desired
 scope:
 
 ```sh
-claude plugin marketplace add /path/to/tailrocks-repository-skills --scope user
+claude plugin marketplace add /path/to/tailrocks-repository-skills
 claude plugin install tailrocks-repository-skills@tailrocks-repository-skills --scope user --yes
 ```
 
@@ -70,7 +77,8 @@ Git, hosting, merge, and cleanup side effects.
 
 The release includes an Amp directory-plugin adapter so the complete package,
 including the root helpers used by lifecycle skills, is loaded as one unit.
-Unpack or copy the release checkout into the project's plugin directory:
+Unpack or copy the extracted release product package into the project's plugin
+directory:
 
 ```sh
 mkdir -p .amp/plugins/tailrocks-repository-skills
@@ -92,6 +100,10 @@ does not retain arbitrary repository-root files; do not use that route for this
 package because lifecycle skills need the bundled root helpers. Amp may mask a
 same-named skill from a higher-precedence local or personal directory; inspect
 the source before relying on automatic invocation.
+
+If the loader does not provide an absolute skill-file path, canonicalize it
+from the installed package path:
+`.amp/plugins/tailrocks-repository-skills/skills/<skill-id>/SKILL.md`.
 
 ## Grok Build
 
@@ -131,14 +143,10 @@ muse plugins validate /path/to/tailrocks-repository-skills --json
 muse plugins install /path/to/tailrocks-repository-skills --scope user --json
 ```
 
-In the Muse TUI, select the installed skill and pass the complete argument
-string, for example:
-
-```text
-tailrocks-repository-merge --target-branch=release/next feature/auth
-tailrocks-review-pr #1663
-tailrocks-merge-pr #1663
-```
+In the Muse TUI, type `/` to open the skill picker, select the installed skill,
+then enter its complete argument string. For example, select
+`tailrocks-repository-merge` and enter
+`--target-branch=release/next feature/auth`.
 
 The native plugin command is the supported installation route. A plain
 `muse exec` prompt is not proof that the installed skill was selected.
@@ -153,16 +161,15 @@ agy plugin validate /path/to/tailrocks-repository-skills
 agy plugin install /path/to/tailrocks-repository-skills
 ```
 
-Select a skill in the Antigravity session and pass the full argument string:
+Select a skill in the Antigravity session with its native slash command:
 
 ```text
-tailrocks-repository-merge --target-branch=release/next feature/auth
-tailrocks-review-pr #1663
-tailrocks-merge-pr #1663
+/tailrocks-repository-merge --target-branch=release/next feature/auth
+/tailrocks-review-pr #1663
+/tailrocks-merge-pr #1663
 ```
 
-This is the native CLI plugin route, not an IDE-only convention. The client
-does not expose a portable qualified slash-command syntax here.
+This is the native CLI plugin route, not an IDE-only convention.
 
 ## Kimi Code CLI
 
