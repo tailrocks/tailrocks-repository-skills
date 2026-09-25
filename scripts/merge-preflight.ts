@@ -206,10 +206,11 @@ async function verifyTarget(
   const top = (await requireCommand(runner, commands, root, ["git", "rev-parse", "--show-toplevel"])).trim();
   if ((await realpath(top)) !== root) throw new Error("NOT_GIT_REPO: root is not the repository top level");
   const head = (await requireCommand(runner, commands, root, ["git", "rev-parse", "HEAD"])).trim();
+  const repositoryCommand = expectedRepository !== undefined
+    ? ["gh", "repo", "view", expectedRepository, "--json", "nameWithOwner"]
+    : ["gh", "repo", "view", "--json", "nameWithOwner"];
   const repositoryRecord = strictObject(
-    JSON.parse(
-      await requireCommand(runner, commands, root, ["gh", "repo", "view", "--json", "nameWithOwner"]),
-    ),
+    JSON.parse(await requireCommand(runner, commands, root, repositoryCommand)),
     "repository response",
   );
   requireExactKeys(repositoryRecord, ["nameWithOwner"], "repository response");
@@ -217,7 +218,7 @@ async function verifyTarget(
   if (typeof repo !== "string" || !repositoryPattern.test(repo))
     throw new Error("TARGET_MISMATCH: repository identity is invalid");
   if (expectedRepository !== undefined && repo !== expectedRepository)
-    throw new Error("TARGET_MISMATCH: local repository differs from --repo");
+    throw new Error("TARGET_MISMATCH: repository identity differs from --repo");
   const value = strictObject(
     JSON.parse(
       await requireCommand(runner, commands, root, [
