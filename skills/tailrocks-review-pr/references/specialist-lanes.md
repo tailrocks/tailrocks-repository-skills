@@ -23,8 +23,8 @@ Also judge the tests themselves: a test coupled to implementation details
 fails on refactors instead of regressions and is a finding; a test that
 cannot fail is a defect. Do not demand tests for trivial accessors, and
 check whether an existing integration test already covers the scenario
-before flagging the gap. House rule inherited from the stack lanes: a new
-business rule without a test is unfinished work, not a suggestion.
+before flagging the gap. A new business rule without a test is unfinished
+work, not a suggestion.
 
 ## Silent failures — trigger: error handling, fallbacks, or retries touched
 
@@ -49,9 +49,11 @@ that skips fallible operations, retry loops. For each:
   can do; the house boundary rule applies — semantic error codes from the
   core, localized wording at the shell.
 
-A silent-failure pattern repeated across the diff is a defect class: route it to
-`tailrocks-root-cause` for diagnosis rather than listing each instance as an
-independent nit. Only an approved correction routes to `tailrocks-remediate`.
+A silent-failure pattern repeated across the diff is one defect class: report
+the shared enabling condition and concrete diagnosis rather than listing each
+instance as an independent nit. If the user explicitly requests an available
+root-cause or remediation specialist, hand off then; otherwise keep the
+finding in this read-only report.
 
 ## Type design — trigger: new or reshaped types
 
@@ -74,9 +76,9 @@ internals, doc-only invariants, missing construction validation,
 enforcement that varies across mutation paths, types relying on callers to
 maintain their invariants. Weigh the complexity cost of every suggestion —
 a simpler type with fewer guarantees can beat a fortress that overreaches;
-the stack lanes (`tailrocks-rust-best-practices`,
-`tailrocks-typescript-best-practices`, `tailrocks-swift-best-practices`)
-own the language-specific typed-failure and domain-value rules.
+language-specific typed-failure and domain-value rules belong to the
+repository's scoped instructions and existing code. Do not assume an external
+language specialist is installed.
 
 ## Comment accuracy — trigger: comments or docs added or modified
 
