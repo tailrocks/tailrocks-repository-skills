@@ -91,9 +91,9 @@ function isTrustedHostPath(pathname: string): boolean {
 function ownedAndPrivate(
   info: Awaited<ReturnType<typeof lstat>>,
   pathname: string,
-  allowTrustedGroupWrite: boolean,
+  allowGroupWrite: boolean,
 ): boolean {
-  if ((info.mode & (allowTrustedGroupWrite && isTrustedHostPath(pathname) ? 0o002 : 0o022)) !== 0)
+  if ((info.mode & (allowGroupWrite && isTrustedHostPath(pathname) ? 0o002 : 0o022)) !== 0)
     return false;
   if (typeof process.getuid !== "function") return true;
   return info.uid === process.getuid() || info.uid === 0;
@@ -115,7 +115,6 @@ async function inspectCanonicalPath(
   absolute: string,
   workingDirectory: string,
   leaf: "directory" | "executable",
-  allowTrustedGroupWrite: boolean,
 ): Promise<string | undefined> {
   if (isWithin(absolute, workingDirectory)) return undefined;
   for (const [index, pathname] of pathChain(absolute).entries()) {
@@ -127,7 +126,7 @@ async function inspectCanonicalPath(
     }
     if (
       info.isSymbolicLink() ||
-      !ownedAndPrivate(info, pathname, allowTrustedGroupWrite) ||
+      !ownedAndPrivate(info, pathname, index !== 0 || leaf === "directory") ||
       (index === 0
         ? leaf === "directory"
           ? !info.isDirectory()
@@ -149,7 +148,6 @@ async function inspectPathChain(
   if (!path.isAbsolute(rawPath) || rawPath.includes("\0")) return undefined;
   const absolute = path.resolve(rawPath);
   if (isWithin(absolute, workingDirectory)) return undefined;
-  const allowTrustedGroupWrite = isTrustedHostPath(absolute);
   const chain = pathChain(absolute);
   for (const [index, pathname] of chain.entries()) {
     let info: Awaited<ReturnType<typeof lstat>>;
@@ -162,7 +160,7 @@ async function inspectPathChain(
     if (!isLeaf || leaf === "directory") {
       if (
         info.isSymbolicLink() ||
-        !ownedAndPrivate(info, pathname, allowTrustedGroupWrite) ||
+        !ownedAndPrivate(info, pathname, !isLeaf || leaf === "directory") ||
         (isLeaf ? !info.isDirectory() : !info.isDirectory())
       )
         return undefined;
@@ -173,26 +171,23 @@ async function inspectPathChain(
         return undefined;
       continue;
     }
-    if (!info.isFile() || !ownedAndPrivate(info, pathname, allowTrustedGroupWrite)) return undefined;
+    if (!info.isFile() || !ownedAndPrivate(info, pathname, false)) return undefined;
     if ((info.mode & 0o111) === 0) return undefined;
   }
   const canonical = await realpath(absolute).catch(() => undefined);
   if (!canonical || isWithin(canonical, workingDirectory)) return undefined;
-  return inspectCanonicalPath(canonical, workingDirectory, leaf, allowTrustedGroupWrite);
+  return inspectCanonicalPath(canonical, workingDirectory, leaf);
 }
 
 async function resolveTrustedExecutable(
   name: string,
   workingDirectory: string,
 ): Promise<{ readonly executable: string; readonly path: string }> {
-  // Search host PATH plus standard system, Homebrew, and MacPorts dirs, but
-  // never inherit it: every raw candidate and parent is checked before use.
+  // Never inherit PATH: search only standard system, Homebrew, and MacPorts
+  // dirs, with every raw candidate and parent checked before use.
   if (!executableNamePattern.test(name) || (name !== "git" && name !== "gh"))
     throw new Error("trusted executable name is invalid");
-  const rawDirectories = [
-    ...(process.env.PATH ?? "").split(path.delimiter).filter((entry) => entry.length > 0),
-    ...trustedPathDirectories,
-  ];
+  const rawDirectories = trustedPathDirectories;
   const safeDirectories: string[] = [];
   let executable: string | undefined;
   for (const rawDirectory of rawDirectories) {
