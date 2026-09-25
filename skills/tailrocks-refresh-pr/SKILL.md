@@ -35,7 +35,7 @@ command whose stdout is the fresh skeleton for the current diff.
   [`references/runtime-trust.md`](references/runtime-trust.md).
 - Bind one canonical base repository before reading or mutating metadata. If
   `--repo OWNER/REPO` is supplied, resolve that repository first with
-  `gh repo view --repo OWNER/REPO --json nameWithOwner,url`; otherwise resolve
+  `gh repo view OWNER/REPO --json nameWithOwner,url`; otherwise resolve
   the current repository once with `gh repo view --json nameWithOwner,url`.
   Use the returned `nameWithOwner` as `REPO` for every subsequent GitHub CLI
   command. Never let a later command infer a repository from the working
@@ -57,7 +57,7 @@ command whose stdout is the fresh skeleton for the current diff.
 ## Steps
 
 1. **Resolve the repository and PR.** Resolve the canonical repository first:
-   `gh repo view [--repo OWNER/REPO] --json nameWithOwner,url`. Store its exact
+   `gh repo view [OWNER/REPO] --json nameWithOwner,url`. Store its exact
    `nameWithOwner` as `REPO` and its canonical URL. Then run
    `gh pr view <PR> --repo "$REPO" --json
    number,title,body,headRefName,headRefOid,baseRefName,baseRefOid,headRepository,headRepositoryOwner,isCrossRepository`
@@ -103,7 +103,7 @@ command whose stdout is the fresh skeleton for the current diff.
    not have noticed. If no title change is needed, do not issue an edit.
 
    Immediately before a title mutation, re-read
-   `gh repo view --repo "$REPO" --json nameWithOwner,url`, then
+   `gh repo view "$REPO" --json nameWithOwner,url`, then
    `gh pr view <PR> --repo "$REPO" --json
    number,title,body,headRefName,headRefOid,baseRefName,baseRefOid` and require
    both canonical repository fields and the complete PR/head/base binding, plus
@@ -120,7 +120,7 @@ command whose stdout is the fresh skeleton for the current diff.
 
 6. **Write and verify.** Create an owner-only temporary directory, write the
    reconciled body to `<temp>/body.md`, then immediately re-read
-   `gh repo view --repo "$REPO" --json nameWithOwner,url`, then
+   `gh repo view "$REPO" --json nameWithOwner,url`, then
    `gh pr view <PR> --repo "$REPO" --json
    number,title,body,headRefName,headRefOid,baseRefName,baseRefOid`. Require
    the canonical repository fields and complete binding to match the original
