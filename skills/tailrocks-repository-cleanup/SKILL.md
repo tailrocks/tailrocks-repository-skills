@@ -61,22 +61,33 @@ when checking PR review, checks, or other obligations.
    another owner's work, or an active writer/Git operation. Never stop or
    signal a writer; uncertainty means retain and report the source.
 
-7. Before each deletion, snapshot every unique ref, HEAD, index state, staged
-   and unstaged change, untracked and valuable ignored file, mode, symlink,
-   and required Git/LFS/submodule item outside the candidate. Perform the real
-   disposable restore test in [recovery](references/recovery.md), not merely a
-   bundle or existence check.
+7. Before each deletion, snapshot every unique local item into protected
+   storage outside every deletion target, including refs, HEAD, index state, staged and
+   unstaged changes, stash, untracked and valuable ignored files, content,
+   modes, symlink targets, recoverable objects, interrupted operations, nested
+   repositories, required Git/LFS/submodule metadata, alternate/shared-object
+   metadata, and declared dependency artifacts. Perform the real disposable
+   restore test in [recovery](references/recovery.md), not merely a bundle or
+   existence check.
 
-8. Immediately before each individual deletion, recheck repository identity,
-   target ref/OID, source ref/OID or PR head/base, canonical path, ownership,
-   and quiescence. Delete a local full ref only with a compare-and-delete
-   operation such as `git update-ref -d <full-ref> <expected-old-oid>` or an
-   equivalent CAS. Delete a filesystem candidate only by its exact proven path.
+8. Immediately before each deletion, repeat the complete unique-local-item
+   snapshot into protected storage outside every deletion target and the
+   restore-safety revalidation: refs, HEAD, index state, staged/unstaged
+   changes, stash, untracked/ignored files, content, modes, symlink targets,
+   recoverable objects, interrupted operations, nested repositories, required
+   Git/LFS/submodule metadata, alternate/shared-object metadata, and declared
+   dependency artifacts. Also recheck repository identity, target ref/OID,
+   source ref/OID or PR head/base, canonical path, ownership, and quiescence.
+   Any drift, missing item, changed dependency, or stale restore proof retains
+   the candidate and requires a fresh restore proof. Delete a local full ref only
+   with a compare-and-delete operation such as
+   `git update-ref -d <full-ref> <expected-old-oid>` or an equivalent CAS.
+   Delete a filesystem candidate only by its exact proven path.
    Never use wildcards, broad recursive deletion, `git clean -fdx`, reset, force
    update, global stash clearing, or merge/close commands. If a remote host
    cannot condition deletion on expected identity, retain the remote ref.
 
-9. Rescan the selected scope and target after each action. Report every removed
+9. Rescan the selected scope and target after each deletion. Report every removed
    and retained candidate with identity, restore result, action, and reason.
    Later discoveries remain report-only and do not enlarge targeted authority.
 

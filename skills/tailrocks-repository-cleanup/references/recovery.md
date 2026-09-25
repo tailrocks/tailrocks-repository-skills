@@ -13,7 +13,8 @@ uncertain, retain the source.
 Capture exact repository identity, full refs/OIDs, worktree HEADs, staged and
 unstaged changes, untracked and valuable ignored files, file bytes/modes,
 symlink targets, nested repositories, stashes, recoverable objects, interrupted
-operations, LFS/submodules, alternates, and shared object dependencies. Keep
+operations, LFS/submodules, alternate/shared-object metadata, and declared
+dependency artifacts. Keep
 credentials and sensitive filenames only in protected local recovery storage;
 reports contain redacted identities and pass/fail.
 
@@ -23,7 +24,9 @@ The required restore test is real and disposable:
    over the original candidate.
 2. Recreate relevant refs and HEAD, then restore worktree and index state.
 3. Compare refs/OIDs, HEADs, staged and unstaged diffs, untracked and ignored
-   paths/bytes, modes, symlinks, and required LFS/submodule content.
+   paths/bytes, modes, symlinks, nested repositories, stashes, recoverable
+   objects, interrupted operations, required LFS/submodule content,
+   alternate/shared-object metadata, and declared dependency artifacts.
 4. Confirm the disposable restore is independently readable and complete.
 
 A bundle, snapshot existence, or sample-file check is insufficient. A missing

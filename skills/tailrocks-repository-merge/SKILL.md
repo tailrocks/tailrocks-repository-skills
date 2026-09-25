@@ -133,7 +133,7 @@ before resolving sources.
    original selected sources whose complete contribution is resolved on this
    exact target, obligations are satisfied, ownership and quiescence are
    proven, unique data has passed a disposable restore test, and identities
-   are rechecked immediately before each action. Do not invoke the standalone
+   are rechecked immediately before each deletion. Do not invoke the standalone
    manual-only cleanup skill or widen the source set. Audit-only and
    `--cleanup=none` never clean.
 
