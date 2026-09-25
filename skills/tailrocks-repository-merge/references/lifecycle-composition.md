@@ -69,7 +69,7 @@ or waiver consumer, or remote-landing operation. Its only permitted entrypoint
 is the imported `merge-preflight.ts` command:
 
 ```text
-bun <PACKAGE_ROOT>/scripts/merge-preflight.ts --root <repo> --pr <N> --no-poll
+bun <PACKAGE_ROOT>/scripts/merge-preflight.ts --root <repo> --repo OWNER/REPO --pr <N> --no-poll
 ```
 
 The command derives and binds the repository, PR number, head, base, merge

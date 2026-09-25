@@ -13,8 +13,8 @@ churn with a longer diff.
 Every structural finding names two things: **the move** (what gets
 restructured, concretely) and **the measure that disappears** (branches,
 special cases, layers, duplicated logic, a file split). A finding with
-neither is taste, and taste is out of scope — the same discipline
-`tailrocks-simplify` applies to removals.
+neither is taste, and taste is out of scope; apply the same discipline to
+removal suggestions.
 
 ## Presumptive blockers
 
@@ -40,9 +40,9 @@ Each of these blocks approval unless the author records a justification:
   code.
 - **Boundary erosion.** Unnecessary optionality, `unknown`/`any`, cast
   churn, or a silent fallback papering over an unclear invariant, where an
-  explicit typed boundary would make the control flow simpler. The house
-  best-practices lanes own the language-specific rules; this pass flags
-  the structural symptom.
+  explicit typed boundary would make the control flow simpler. Repository-
+  scoped instructions govern language-specific rules; this pass flags the
+  structural symptom.
 - **Complexity preserved when a judo move is visible.** The change works
   but keeps incidental complexity a visible reframing would delete.
 - **Needless serialization and non-atomic updates.** Independent work
@@ -69,17 +69,17 @@ When suggesting the fix, prefer the deleting move over the polishing move:
 
 ## Routing
 
-Structural findings route by what the fix may disturb, mirroring the house
-three-skill order:
+Structural findings route by what the fix may disturb:
 
 - The fix removes code from this diff with behavior frozen →
-  `tailrocks-simplify-audit` (its ladder, protected constructs, and measured
-  deltas govern; do not duplicate its analysis here). Only an already approved
-  removal routes onward to `tailrocks-simplify`.
+  a removal-audit workflow only when the user explicitly requests an available
+  one; otherwise report the deletion, protected behavior, and measured delta
+  directly. Do not assume a separate audit skill exists.
 - The finding is a proven defect, concrete friction, or failed guarantee whose
-  enabling condition needs diagnosis/design → `tailrocks-root-cause`, which
-  refuses cost as a counter-argument. Only an explicitly approved current
-  correction routes onward to `tailrocks-remediate`.
+  enabling condition needs diagnosis/design → report the enabling condition and
+  diagnosis needed. Name a root-cause or remediation workflow only when the
+  user explicitly requests one that is available; cost is never a counter-
+  argument.
 - A behavior-preserving restructure larger than this diff → record it as
   separate work with its named move; do not demand it inside this PR
   unless it is a presumptive blocker above.

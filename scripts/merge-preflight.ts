@@ -110,6 +110,7 @@ interface Options {
   readonly root: string;
   readonly pr: number;
   readonly noPoll: boolean;
+  readonly repo?: string;
   readonly pollWithStaticBlockers?: boolean;
 }
 
@@ -127,6 +128,7 @@ const maxFileBytes = 1_000_000;
 const maximumAttempts = 30;
 const pollIntervalMs = 10_000;
 const wallClockLimitMs = 300_000;
+const repositoryPattern = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 export const defaultRunner: CommandRunner = ({ command, cwd }) =>
   runTrustedCommand({ command, cwd });
@@ -199,20 +201,24 @@ async function verifyTarget(
   expected: PullRequest | undefined,
   runner: CommandRunner,
   commands: (readonly string[])[],
+  expectedRepository?: string,
 ): Promise<PullRequest> {
   const top = (await requireCommand(runner, commands, root, ["git", "rev-parse", "--show-toplevel"])).trim();
   if ((await realpath(top)) !== root) throw new Error("NOT_GIT_REPO: root is not the repository top level");
   const head = (await requireCommand(runner, commands, root, ["git", "rev-parse", "HEAD"])).trim();
+  const repositoryCommand = expectedRepository !== undefined
+    ? ["gh", "repo", "view", expectedRepository, "--json", "nameWithOwner"]
+    : ["gh", "repo", "view", "--json", "nameWithOwner"];
   const repositoryRecord = strictObject(
-    JSON.parse(
-      await requireCommand(runner, commands, root, ["gh", "repo", "view", "--json", "nameWithOwner"]),
-    ),
+    JSON.parse(await requireCommand(runner, commands, root, repositoryCommand)),
     "repository response",
   );
   requireExactKeys(repositoryRecord, ["nameWithOwner"], "repository response");
   const repo = repositoryRecord.nameWithOwner;
-  if (typeof repo !== "string" || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo))
+  if (typeof repo !== "string" || !repositoryPattern.test(repo))
     throw new Error("TARGET_MISMATCH: repository identity is invalid");
+  if (expectedRepository !== undefined && repo !== expectedRepository)
+    throw new Error("TARGET_MISMATCH: repository identity differs from --repo");
   const value = strictObject(
     JSON.parse(
       await requireCommand(runner, commands, root, [
@@ -812,10 +818,18 @@ export async function runDocumentationCheck(
   rootInput: string,
   pr: number,
   runtime: Pick<Runtime, "runner"> = {},
+  expectedRepository?: string,
 ): Promise<MergePreflightReceipt> {
   const commands: (readonly string[])[] = [];
   if (!Number.isSafeInteger(pr) || pr < 1)
     return baseReceipt("invalid_arguments", "refused", commands, "PR must be a positive integer");
+  if (expectedRepository !== undefined && !repositoryPattern.test(expectedRepository))
+    return baseReceipt(
+      "invalid_arguments",
+      "refused",
+      commands,
+      "repo must be in OWNER/REPO form",
+    );
   let root: string;
   try {
     root = await safeRoot(rootInput);
@@ -829,7 +843,7 @@ export async function runDocumentationCheck(
   }
   const runner = runtime.runner ?? defaultRunner;
   try {
-    const target = await verifyTarget(root, pr, undefined, runner, commands);
+    const target = await verifyTarget(root, pr, undefined, runner, commands, expectedRepository);
     const discovery = await loadDocumentationDiscovery(root, target, runner, commands);
     const result = evaluateDocumentation(
       await loadCommits(root, target, runner, commands),
@@ -845,7 +859,7 @@ export async function runDocumentationCheck(
           ? "pass"
           : "blocked") as "not_needed" | "pass" | "blocked",
     };
-    await verifyTarget(root, pr, target, runner, commands);
+    await verifyTarget(root, pr, target, runner, commands, expectedRepository);
     return {
       ...baseReceipt(
         result.headCovered ? "ready" : "documentation_blocked",
@@ -883,6 +897,13 @@ export async function runMergePreflight(
   runtime: Runtime = {},
 ): Promise<MergePreflightReceipt> {
   const commands: (readonly string[])[] = [];
+  if (options.repo !== undefined && !repositoryPattern.test(options.repo))
+    return baseReceipt(
+      "invalid_arguments",
+      "refused",
+      commands,
+      "repo must be in OWNER/REPO form",
+    );
   let root: string;
   try {
     root = await safeRoot(options.root);
@@ -899,7 +920,7 @@ export async function runMergePreflight(
   const sleep = runtime.sleep ?? ((milliseconds: number) => Bun.sleep(milliseconds));
   let target: PullRequest;
   try {
-    target = await verifyTarget(root, options.pr, undefined, runner, commands);
+    target = await verifyTarget(root, options.pr, undefined, runner, commands, options.repo);
   } catch (error) {
     const classified = classifyError(error);
     return baseReceipt(classified.code, classified.outcome, commands, classified.detail);
@@ -988,7 +1009,7 @@ export async function runMergePreflight(
   let attempts = 0;
   while (true) {
     try {
-      await verifyTarget(root, options.pr, target, runner, commands);
+      await verifyTarget(root, options.pr, target, runner, commands, options.repo);
       const result = await invoke(runner, commands, root, [
         "gh",
         "pr",
@@ -1122,7 +1143,7 @@ export async function runMergePreflight(
     }
   }
   try {
-    await verifyTarget(root, options.pr, target, runner, commands);
+    await verifyTarget(root, options.pr, target, runner, commands, options.repo);
     if (staticCode)
       return {
         ...baseReceipt(staticCode, "blocked", commands, staticDetail),
@@ -1159,6 +1180,7 @@ export async function runMergePreflight(
 function parseOptions(args: readonly string[]): Options | undefined {
   let root: string | undefined;
   let pr: number | undefined;
+  let repo: string | undefined;
   let noPoll = false;
   let pollWithStaticBlockers = false;
   const seen = new Set<string>();
@@ -1180,16 +1202,21 @@ function parseOptions(args: readonly string[]): Options | undefined {
     if (value === undefined) return undefined;
     if (flag === "--root") root = value;
     else if (flag === "--pr") pr = Number(value);
+    else if (flag === "--repo") repo = value;
     else return undefined;
   }
   if (!root || !Number.isSafeInteger(pr) || pr! < 1) return undefined;
   if (noPoll && pollWithStaticBlockers) return undefined;
-  return { root, pr: pr!, noPoll, pollWithStaticBlockers };
+  if (repo !== undefined && !repositoryPattern.test(repo)) return undefined;
+  return { root, pr: pr!, noPoll, pollWithStaticBlockers, ...(repo !== undefined ? { repo } : {}) };
 }
 
-function parseDocumentationOptions(args: readonly string[]): { root: string; pr: number } | undefined {
+function parseDocumentationOptions(
+  args: readonly string[],
+): { root: string; pr: number; repo?: string } | undefined {
   let root: string | undefined;
   let pr: number | undefined;
+  let repo: string | undefined;
   const seen = new Set<string>();
   for (let index = 0; index < args.length; index += 2) {
     const flag = args[index];
@@ -1198,9 +1225,12 @@ function parseDocumentationOptions(args: readonly string[]): { root: string; pr:
     seen.add(flag);
     if (flag === "--root") root = value;
     else if (flag === "--pr") pr = Number(value);
+    else if (flag === "--repo") repo = value;
     else return undefined;
   }
-  return root && Number.isSafeInteger(pr) && pr! > 0 ? { root, pr: pr! } : undefined;
+  if (!root || !Number.isSafeInteger(pr) || pr! < 1) return undefined;
+  if (repo !== undefined && !repositoryPattern.test(repo)) return undefined;
+  return { root, pr: pr!, ...(repo !== undefined ? { repo } : {}) };
 }
 
 if (import.meta.main) {
@@ -1209,14 +1239,19 @@ if (import.meta.main) {
     args[0] === "documentation" ? parseDocumentationOptions(args.slice(1)) : undefined;
   const options = args[0] === "documentation" ? undefined : parseOptions(args);
   const receipt = documentationOptions
-    ? await runDocumentationCheck(documentationOptions.root, documentationOptions.pr)
+    ? await runDocumentationCheck(
+        documentationOptions.root,
+        documentationOptions.pr,
+        {},
+        documentationOptions.repo,
+      )
     : options
       ? await runMergePreflight(options)
       : baseReceipt(
           "invalid_arguments",
           "refused",
           [],
-          "usage: merge-preflight.ts --root <repository> --pr <number> [--no-poll | --poll-with-static-blockers] | documentation --root <repository> --pr <number>",
+          "usage: merge-preflight.ts --root <repository> --pr <number> [--repo <owner/repo>] [--no-poll | --poll-with-static-blockers] | documentation --root <repository> --pr <number> [--repo <owner/repo>]",
         );
   console.log(JSON.stringify(receipt));
   process.exit(

@@ -65,15 +65,19 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
    **Complete when:** every candidate Verify-locally block has the repo's
    real command or is struck from the list.
 
-4. **Research the PR history.** `gh pr list --state merged --limit 30`,
-   then read a representative sample of bodies — largest, smallest, most
-   discussed. What sections do authors actually write? What do reviewers
-   ask for in comments that a template section would have answered? What
-   verify commands recur in bodies or review threads? A section unsupported by
-   both repository structure and sampled history is dropped; structure-required
-   preventive sections remain even when history has not exercised them. A
-   recurring ad-hoc section is promoted into the template. Few or no merged PRs
-   → say so and derive from structure alone.
+4. **Bind the repository and research the PR history.** Resolve the canonical
+   repository once with `gh repo view --json nameWithOwner,url`; store its exact
+   `nameWithOwner` as `REPO`, and pass `--repo "$REPO"` to every subsequent
+   GitHub CLI command. Run `gh pr list --state merged --limit 30 --repo
+   "$REPO"`, then read a representative sample of bodies — largest, smallest,
+   most discussed — with the same explicit repository binding. What sections do
+   authors actually write? What do reviewers ask for in comments that a
+   template section would have answered? What verify commands recur in bodies
+   or review threads? A section unsupported by both repository structure and
+   sampled history is dropped; structure-required preventive sections remain
+   even when history has not exercised them. A recurring ad-hoc section is
+   promoted into the template. Few or no merged PRs → say so and derive from
+   structure alone.
    **Complete when:** each kept, dropped, or added section has a reason
    from the history or the structure.
 

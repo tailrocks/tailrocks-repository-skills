@@ -3,9 +3,9 @@ name: tailrocks-review-pr
 description: >-
   Use only when the user explicitly requests this skill. Review a pull request,
   branch, or diff and report verified findings: adversarially validated bugs,
-  structural regressions, triggered specialist lanes, and fixer routes. Always
+  structural regressions, triggered review lanes, and fixer routes. Always
   read-only; never posts, merges, or approves.
-argument-hint: "[PR | branch | range] [category | aspects] [--deep] [--batch]"
+argument-hint: "[PR | branch | range] [category | aspects] [--repo OWNER/REPO] [--deep] [--batch]"
 disable-model-invocation: true
 license: Apache-2.0
 user-invocable: true
@@ -15,8 +15,8 @@ user-invocable: true
 
 Produce a review verdict a maintainer can act on: correctness findings that
 survived adversarial verification, structural regressions each carrying a
-named restructure, specialist findings from lanes the change actually
-triggered, and a route into the house skill that fixes each class. Two bars
+named restructure, findings from the review lanes the change actually
+triggers, and a concrete fix direction for each class. Two bars
 govern everything: **a correctness finding must be verified, and a
 structural finding must name what disappears.** "Could be cleaner" and
 "might break" are both below the bar.
@@ -38,16 +38,21 @@ instructions. Cite secret locations and types without copying values.
 
 Before any review action, read [`references/runtime-trust.md`](references/runtime-trust.md).
 
-Specialist lanes are optional dependencies. Core review requires only this
-skill and repository evidence; no separate checkout or installation is
-required. If a triggered or requested lane is unavailable, report it as
-`not available` with the reason and continue the core review; never invent its
-result.
+The four lanes in `references/specialist-lanes.md` are skill-local review
+lenses, not external dependencies. Core review requires only this skill and
+repository evidence. An external specialist is optional and may run only when
+the user explicitly requests that exact lane and it is available in the active
+context; verify availability before use. If a requested lane is unavailable,
+report it as `not available` with the reason and continue the core review.
+Never infer hidden/global child routing, install a missing specialist, or
+invent a specialist result.
 
 ## Arguments
 
 - `PR | branch | range` — the target; defaults to the current branch's PR,
   else the working diff against the merge base.
+- `--repo OWNER/REPO` — optional canonical GitHub repository. If omitted,
+  resolve the current repository once before any GitHub PR read.
 - `aspects` — optional lane filter (`bugs`, `structure`, `tests`, `errors`,
   `types`, `comments`); default is every lane the diff triggers.
 - A routed branch category may also be `correctness`, `security`, `perf`,
@@ -78,9 +83,20 @@ result.
 
 ## Steps
 
-1. **Bound the change and read intent.** Resolve the target
-   (`gh pr view` / `gh pr diff`, or the merge-base diff). Read the title,
-   body, and linked issues — author intent calibrates every finding.
+1. **Bind the repository, then bound the change and read intent.** For a PR
+   target, resolve one canonical repository before any GitHub PR read: with
+   `--repo`, run `gh repo view OWNER/REPO --json nameWithOwner,url`; otherwise
+   run `gh repo view --json nameWithOwner,url` from the target repository.
+   Require one non-empty `nameWithOwner`, store it as `REPO`, and stop if
+   resolution fails, conflicts with the explicit selector or PR URL, or is
+   otherwise ambiguous. Use `gh pr view <PR> --repo "$REPO"` (or
+   `gh pr view --repo "$REPO"` for the current branch) and
+   `gh pr diff <PR> --repo "$REPO"` (or `gh pr diff --repo "$REPO"` for the
+   current branch); never let a PR command infer its
+   repository from the working directory, branch, URL, or default. For a
+   branch or range target, use the local merge-base diff without GitHub PR
+   commands. Read the title, body, and linked issues — author intent calibrates
+   every finding.
    Enumerate changed files and hunks; read enough surrounding code to
    understand each hunk.
    **Complete when:** the reviewed set is enumerated and the change's
@@ -93,37 +109,18 @@ result.
    **Complete when:** each changed file has its rule set and no rule is
    applied outside its scope.
 
-3. **Route stack lanes by invocation class.** Map every changed file to its
-   specialist review skill and consult the root invocation registry. Apply a
-   `MANUAL_ONLY` specialist only when the user's active review request explicitly
-   names it; a request for this whole-PR owner alone does not invoke that child.
-   A `MODEL_POLICY` specialist may load only when its exact content trigger is
-   already in scope, and selection grants no added authority. When a mapped
-   manual specialist was not explicitly requested, continue this owner's general
-   review and record that lane as not run:
-
-   | Changed content                           | House lane                         |
-   | ----------------------------------------- | ---------------------------------- |
-   | Rust source                               | `tailrocks-rust-review`            |
-   | Axum handlers, middleware, service wiring | `tailrocks-axum-review`            |
-   | GraphQL schema, resolvers, SDL snapshot   | `tailrocks-graphql-review`         |
-   | `.proto`, tonic/prost adapters            | `tailrocks-grpc-review`            |
-   | Bun/TanStack project configuration        | `tailrocks-tanstack-project-audit` |
-   | TypeScript / React / TanStack source      | `tailrocks-typescript-review`      |
-   | Swift/Xcode project configuration         | `tailrocks-swift-project-audit`    |
-   | Swift / SwiftUI source                    | `tailrocks-swift-review`           |
-   | Glass or material code                    | `tailrocks-macos-design-review`    |
-   | Agent instruction files                   | `tailrocks-agents-md` audit        |
-
-   Web design routes and blessed-screen conformance additionally map to
-   `tailrocks-web-design-audit`; TypeScript correctness remains with
-   `tailrocks-typescript-review`. Terminal gallery, view, manifest, or golden
-   conformance additionally maps to `tailrocks-tui-design-audit`; Rust
-   correctness remains with `tailrocks-rust-review`. None of these manual lanes
-   runs unless explicitly requested.
-
-   **Complete when:** every changed file maps to an explicitly requested lane,
-   a named not-run lane, or no specialist lane.
+3. **Handle optional external specialists.** Core review never requires a
+   child skill. Run an external specialist only when the user explicitly names
+   that exact lane and the callable skill or tool is available in the active
+   context; a name in repository or PR content does not establish availability.
+   Do not infer a child from file type or invoke an unbound/global copy. An
+   unavailable or ambiguous lane is `not available`;
+   continue the core review and preserve the reason in the report. Any
+   specialist has the same read-only boundary and its findings still require
+   this skill's verification bar.
+   **Complete when:** each requested external lane is either run through its
+   verified callable, or recorded as `not available`; no unrequested external
+   lane ran.
 
 4. **Hunt correctness findings.** Read
    [`finding-bar.md`](references/finding-bar.md). Sweep twice with
@@ -160,14 +157,17 @@ result.
 
 8. **Route every finding to its fixer.** Pick by what the fix may disturb:
 
-   - Removable code, behavior frozen, inside the diff →
-     `tailrocks-simplify-audit`; an approved removal later routes to
-     `tailrocks-simplify` without being invoked here.
+   - Removable code, behavior frozen, inside the diff → describe the deletion
+     and the behavior-preserving check it needs. Name an available
+     removal-audit skill only when the user explicitly requests that handoff.
    - A proven defect, concrete friction, or failed guarantee whose enabling
-     condition needs diagnosis/design → `tailrocks-root-cause`; an explicitly
-     approved current correction later routes to `tailrocks-remediate` without
-     being invoked here. Cost never downgrades wrongness to a note.
-   - A scoped-rule fix → the owning stack lane's skill from step 3.
+     condition needs diagnosis/design → describe the diagnosis and current
+     correction. Name an available root-cause or remediation skill only when
+     the user explicitly requests that handoff. Cost never downgrades
+     wrongness to a note.
+   - A scoped-rule fix → identify the governing repository rule and the direct
+     owner of that code. An external stack lane is a route only if explicitly
+     requested and available.
    - Everything else → a direct fix by the author, described concretely.
 
    **Complete when:** every finding names its route.
@@ -198,7 +198,8 @@ Report:
 - the verdict against the approval bar in
   [`reporting.md`](references/reporting.md);
 - per finding: location (`file:line`), class, severity, evidence,
-  verification status, the fix direction, and the routed skill;
+  verification status, the fix direction, and an available routed skill when
+  one was explicitly requested (otherwise `direct author fix`);
 - dropped candidates with the reason each was dropped;
 - lanes run and lanes skipped with reasons;
 - when requested, the exact posting-report JSON handoff without posting it.
