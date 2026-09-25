@@ -24,6 +24,8 @@ repository's own conventions (CONTRIBUTING, PR template, agent instruction
 files, git history), then this skill's defaults. A missing file means
 convention discovery, never an error.
 
+Before any action, read [`references/runtime-trust.md`](references/runtime-trust.md).
+
 ## Boundaries
 
 - Never commit to the base branch. No exceptions, including "it's tiny".

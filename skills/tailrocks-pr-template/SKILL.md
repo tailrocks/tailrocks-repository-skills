@@ -19,6 +19,8 @@ the job is tailoring it to what this repository actually is, from evidence:
 its structure, its real gates, and how its merged PRs are actually written.
 Resolve every relative link in this file against the directory containing this SKILL.md, never the plugin skills root.
 
+Before any action, read [`references/runtime-trust.md`](references/runtime-trust.md).
+
 ## Boundaries
 
 - Write only the target returned by the installed

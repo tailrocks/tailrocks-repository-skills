@@ -26,6 +26,8 @@ failure this skill exists to prevent.
 Works in any repository: everything repo-specific is discovered in recon,
 never assumed.
 
+Before any action, read [`references/runtime-trust.md`](references/runtime-trust.md).
+
 ## Boundaries
 
 - Write only inside the repository's documentation surfaces and their

@@ -20,6 +20,8 @@ and precedence are defined with `tailrocks-create-pr`. This skill reads its
 without the file, GitHub's branch protection, the repository's merge
 settings, and this skill's defaults govern.
 
+Before any action, read [`references/runtime-trust.md`](references/runtime-trust.md).
+
 ## Arguments
 
 - `PR` — PR number (defaults to the current branch's PR).
