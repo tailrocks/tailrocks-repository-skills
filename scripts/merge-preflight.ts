@@ -1,7 +1,7 @@
 import { lstat, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import { runBoundedCommand } from "./bounded-command";
+import { runTrustedCommand } from "./bounded-command";
 import {
   discoverDocumentation,
   type DocumentationDiscovery,
@@ -128,7 +128,8 @@ const maximumAttempts = 30;
 const pollIntervalMs = 10_000;
 const wallClockLimitMs = 300_000;
 
-export const defaultRunner: CommandRunner = ({ command, cwd }) => runBoundedCommand({ command, cwd });
+export const defaultRunner: CommandRunner = ({ command, cwd }) =>
+  runTrustedCommand({ command, cwd });
 
 function baseReceipt(code: Code, outcome: Outcome, commands: readonly (readonly string[])[], detail: string) {
   return {

@@ -3,7 +3,7 @@ import { lstat, mkdir, readFile, realpath, rename, writeFile } from "node:fs/pro
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { runBoundedCommand } from "./bounded-command";
+import { runTrustedCommand } from "./bounded-command";
 
 export const postReviewSchema = "tailrocks.post-pr-review/v1";
 export const reviewReportSchema = "tailrocks.pr-review-report/v1";
@@ -106,7 +106,7 @@ interface Challenge {
 const markerPrefix = "<!-- tailrocks-review:v1:";
 
 export const defaultReviewRunner: ReviewRunner = ({ command, cwd, stdin }) =>
-  runBoundedCommand({ command, cwd, stdin });
+  runTrustedCommand({ command, cwd, stdin });
 
 function exactKeys(value: Record<string, unknown>, expected: readonly string[], label: string): void {
   const actual = Object.keys(value).sort();
@@ -457,6 +457,33 @@ function classifiedError(error: unknown): {
   return { code: "lookup_failed", outcome: "failed", detail };
 }
 
+async function verifyInstalled(entrypoint: string, skillFile: string): Promise<void> {
+  if (!path.isAbsolute(entrypoint) || !path.isAbsolute(skillFile))
+    throw new Error("entrypoint and skill file must be absolute");
+  const resolved = path.resolve(entrypoint);
+  const scripts = path.dirname(resolved);
+  const plugin = path.dirname(scripts);
+  const expectedSkill = path.join(plugin, "skills", "tailrocks-review-pr", "SKILL.md");
+  if (path.resolve(skillFile) !== expectedSkill)
+    throw new Error("loader skill does not own post-pr-review entrypoint");
+  for (const [candidate, kind] of [
+    [plugin, "directory"],
+    [scripts, "directory"],
+    [resolved, "file"],
+    [expectedSkill, "file"],
+    [path.join(scripts, "bounded-command.ts"), "file"],
+    [path.join(scripts, "resolve-executable.ts"), "file"],
+  ] as const) {
+    const info = await lstat(candidate);
+    if (
+      info.isSymbolicLink() ||
+      (kind === "file" ? !info.isFile() : !info.isDirectory()) ||
+      (await realpath(candidate)) !== candidate
+    )
+      throw new Error("installed post-pr-review package is unsafe");
+  }
+}
+
 export async function preparePostReview(
   rootInput: string,
   reportFile: string,
@@ -798,15 +825,53 @@ export async function postPreparedReview(
 }
 
 async function main(args: readonly string[]): Promise<PostReviewReceipt> {
-  if (args[0] === "prepare" && args.length === 5 && args[1] === "--root" && args[3] === "--report")
-    return preparePostReview(args[2]!, args[4]!);
-  if (args[0] === "post" && args.length === 3 && args[1] === "--authority")
-    return postPreparedReview(args[2]!);
+  let skillFile: string | undefined;
+  if (
+    args[0] === "prepare" &&
+    args.length === 7 &&
+    args[1] === "--skill-file" &&
+    path.isAbsolute(args[2]!) &&
+    args[3] === "--root" &&
+    args[5] === "--report"
+  ) {
+    skillFile = args[2]!;
+    try {
+      await verifyInstalled(process.argv[1]!, skillFile);
+    } catch (error) {
+      return baseReceipt(
+        "invalid_arguments",
+        "refused",
+        [],
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    return preparePostReview(args[4]!, args[6]!);
+  }
+  if (
+    args[0] === "post" &&
+    args.length === 5 &&
+    args[1] === "--skill-file" &&
+    path.isAbsolute(args[2]!) &&
+    args[3] === "--authority"
+  ) {
+    skillFile = args[2]!;
+    try {
+      await verifyInstalled(process.argv[1]!, skillFile);
+    } catch (error) {
+      return baseReceipt(
+        "invalid_arguments",
+        "refused",
+        [],
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    return postPreparedReview(args[4]!);
+  }
   return baseReceipt(
     "invalid_arguments",
     "refused",
     [],
-    "usage: post-pr-review.ts prepare --root <repository> --report <file> | post --authority <uuid>",
+    "usage: post-pr-review.ts prepare --skill-file <absolute-SKILL.md> --root <repository> --report <file> | post --skill-file <absolute-SKILL.md> --authority <uuid>",
   );
 }
 

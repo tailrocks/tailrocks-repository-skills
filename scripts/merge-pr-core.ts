@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { runBoundedCommand } from "./bounded-command";
+import { runTrustedCommand } from "./bounded-command";
 import {
   runMergePreflight,
   type CommandResult as PreflightCommandResult,
@@ -100,7 +100,7 @@ interface Runtime {
 }
 
 export const defaultMergeRunner: MergeRunner = ({ command, cwd, stdin }) =>
-  runBoundedCommand({ command, cwd, stdin, timeoutMilliseconds: 120_000 });
+  runTrustedCommand({ command, cwd, stdin, timeoutMilliseconds: 120_000 });
 
 function exactKeys(value: Record<string, unknown>, expected: readonly string[], label: string): void {
   const actual = Object.keys(value).sort();

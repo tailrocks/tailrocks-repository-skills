@@ -1,4 +1,9 @@
 import { spawn, spawnSync } from "node:child_process";
+import { lstat, realpath } from "node:fs/promises";
+import { homedir } from "node:os";
+import path from "node:path";
+
+import { resolveExecutable } from "./resolve-executable";
 
 export interface BoundedCommandOptions {
   readonly command: readonly string[];
@@ -9,6 +14,124 @@ export interface BoundedCommandOptions {
   readonly killGraceMilliseconds?: number;
   readonly maximumOutputBytes?: number;
   readonly inheritEnvironment?: boolean;
+}
+
+/**
+ * Options for a repository lifecycle command. The child receives a minimal
+ * environment; only validated GitHub authentication/configuration paths and
+ * token variables are copied from the parent process. Command arguments remain
+ * untouched for receipt/audit callers, while the executable itself is resolved
+ * to a canonical path before spawn.
+ */
+export type TrustedCommandOptions = Omit<BoundedCommandOptions, "env" | "inheritEnvironment">;
+
+const trustedPath = [
+  "/usr/local/bin",
+  "/usr/local/sbin",
+  "/opt/homebrew/bin",
+  "/opt/homebrew/sbin",
+  "/opt/local/bin",
+  "/opt/local/sbin",
+  "/usr/bin",
+  "/bin",
+  "/usr/sbin",
+  "/sbin",
+].join(path.delimiter);
+const authenticationEnvironmentKeys = [
+  "GH_TOKEN",
+  "GITHUB_TOKEN",
+  "GH_ENTERPRISE_TOKEN",
+  "GITHUB_ENTERPRISE_TOKEN",
+] as const;
+
+function trustedEnvironment(): Record<string, string> {
+  const environment: Record<string, string> = {
+    PATH: trustedPath,
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_OPTIONAL_LOCKS: "0",
+    GIT_TERMINAL_PROMPT: "0",
+    GH_PROMPT_DISABLED: "1",
+    LANG: "C.UTF-8",
+  };
+  for (const key of authenticationEnvironmentKeys) {
+    const value = process.env[key];
+    if (value !== undefined) {
+      if (value.length === 0 || value.length > 4_096 || /[\0\r\n]/.test(value))
+        throw new Error(`trusted environment variable is invalid: ${key}`);
+      environment[key] = value;
+    }
+  }
+  return environment;
+}
+
+function isWithin(candidate: string, directory: string): boolean {
+  const relative = path.relative(directory, candidate);
+  return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+async function canonicalDirectory(
+  raw: string,
+  label: string,
+  workingDirectory: string,
+): Promise<string> {
+  if (!path.isAbsolute(raw) || raw.includes("\0")) throw new Error(`${label} must be an absolute path`);
+  const absolute = path.resolve(raw);
+  const info = await lstat(absolute);
+  if (!info.isDirectory() || info.isSymbolicLink()) throw new Error(`${label} must be a real directory`);
+  const canonical = await realpath(absolute);
+  if (canonical !== absolute) throw new Error(`${label} must be canonical`);
+  if (isWithin(canonical, workingDirectory)) throw new Error(`${label} may not be inside the target checkout`);
+  if (typeof process.getuid === "function" && info.uid !== process.getuid())
+    throw new Error(`${label} has the wrong owner`);
+  return canonical;
+}
+
+async function trustedEnvironmentFor(workingDirectory: string): Promise<Record<string, string>> {
+  const environment = trustedEnvironment();
+  const configuredHome = process.env.HOME ?? homedir();
+  environment.HOME = await canonicalDirectory(configuredHome, "HOME", workingDirectory);
+  for (const key of ["XDG_CONFIG_HOME", "GH_CONFIG_DIR"] as const) {
+    const value = process.env[key];
+    if (value !== undefined) environment[key] = await canonicalDirectory(value, key, workingDirectory);
+  }
+  return environment;
+}
+
+async function canonicalWorkingDirectory(input: string): Promise<string> {
+  if (!path.isAbsolute(input) || input.includes("\0")) throw new Error("command cwd must be absolute");
+  const absolute = path.resolve(input);
+  const info = await lstat(absolute);
+  if (!info.isDirectory() || info.isSymbolicLink()) throw new Error("command cwd must be a real directory");
+  const canonical = await realpath(absolute);
+  if (canonical !== absolute) throw new Error("command cwd must be canonical");
+  return canonical;
+}
+
+/**
+ * Run a Git/GitHub CLI command through a canonical executable and a
+ * fail-closed environment. This is the default boundary for lifecycle code;
+ * callers that need a custom runner can continue to inject one.
+ */
+export async function runTrustedCommand(options: TrustedCommandOptions): Promise<BoundedCommandResult> {
+  if (options.command.length === 0) throw new Error("trusted command is empty");
+  const workingDirectory = await canonicalWorkingDirectory(options.cwd);
+  const executable = await resolveExecutable(options.command[0]!);
+  const executableInfo = await lstat(executable);
+  const canonicalExecutable = await realpath(executable);
+  if (
+    executableInfo.isSymbolicLink() ||
+    !executableInfo.isFile() ||
+    canonicalExecutable !== executable ||
+    isWithin(canonicalExecutable, workingDirectory)
+  )
+    throw new Error("trusted executable is unsafe");
+  return runBoundedCommand({
+    ...options,
+    command: [executable, ...options.command.slice(1)],
+    cwd: workingDirectory,
+    env: await trustedEnvironmentFor(workingDirectory),
+    inheritEnvironment: false,
+  });
 }
 
 export interface BoundedCommandResult {
