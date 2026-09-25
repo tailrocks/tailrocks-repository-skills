@@ -174,8 +174,17 @@ result.
    severity model and approval bar. Deliver the terminal report. When the user
    requests a later posting handoff, also emit one strict
    `tailrocks.pr-review-report/v1` JSON value using the schema documented by the
-   collection's post-pr-review command; do not invoke that command or write the
-   report file.
+   consolidated package's `scripts/post-pr-review.ts` command; do not invoke
+   that command or write the report file. If an authorized owner later invokes
+   the handoff, pass the canonical absolute path of this installed skill to
+   both operations, using the package-local entrypoint:
+
+   ```sh
+   bun <package-root>/scripts/post-pr-review.ts prepare --skill-file <canonical-absolute-review-SKILL.md> --root <repository> --report <file>
+   bun <package-root>/scripts/post-pr-review.ts post --skill-file <canonical-absolute-review-SKILL.md> --authority <uuid>
+   ```
+
+   Never invoke a global or unbound copy of the script.
    **Complete when:** the report is delivered and no outward action occurred.
    Resolve every relative link in this file against the directory containing this SKILL.md, never the plugin skills root.
 
