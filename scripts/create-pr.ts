@@ -328,6 +328,7 @@ const defaultLocalRunner: CreatePrRunner = async ({ command, cwd }) => {
     env: {
       PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
       GIT_CONFIG_NOSYSTEM: "1",
+      GIT_CONFIG_SYSTEM: "/dev/null",
       GIT_CONFIG_GLOBAL: "/dev/null",
       GIT_TERMINAL_PROMPT: "0",
     },
@@ -413,60 +414,85 @@ function isolatedGateRunner(workspace: string): CreatePrRunner {
   throw new Error("a supported network-denied gate sandbox is unavailable");
 }
 
+async function prepareWorkspace(
+  input: CreatePrInput,
+  gitExecutable: string,
+  runner: CreatePrRunner,
+  purpose: "gate" | "push",
+  checkoutHead: boolean,
+): Promise<string> {
+  let parent: string | undefined;
+  let retained = false;
+  try {
+    const created = await mkdtemp(path.join(tmpdir(), `tailrocks-create-pr-${purpose}-`));
+    parent = created;
+    parent = await realpath(created);
+    await chmod(parent, 0o700);
+    const template = path.join(parent, "empty-template");
+    await mkdir(template, { mode: 0o700 });
+    const workspace = path.join(parent, "subject");
+    const clone = await runner({
+      command: [
+        gitExecutable,
+        "clone",
+        "--quiet",
+        "--local",
+        "--no-hardlinks",
+        "--no-checkout",
+        "--template",
+        template,
+        input.repo_root,
+        workspace,
+      ],
+      cwd: parent,
+    });
+    if (!commandSucceeded(clone))
+      throw new Error(`failed to create isolated ${purpose} workspace`);
+    if (checkoutHead) {
+      const checkout = await runner({
+        command: [
+          gitExecutable,
+          "-c",
+          "filter.lfs.smudge=",
+          "-c",
+          "filter.lfs.process=",
+          "-c",
+          "filter.lfs.required=false",
+          "checkout",
+          "--quiet",
+          "--detach",
+          input.head_sha,
+        ],
+        cwd: workspace,
+      });
+      if (!commandSucceeded(checkout)) throw new Error("failed to materialize exact gate revision");
+    }
+    if (purpose === "gate")
+      await Promise.all([
+        mkdir(path.join(workspace, ".gate-home"), { mode: 0o700 }),
+        mkdir(path.join(workspace, ".gate-tmp"), { mode: 0o700 }),
+      ]);
+    retained = true;
+    return workspace;
+  } finally {
+    if (!retained && parent) await rm(parent, { recursive: true, force: true });
+  }
+}
+
 async function prepareGateWorkspace(
   input: CreatePrInput,
   gitExecutable: string,
   runner: CreatePrRunner,
 ): Promise<string> {
-  const parent = await realpath(await mkdtemp(path.join(tmpdir(), "tailrocks-create-pr-gates-")));
-  await chmod(parent, 0o700);
-  const template = path.join(parent, "empty-template");
-  await mkdir(template, { mode: 0o700 });
-  const workspace = path.join(parent, "subject");
-  const clone = await runner({
-    command: [
-      gitExecutable,
-      "clone",
-      "--quiet",
-      "--local",
-      "--no-hardlinks",
-      "--no-checkout",
-      "--template",
-      template,
-      input.repo_root,
-      workspace,
-    ],
-    cwd: parent,
-  });
-  if (!commandSucceeded(clone)) {
-    await rm(parent, { recursive: true, force: true });
-    throw new Error("failed to create isolated gate workspace");
-  }
-  const checkout = await runner({
-    command: [
-      gitExecutable,
-      "-c",
-      "filter.lfs.smudge=",
-      "-c",
-      "filter.lfs.process=",
-      "-c",
-      "filter.lfs.required=false",
-      "checkout",
-      "--quiet",
-      "--detach",
-      input.head_sha,
-    ],
-    cwd: workspace,
-  });
-  if (!commandSucceeded(checkout)) {
-    await rm(parent, { recursive: true, force: true });
-    throw new Error("failed to materialize exact gate revision");
-  }
-  await Promise.all([
-    mkdir(path.join(workspace, ".gate-home"), { mode: 0o700 }),
-    mkdir(path.join(workspace, ".gate-tmp"), { mode: 0o700 }),
-  ]);
-  return workspace;
+  return prepareWorkspace(input, gitExecutable, runner, "gate", true);
+}
+
+async function preparePushWorkspace(
+  input: CreatePrInput,
+  gitExecutable: string,
+  runner: CreatePrRunner,
+): Promise<string> {
+  return prepareWorkspace(input, gitExecutable, runner, "push", false);
 }
 
 function baseReceipt(code: CreatePrReceipt["code"], detail: string): CreatePrReceipt {
@@ -636,6 +662,7 @@ export async function createPullRequest(
   let created = false;
   let url = "";
   let gateParent = "";
+  let pushParent = "";
   try {
     const root = path.resolve(input.repo_root);
     const rootInfo = await lstat(root);
@@ -704,13 +731,62 @@ export async function createPullRequest(
     await proveRemotePreconditions(input, ghExecutable, root, remoteRunner, externalActions);
     await repositorySnapshot(input, gitExecutable, localRunner);
 
+    // Remote Git must use a repository created by this entrypoint. The source
+    // checkout and gate workspace are untrusted; using either here would let
+    // local config, URL rewrites, or hooks run with the trusted auth env.
+    const pushWorkspace = await preparePushWorkspace(input, gitExecutable, localRunner);
+    pushParent = path.dirname(pushWorkspace);
+    const gitTransportOptions = [
+      "-c",
+      "core.hooksPath=/dev/null",
+      "-c",
+      "credential.helper=",
+      "-c",
+      "credential.helper=!gh auth git-credential",
+    ] as const;
+    const remoteRef = [
+      gitExecutable,
+      ...gitTransportOptions,
+      "ls-remote",
+      "--heads",
+      input.remote_url,
+      `refs/heads/${input.head_branch}`,
+    ];
+    const remoteRefBeforePush = await remoteRunner({ command: remoteRef, cwd: pushWorkspace });
+    if (!commandSucceeded(remoteRefBeforePush) || remoteRefBeforePush.stdout.trim() !== "") {
+      externalActions.push(
+        external(
+          "remote_ref",
+          remoteRef,
+          commandSucceeded(remoteRefBeforePush) ? "failed" : "uncertain",
+          digest(remoteRefBeforePush.stdout),
+        ),
+      );
+      return {
+        ...baseReceipt(
+          "remote_ref_failed",
+          "remote branch is present or its absence is unproven; create-only push refused",
+        ),
+        repository: input.repository,
+        branch: input.head_branch,
+        head: input.head_sha,
+        executed_units: executedUnits,
+        gates,
+        external_actions: externalActions,
+      };
+    }
+    externalActions.push(external("remote_ref", remoteRef, "success", "absent"));
+
     const push = [
       gitExecutable,
+      ...gitTransportOptions,
       "push",
+      "--no-verify",
+      `--force-with-lease=refs/heads/${input.head_branch}:`,
       input.remote_url,
       `${input.head_sha}:refs/heads/${input.head_branch}`,
     ];
-    const pushResult = await remoteRunner({ command: push, cwd: root });
+    const pushResult = await remoteRunner({ command: push, cwd: pushWorkspace });
     externalActions.push(
       external(
         "push",
@@ -719,14 +795,7 @@ export async function createPullRequest(
         digest(pushResult.stdout),
       ),
     );
-    const remoteRef = [
-      gitExecutable,
-      "ls-remote",
-      "--heads",
-      input.remote_url,
-      `refs/heads/${input.head_branch}`,
-    ];
-    const remoteRefResult = await remoteRunner({ command: remoteRef, cwd: root });
+    const remoteRefResult = await remoteRunner({ command: remoteRef, cwd: pushWorkspace });
     const expectedRef = `${input.head_sha}\trefs/heads/${input.head_branch}`;
     if (!commandSucceeded(remoteRefResult) || remoteRefResult.stdout.trim() !== expectedRef) {
       const absent = commandSucceeded(remoteRefResult) && remoteRefResult.stdout.trim() === "";
@@ -757,7 +826,7 @@ export async function createPullRequest(
     pushed = true;
     externalActions.push(external("remote_ref", remoteRef, "success", input.head_sha));
     await proveRemotePreconditions(input, ghExecutable, root, remoteRunner, externalActions);
-    const finalRemoteRefResult = await remoteRunner({ command: remoteRef, cwd: root });
+    const finalRemoteRefResult = await remoteRunner({ command: remoteRef, cwd: pushWorkspace });
     if (!commandSucceeded(finalRemoteRefResult) || finalRemoteRefResult.stdout.trim() !== expectedRef) {
       externalActions.push(
         external("remote_ref", remoteRef, "uncertain", digest(finalRemoteRefResult.stdout)),
@@ -897,6 +966,7 @@ export async function createPullRequest(
       external_actions: externalActions,
     };
   } finally {
+    if (pushParent) await rm(pushParent, { recursive: true, force: true });
     if (gateParent) await rm(gateParent, { recursive: true, force: true });
   }
 }
