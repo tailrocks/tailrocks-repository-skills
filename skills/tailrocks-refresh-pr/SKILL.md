@@ -56,7 +56,11 @@ command whose stdout is the fresh skeleton for the current diff.
   `(REPO, PR number, headRefName, headRefOid, baseRefName, baseRefOid)`.
   Re-read that tuple immediately before **each** title or body mutation and
   abort on any drift. A changed title or body is also drift when it was not
-  caused by the current action.
+  caused by the current action. Before analyzing the diff or body, and
+  immediately before each `gh pr edit`, run
+  `git rev-parse --verify 'HEAD^{commit}'` and require the complete local
+  HEAD OID to equal the bound remote `headRefOid`; a failed read or mismatch
+  is drift and must abort without analysis or writing.
 
 ## Arguments
 
@@ -86,10 +90,13 @@ command whose stdout is the fresh skeleton for the current diff.
    head ref/OID, base ref/OID, title, body, and option-safe `GIT_REMOTE`/`BASE`.
 
 2. **Gather the fresh shape.** After the remote binding is complete and still
-   exact, run `git fetch --no-tags "$GIT_REMOTE" "refs/heads/$BASE"` with
+   exact, require the local `git rev-parse --verify 'HEAD^{commit}'` OID to
+   equal the bound `headRefOid` before reading the diff, running `git log`, or
+   analyzing the body. Then run `git fetch --no-tags "$GIT_REMOTE" "refs/heads/$BASE"` with
    each value as a separate argv item. Read the fetched `FETCH_HEAD` OID and
    require `git rev-parse --verify 'FETCH_HEAD^{commit}'` to equal `BASE_OID`;
-   any mismatch is drift and must abort.
+   any mismatch, including a local HEAD read failure, is drift and must
+   abort.
    Then read
    `gh pr diff <PR> --repo "$REPO"` and
    `git log "$BASE_OID..HEAD" --oneline`. Build the fresh skeleton
@@ -131,7 +138,9 @@ command whose stdout is the fresh skeleton for the current diff.
    both canonical repository fields and the complete PR/head/base binding, plus
    the last observed title and body, to match byte-for-byte (or by the recorded
    digests). Any mismatch is drift: abort without writing and report the
-   observed tuple. The complete
+   observed tuple. Immediately before `gh pr edit`, re-read
+   `git rev-parse --verify 'HEAD^{commit}'` and require it to equal the bound
+   `headRefOid`; a failure or mismatch is drift and must abort. The complete
    mutation is `gh pr edit <PR> --repo "$REPO" --title <new-title>`; pass the
    title as one argument, never through shell interpolation. Re-read the same
    repository and PR fields immediately after the command and require the
@@ -148,8 +157,10 @@ command whose stdout is the fresh skeleton for the current diff.
    the canonical repository fields and complete binding to match the original
    record, the title to equal the post-title-mutation value, and the body to
    equal the last observed body. If any value drifted, abort without writing
-   and report the observed tuple.
-   Only then run `gh pr edit <PR> --repo "$REPO" --body-file
+   and report the observed tuple. Immediately before `gh pr edit`, re-read
+   `git rev-parse --verify 'HEAD^{commit}'` and require it to equal the bound
+   `headRefOid`; a failure or mismatch is drift and must abort. Only then run
+   `gh pr edit <PR> --repo "$REPO" --body-file
    <temp>/body.md`. Remove the temporary directory on success and every
    failure path. Verify with
    `gh pr view <PR> --repo "$REPO" --json
