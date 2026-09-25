@@ -3,7 +3,7 @@ import { chmod, lstat, mkdir, mkdtemp, readFile, realpath, rm } from "node:fs/pr
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { runBoundedCommand } from "./bounded-command";
+import { runBoundedCommand, runTrustedCommand } from "./bounded-command";
 import { resolveExecutable } from "./resolve-executable";
 
 export const createPrInputSchema = "tailrocks.create-pr-input/v1" as const;
@@ -335,15 +335,21 @@ const defaultLocalRunner: CreatePrRunner = async ({ command, cwd }) => {
   });
 };
 
-const defaultRemoteRunner: CreatePrRunner = ({ command, cwd, stdin }) =>
-  runBoundedCommand({
-    command,
+const defaultRemoteRunner: CreatePrRunner = ({ command, cwd, stdin }) => {
+  const executable = command[0];
+  if (!executable || !path.isAbsolute(executable))
+    throw new Error("remote lifecycle executable must be absolute");
+  const name = path.basename(executable);
+  if (name !== "git" && name !== "gh")
+    throw new Error("remote lifecycle executable is not trusted");
+  return runTrustedCommand({
+    command: [name, ...command.slice(1)],
     cwd,
     stdin,
     timeoutMilliseconds: 120_000,
     maximumOutputBytes: 4_000_000,
-    env: { GIT_TERMINAL_PROMPT: "0", GH_PROMPT_DISABLED: "1" },
   });
+};
 
 function sandboxPath(value: string): string {
   return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
@@ -643,9 +649,9 @@ export async function createPullRequest(
     if (digest(bodyBytes) !== input.body_sha256) throw new Error("body_file hash drifted");
     if (!body.trim() || /<!--|<placeholder>|{{[^}\n]+}}|\b(?:TODO|TBD)\b/i.test(body))
       throw new Error("body_file contains an empty or unfilled template");
-    const gitExecutable = runtime.gitExecutable ?? (await resolveExecutable("git"));
+    const gitExecutable = runtime.gitExecutable ?? (await resolveExecutable("git", root));
     await safeExecutable(gitExecutable);
-    const ghExecutable = runtime.ghExecutable ?? (await resolveExecutable("gh"));
+    const ghExecutable = runtime.ghExecutable ?? (await resolveExecutable("gh", root));
     await safeExecutable(ghExecutable);
     const localRunner = runtime.localRunner ?? defaultLocalRunner;
     const remoteRunner = runtime.remoteRunner ?? defaultRemoteRunner;
