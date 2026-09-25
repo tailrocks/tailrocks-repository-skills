@@ -3,8 +3,6 @@ import { lstat, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 
-import { resolveExecutable } from "./resolve-executable";
-
 export interface BoundedCommandOptions {
   readonly command: readonly string[];
   readonly cwd: string;
@@ -37,16 +35,20 @@ const trustedPath = [
   "/usr/sbin",
   "/sbin",
 ].join(path.delimiter);
+const trustedPathDirectories = trustedPath.split(path.delimiter);
+const trustedGroupWriteRoots = ["/usr/local", "/opt/homebrew", "/opt/local"];
 const authenticationEnvironmentKeys = [
   "GH_TOKEN",
   "GITHUB_TOKEN",
   "GH_ENTERPRISE_TOKEN",
   "GITHUB_ENTERPRISE_TOKEN",
 ] as const;
+const executableNamePattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const hostnameLabelPattern = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/;
 
-function trustedEnvironment(): Record<string, string> {
+function trustedEnvironment(pathValue: string): Record<string, string> {
   const environment: Record<string, string> = {
-    PATH: trustedPath,
+    PATH: pathValue,
     GIT_CONFIG_NOSYSTEM: "1",
     GIT_OPTIONAL_LOCKS: "0",
     GIT_TERMINAL_PROMPT: "0",
@@ -61,12 +63,146 @@ function trustedEnvironment(): Record<string, string> {
       environment[key] = value;
     }
   }
+  const host = process.env.GH_HOST;
+  if (host !== undefined) {
+    const labels = host.split(".");
+    if (
+      host.length > 253 ||
+      labels.length === 0 ||
+      labels.some((label) => !hostnameLabelPattern.test(label))
+    )
+      throw new Error("trusted environment variable is invalid: GH_HOST");
+    environment.GH_HOST = host.toLowerCase();
+  }
   return environment;
 }
 
 function isWithin(candidate: string, directory: string): boolean {
   const relative = path.relative(directory, candidate);
   return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+function isTrustedHostPath(pathname: string): boolean {
+  return trustedGroupWriteRoots.some(
+    (root) => pathname === root || isWithin(pathname, root),
+  );
+}
+
+function ownedAndPrivate(
+  info: Awaited<ReturnType<typeof lstat>>,
+  pathname: string,
+  allowTrustedGroupWrite: boolean,
+): boolean {
+  if ((info.mode & (allowTrustedGroupWrite && isTrustedHostPath(pathname) ? 0o002 : 0o022)) !== 0)
+    return false;
+  if (typeof process.getuid !== "function") return true;
+  return info.uid === process.getuid() || info.uid === 0;
+}
+
+function pathChain(absolute: string): string[] {
+  const chain: string[] = [];
+  let current = absolute;
+  while (true) {
+    chain.push(current);
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return chain;
+}
+
+async function inspectCanonicalPath(
+  absolute: string,
+  workingDirectory: string,
+  leaf: "directory" | "executable",
+  allowTrustedGroupWrite: boolean,
+): Promise<string | undefined> {
+  if (isWithin(absolute, workingDirectory)) return undefined;
+  for (const [index, pathname] of pathChain(absolute).entries()) {
+    let info: Awaited<ReturnType<typeof lstat>>;
+    try {
+      info = await lstat(pathname);
+    } catch {
+      return undefined;
+    }
+    if (
+      info.isSymbolicLink() ||
+      !ownedAndPrivate(info, pathname, allowTrustedGroupWrite) ||
+      (index === 0
+        ? leaf === "directory"
+          ? !info.isDirectory()
+          : !info.isFile()
+        : !info.isDirectory())
+    )
+      return undefined;
+    if (index === 0 && leaf === "executable" && (info.mode & 0o111) === 0) return undefined;
+  }
+  const canonical = await realpath(absolute).catch(() => undefined);
+  return canonical === absolute && !isWithin(canonical, workingDirectory) ? canonical : undefined;
+}
+
+async function inspectPathChain(
+  rawPath: string,
+  workingDirectory: string,
+  leaf: "directory" | "executable",
+): Promise<string | undefined> {
+  if (!path.isAbsolute(rawPath) || rawPath.includes("\0")) return undefined;
+  const absolute = path.resolve(rawPath);
+  if (isWithin(absolute, workingDirectory)) return undefined;
+  const allowTrustedGroupWrite = isTrustedHostPath(absolute);
+  const chain = pathChain(absolute);
+  for (const [index, pathname] of chain.entries()) {
+    let info: Awaited<ReturnType<typeof lstat>>;
+    try {
+      info = await lstat(pathname);
+    } catch {
+      return undefined;
+    }
+    const isLeaf = index === 0;
+    if (!isLeaf || leaf === "directory") {
+      if (
+        info.isSymbolicLink() ||
+        !ownedAndPrivate(info, pathname, allowTrustedGroupWrite) ||
+        (isLeaf ? !info.isDirectory() : !info.isDirectory())
+      )
+        return undefined;
+      continue;
+    }
+    if (info.isSymbolicLink()) {
+      if (typeof process.getuid === "function" && info.uid !== process.getuid() && info.uid !== 0)
+        return undefined;
+      continue;
+    }
+    if (!info.isFile() || !ownedAndPrivate(info, pathname, allowTrustedGroupWrite)) return undefined;
+    if ((info.mode & 0o111) === 0) return undefined;
+  }
+  const canonical = await realpath(absolute).catch(() => undefined);
+  if (!canonical || isWithin(canonical, workingDirectory)) return undefined;
+  return inspectCanonicalPath(canonical, workingDirectory, leaf, allowTrustedGroupWrite);
+}
+
+async function resolveTrustedExecutable(
+  name: string,
+  workingDirectory: string,
+): Promise<{ readonly executable: string; readonly path: string }> {
+  // Search host PATH plus standard system, Homebrew, and MacPorts dirs, but
+  // never inherit it: every raw candidate and parent is checked before use.
+  if (!executableNamePattern.test(name) || (name !== "git" && name !== "gh"))
+    throw new Error("trusted executable name is invalid");
+  const rawDirectories = [
+    ...(process.env.PATH ?? "").split(path.delimiter).filter((entry) => entry.length > 0),
+    ...trustedPathDirectories,
+  ];
+  const safeDirectories: string[] = [];
+  let executable: string | undefined;
+  for (const rawDirectory of rawDirectories) {
+    const directory = await inspectPathChain(rawDirectory, workingDirectory, "directory");
+    if (!directory || safeDirectories.includes(directory)) continue;
+    safeDirectories.push(directory);
+    executable ??= await inspectPathChain(path.join(directory, name), workingDirectory, "executable");
+  }
+  if (executable) return { executable, path: safeDirectories.join(path.delimiter) };
+  throw new Error(`trusted ${name} executable is unavailable in safe PATH`);
 }
 
 async function canonicalDirectory(
@@ -86,8 +222,11 @@ async function canonicalDirectory(
   return canonical;
 }
 
-async function trustedEnvironmentFor(workingDirectory: string): Promise<Record<string, string>> {
-  const environment = trustedEnvironment();
+async function trustedEnvironmentFor(
+  workingDirectory: string,
+  pathValue: string,
+): Promise<Record<string, string>> {
+  const environment = trustedEnvironment(pathValue);
   const configuredHome = process.env.HOME ?? homedir();
   environment.HOME = await canonicalDirectory(configuredHome, "HOME", workingDirectory);
   for (const key of ["XDG_CONFIG_HOME", "GH_CONFIG_DIR"] as const) {
@@ -108,28 +247,19 @@ async function canonicalWorkingDirectory(input: string): Promise<string> {
 }
 
 /**
- * Run a Git/GitHub CLI command through a canonical executable and a
- * fail-closed environment. This is the default boundary for lifecycle code;
- * callers that need a custom runner can continue to inject one.
+ * Run one of the lifecycle Git/GitHub CLI commands through a canonical
+ * executable and a fail-closed environment. This is the default boundary for
+ * lifecycle code; callers that need a custom runner can continue to inject one.
  */
 export async function runTrustedCommand(options: TrustedCommandOptions): Promise<BoundedCommandResult> {
   if (options.command.length === 0) throw new Error("trusted command is empty");
   const workingDirectory = await canonicalWorkingDirectory(options.cwd);
-  const executable = await resolveExecutable(options.command[0]!);
-  const executableInfo = await lstat(executable);
-  const canonicalExecutable = await realpath(executable);
-  if (
-    executableInfo.isSymbolicLink() ||
-    !executableInfo.isFile() ||
-    canonicalExecutable !== executable ||
-    isWithin(canonicalExecutable, workingDirectory)
-  )
-    throw new Error("trusted executable is unsafe");
+  const resolved = await resolveTrustedExecutable(options.command[0]!, workingDirectory);
   return runBoundedCommand({
     ...options,
-    command: [executable, ...options.command.slice(1)],
+    command: [resolved.executable, ...options.command.slice(1)],
     cwd: workingDirectory,
-    env: await trustedEnvironmentFor(workingDirectory),
+    env: await trustedEnvironmentFor(workingDirectory, resolved.path),
     inheritEnvironment: false,
   });
 }
