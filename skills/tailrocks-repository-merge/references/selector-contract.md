@@ -33,10 +33,13 @@ Accept a mixed list in one bound repository:
 
 Resolve listing URLs with supported APIs or Git. Fetch every result page,
 preserve supported semantic filters, and reject unsupported filters instead of
-widening scope. Page and sort controls are presentation only. Record the
-observation time and freeze full membership for the invocation. A valid empty
-listing is an empty selection, not all-work. Report later additions
-separately.
+widening scope. A `/pulls` listing without an explicit state/scope selects open
+PRs, including drafts. Supported `state=closed` selects closed PRs (including
+merged ones), and `state=all` selects open and closed PRs; `state=merged` is
+unsupported and must be rejected. Page and sort controls are presentation
+only. Record the observation time and freeze full membership for the
+invocation. A valid empty listing is an empty selection, not all-work. Report
+later additions separately.
 
 Resolve URL forms before ambiguous local branch names. For duplicate names,
 show exact clone path, remote identity, full ref, and OID; never pick the first
