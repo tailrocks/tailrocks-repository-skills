@@ -58,7 +58,10 @@ or a prior target, and never create it. A source equal to the target is a
 verified no-op and never a cleanup candidate. A non-main target never permits
 hidden `main` mutation.
 
-At least one source selector is required. Empty input is a usage error and
+At least one source selector or `--all-work` is required unless a valid existing
+`--resume RUN_ID` is supplied. Resume restores only the frozen prior scope and
+target; it cannot be combined with `--all-work`, new source selectors, or a
+`--target-branch` override. Without resume, empty input is a usage error and
 never means all work. `--all-work` is the explicit whole-repository scope and
 cannot be mixed with source selectors. A targeted request may read strictly
 necessary lineage and dependencies, but unrelated work remains report-only.

@@ -12,7 +12,7 @@
       "name": "tailrocks-repository-skills",
       "source": "./",
       "description": "Target-bound repository orchestration and fail-closed pull-request lifecycle skills.",
-      "version": "0.2.8",
+      "version": "0.2.9",
       "category": "Repository Skills"
     }
   ]
