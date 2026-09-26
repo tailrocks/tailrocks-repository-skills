@@ -29,9 +29,17 @@ workflows. Releases are published manually from tagged commits.
 ## Runtime requirements
 
 Git is required for repository operations. Bun runs the bundled lifecycle
-helpers. Remote pull-request lifecycle owners also require an authenticated
-`gh` session with access to the target repository; local-only and read-only
-audits can remain local.
+helpers. Windows is unsupported by the trusted lifecycle resolver. The
+resolver does not use inherited `PATH`, so `git` and `gh` must be in one of
+its fixed trusted directories:
+`/usr/local/bin`, `/usr/local/sbin`, `/opt/homebrew/bin`, `/opt/homebrew/sbin`,
+`/opt/local/bin`, `/opt/local/sbin`, `/usr/bin`, `/bin`, `/usr/sbin`, or
+`/sbin`. The `tailrocks-create-pr` gate runner supports macOS and Linux only,
+requiring `/usr/bin/sandbox-exec` on macOS or `/usr/bin/bwrap` on Linux.
+Hosted lifecycle routes require an authenticated `gh` session with access to
+the target repository and support GitHub.com only; GitHub Enterprise is
+unsupported.
+Local-only and read-only audits can remain local.
 
 ## Select sources and target
 
