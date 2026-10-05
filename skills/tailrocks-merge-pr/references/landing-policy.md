@@ -11,6 +11,9 @@ one PR with one merge or enqueue attempt.
 - When base freshness matters, prefer a merge queue or a server-enforced
   freshness check. When those protections are absent, block an affected
   high-risk or explicitly freshness-bound merge.
+- When the base branch requires the merge queue, the skill takes the
+  enqueue route. When the request forbids enqueueing, the skill reports
+  the required queue path as blocked.
 - Strict exact-base mode requires an atomic match to one base OID. Without
   a proven supported mechanism, the skill blocks that action with code
   `target_cas_unavailable`. That block never becomes a universal refusal.

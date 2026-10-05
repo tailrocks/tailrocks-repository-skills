@@ -465,6 +465,20 @@ function cleanDetail(value: string, maximum: number): string {
   return value.replace(/[\0-\x1f\x7f]+/g, " ").trim().slice(0, maximum);
 }
 
+function parseQueueRequirement(raw: string): boolean {
+  const value = strictObject(JSON.parse(raw), "merge queue response");
+  requireExactKeys(value, ["queue"], "merge queue response");
+  if (typeof value.queue !== "boolean")
+    throw new Error("merge queue response has an unmatched shape");
+  return value.queue;
+}
+
+function parseQueueEntry(raw: string): boolean {
+  const value = strictObject(JSON.parse(raw), "queue response");
+  requireExactKeys(value, ["mergeQueueEntry"], "queue response");
+  return value.mergeQueueEntry !== null && value.mergeQueueEntry !== undefined;
+}
+
 async function queryRestPull(
   runner: CommandRunner,
   commands: (readonly string[])[],
@@ -711,8 +725,65 @@ export async function mergePullRequest(
       "checks_failed",
       "required check lookup returned no checks; green status is unproven",
     );
+  let queueRequired = false;
+  let queueInQueue = state.mergeStateStatus === "QUEUED";
+  const queueConfigResult = await invoke(runner, commands, root, [
+    "gh",
+    "api",
+    `repos/${target.repository}/branches/${encodeURIComponent(state.baseRef)}/protection`,
+    "--jq",
+    "{queue: (.required_merge_queue != null)}",
+  ]);
+  if (queueConfigResult.code === 0 && !queueConfigResult.timedOut) {
+    if (Buffer.byteLength(queueConfigResult.stdout) > maxOutputBytes)
+      return fail(
+        "uncertain",
+        "state_unknown",
+        "merge queue output is saturated; query the remote state before retry",
+      );
+    try {
+      queueRequired = parseQueueRequirement(queueConfigResult.stdout);
+    } catch {
+      queueRequired = false;
+    }
+  }
+  if (!queueInQueue) {
+    const queueEntryResult = await invoke(runner, commands, root, [
+      "gh",
+      "pr",
+      "view",
+      String(request.pr),
+      "--repo",
+      target.repository,
+      "--json",
+      "mergeQueueEntry",
+    ]);
+    if (queueEntryResult.code === 0 && !queueEntryResult.timedOut) {
+      if (Buffer.byteLength(queueEntryResult.stdout) > maxOutputBytes)
+        return fail(
+          "uncertain",
+          "state_unknown",
+          "merge queue output is saturated; query the remote state before retry",
+        );
+      try {
+        queueInQueue = parseQueueEntry(queueEntryResult.stdout);
+      } catch {
+        queueInQueue = state.mergeStateStatus === "QUEUED";
+      }
+    }
+  }
+
   let route: "direct" | "enqueue" = "direct";
-  if (checks.some((check) => check.bucket === "pending")) {
+  if (queueRequired || queueInQueue) {
+    if (request.queue === "never")
+      return fail(
+        "blocked",
+        "policy_blocked",
+        "the base branch requires the merge queue and queue=never forbids the enqueue route; reissue the request with queue=auto or land through the required queue; no merge was attempted",
+        { observedHead: state.head, observedBase: state.base },
+      );
+    route = "enqueue";
+  } else if (checks.some((check) => check.bucket === "pending")) {
     if (request.queue === "never")
       return fail(
         "pending",
