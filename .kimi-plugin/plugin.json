@@ -1,7 +1,7 @@
 {
   "name": "tailrocks-repository-skills",
-  "version": "0.2.9",
-  "description": "Target-bound repository orchestration and fail-closed pull-request lifecycle preflight skills.",
+  "version": "0.3.0",
+  "description": "Target-bound repository orchestration and pull-request lifecycle skills: plan, consolidate, create, refresh, review, document, template, guarded merge, audit, and cleanup.",
   "keywords": [
     "repository",
     "github",
@@ -22,21 +22,23 @@
   "interface": {
     "displayName": "Repository Skills",
     "shortDescription": "Target-bound repository and pull-request lifecycle workflows.",
-    "longDescription": "Target-bound repository orchestration with fail-closed pull-request creation, review, documentation, refresh, merge preflight, templates, audit, and cleanup; remote landing remains blocked until atomic target-base CAS and landed-target proof are available.",
+    "longDescription": "Target-bound repository orchestration with pull-request planning, consolidation, creation, review, documentation, refresh, guarded merge, templates, audit, and cleanup.",
     "capabilities": [
+      "Plan",
+      "Consolidate",
       "Create",
       "Review",
       "Document",
       "Refresh",
-      "Merge preflight",
+      "Guarded merge",
       "Audit",
       "Cleanup"
     ],
     "websiteURL": "https://github.com/tailrocks/tailrocks-repository-skills",
     "defaultPrompt": [
       "Coordinate these sources into the exact selected repository target.",
-      "Review or create this pull request after its gates pass.",
-      "Run the read-only merge preflight; remote landing remains blocked until atomic target-base CAS and landed-target proof are available."
+      "Plan these audited sources into ordered pull-request groups, or consolidate the selected groups into candidate branches.",
+      "Review, create, refresh, document, template, or land this pull request through its guarded owner."
     ]
   },
   "repository": "https://github.com/tailrocks/tailrocks-repository-skills"
