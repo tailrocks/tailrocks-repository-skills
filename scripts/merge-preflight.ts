@@ -23,6 +23,8 @@ type Code =
   | "checks_pending"
   | "delivery_blocked"
   | "documentation_blocked"
+  | "review_blocked"
+  | "policy_blocked"
   | "multiple_blockers"
   | "state_unmatched";
 
@@ -876,6 +878,429 @@ export async function runDocumentationCheck(
   }
 }
 
+export const mergePolicySchema = "tailrocks.merge-policy/v1";
+
+export interface PolicyReviewer {
+  readonly login: string;
+  readonly state: string;
+}
+
+export interface MergePolicyReceipt {
+  readonly schema: typeof mergePolicySchema;
+  readonly outcome: Outcome;
+  readonly code: Code;
+  readonly repository?: string;
+  readonly pr?: number;
+  readonly head?: string;
+  readonly base?: string;
+  readonly mergeBase?: string;
+  readonly baseRef?: string;
+  readonly headRef?: string;
+  readonly review?: {
+    readonly decision: string;
+    readonly approvals: number;
+    readonly changesRequested: boolean;
+    readonly reviewers: readonly PolicyReviewer[];
+  };
+  readonly mergeability?: {
+    readonly mergeable: string;
+    readonly mergeStateStatus: string;
+    readonly queued: boolean | "unknown";
+  };
+  readonly protection?: {
+    readonly present: boolean | "unknown";
+    readonly requiredApprovals: number;
+    readonly strict: boolean;
+    readonly requiredChecks: readonly string[];
+  };
+  readonly methods?: {
+    readonly merge: boolean;
+    readonly squash: boolean;
+    readonly rebase: boolean;
+  };
+  readonly checkAttempts: number;
+  readonly checks: readonly CheckState[];
+  readonly commands: readonly (readonly string[])[];
+  readonly detail: string;
+}
+
+function basePolicyReceipt(
+  code: Code,
+  outcome: Outcome,
+  commands: readonly (readonly string[])[],
+  detail: string,
+) {
+  return {
+    schema: mergePolicySchema,
+    outcome,
+    code,
+    checkAttempts: 0,
+    checks: [],
+    commands,
+    detail,
+  } satisfies MergePolicyReceipt;
+}
+
+const loginPattern = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
+
+function safeBranchName(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.length === 0 || Buffer.byteLength(value) > 240)
+    throw new Error(`${label} is invalid`);
+  if (
+    /[\0-\x1f\x7f]/.test(value) ||
+    value.includes("..") ||
+    value.includes("@{") ||
+    value.startsWith("/") ||
+    value.endsWith("/") ||
+    value.endsWith(".") ||
+    value.endsWith(".lock")
+  )
+    throw new Error(`${label} is invalid`);
+  return value;
+}
+
+function safeShortText(value: unknown, label: string): string {
+  if (
+    typeof value !== "string" ||
+    Buffer.byteLength(value) > 64 ||
+    /[\0-\x1f\x7f]/.test(value)
+  )
+    throw new Error(`${label} is invalid`);
+  return value;
+}
+
+interface PolicyPrState {
+  readonly head: string;
+  readonly base: string;
+  readonly headRef: string;
+  readonly baseRef: string;
+  readonly reviewDecision: string;
+  readonly mergeable: string;
+  readonly mergeStateStatus: string;
+}
+
+function parsePolicyPrView(raw: string, pr: number): PolicyPrState {
+  const value = strictObject(JSON.parse(raw), "pull request response");
+  requireExactKeys(
+    value,
+    [
+      "baseRefName",
+      "baseRefOid",
+      "headRefName",
+      "headRefOid",
+      "mergeStateStatus",
+      "mergeable",
+      "number",
+      "reviewDecision",
+      "state",
+    ],
+    "pull request response",
+  );
+  if (value.number !== pr) throw new Error("TARGET_MISMATCH: pull request number changed");
+  if (value.state !== "OPEN") throw new Error("CLOSED: pull request is not open");
+  return {
+    head: safeSha(value.headRefOid, "pull request head"),
+    base: safeSha(value.baseRefOid, "pull request base"),
+    headRef: safeBranchName(value.headRefName, "pull request head ref"),
+    baseRef: safeBranchName(value.baseRefName, "pull request base ref"),
+    reviewDecision: safeShortText(value.reviewDecision, "review decision"),
+    mergeable: safeShortText(value.mergeable, "mergeable state"),
+    mergeStateStatus: safeShortText(value.mergeStateStatus, "merge state status"),
+  };
+}
+
+function parseReviewers(raw: string): PolicyReviewer[] {
+  const value = JSON.parse(raw) as unknown;
+  if (!Array.isArray(value)) throw new Error("review response has an unmatched shape");
+  const pages = value as unknown[];
+  const entries = pages.flatMap((page) => (Array.isArray(page) ? page : [page]));
+  if (entries.length > 200) throw new Error("review response is saturated");
+  const latest = new Map<string, string>();
+  for (const entry of entries) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry))
+      throw new Error("review entry has an unmatched shape");
+    const record = entry as Record<string, unknown>;
+    const user = record.user;
+    if (!user || typeof user !== "object" || Array.isArray(user))
+      throw new Error("review entry has an unmatched shape");
+    const login = (user as Record<string, unknown>).login;
+    if (typeof login !== "string" || !loginPattern.test(login))
+      throw new Error("review entry has an unmatched shape");
+    if (
+      typeof record.state !== "string" ||
+      record.state.length === 0 ||
+      record.state.length > 32 ||
+      /[\0-\x1f\x7f]/.test(record.state)
+    )
+      throw new Error("review entry has an unmatched shape");
+    latest.set(login, record.state);
+  }
+  return [...latest]
+    .map(([login, state]) => ({ login, state }))
+    .sort((left, right) => (left.login < right.login ? -1 : left.login > right.login ? 1 : 0))
+    .slice(0, 50);
+}
+
+function parseProtection(raw: string): {
+  requiredApprovals: number;
+  strict: boolean;
+  requiredChecks: string[];
+} {
+  const value = strictObject(JSON.parse(raw), "branch protection response");
+  requireExactKeys(value, ["approvals", "checks", "strict"], "branch protection response");
+  const approvals = value.approvals === null ? 0 : value.approvals;
+  if (!Number.isSafeInteger(approvals) || (approvals as number) < 0 || (approvals as number) > 100)
+    throw new Error("branch protection response has an unmatched shape");
+  const strict = value.strict === null ? false : value.strict;
+  if (typeof strict !== "boolean") throw new Error("branch protection response has an unmatched shape");
+  if (
+    !Array.isArray(value.checks) ||
+    value.checks.length > 500 ||
+    value.checks.some(
+      (check) => typeof check !== "string" || check.length === 0 || check.length > 256,
+    )
+  )
+    throw new Error("branch protection response has an unmatched shape");
+  return { requiredApprovals: approvals as number, strict, requiredChecks: value.checks as string[] };
+}
+
+function parseMethods(raw: string): { merge: boolean; squash: boolean; rebase: boolean } {
+  const value = strictObject(JSON.parse(raw), "repository settings response");
+  requireExactKeys(value, ["merge", "rebase", "squash"], "repository settings response");
+  if (typeof value.merge !== "boolean" || typeof value.squash !== "boolean" || typeof value.rebase !== "boolean")
+    throw new Error("repository settings response has an unmatched shape");
+  return { merge: value.merge, squash: value.squash, rebase: value.rebase };
+}
+
+function isMissingProtection(result: { code: number; stderr: string }): boolean {
+  return result.code !== 0 && /(HTTP 404|Not Found|Branch not protected)/.test(result.stderr);
+}
+
+export async function runMergePolicy(
+  rootInput: string,
+  pr: number,
+  runtime: Pick<Runtime, "runner"> = {},
+  expectedRepository?: string,
+): Promise<MergePolicyReceipt> {
+  const commands: (readonly string[])[] = [];
+  if (!Number.isSafeInteger(pr) || pr < 1)
+    return basePolicyReceipt("invalid_arguments", "refused", commands, "PR must be a positive integer");
+  if (expectedRepository !== undefined && !repositoryPattern.test(expectedRepository))
+    return basePolicyReceipt(
+      "invalid_arguments",
+      "refused",
+      commands,
+      "repo must be in OWNER/REPO form",
+    );
+  let root: string;
+  try {
+    root = await safeRoot(rootInput);
+  } catch (error) {
+    return basePolicyReceipt(
+      "not_git_repo",
+      "refused",
+      commands,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  const runner = runtime.runner ?? defaultRunner;
+  try {
+    const target = await verifyTarget(root, pr, undefined, runner, commands, expectedRepository);
+    const policy = parsePolicyPrView(
+      await requireCommand(runner, commands, root, [
+        "gh",
+        "pr",
+        "view",
+        String(pr),
+        "--repo",
+        target.repository,
+        "--json",
+        "number,state,headRefOid,baseRefOid,headRefName,baseRefName,reviewDecision,mergeable,mergeStateStatus",
+      ]),
+      pr,
+    );
+    if (policy.head !== target.head || policy.base !== target.base)
+      throw new Error("HEAD_CHANGED: pull request identity changed during policy observation");
+    const reviewsResult = await invoke(runner, commands, root, [
+      "gh",
+      "api",
+      `repos/${target.repository}/pulls/${pr}/reviews`,
+      "--paginate",
+      "--slurp",
+    ]);
+    if (reviewsResult.code !== 0 || reviewsResult.timedOut)
+      throw new Error("review lookup failed");
+    if (Buffer.byteLength(reviewsResult.stdout) > 5_000_000)
+      throw new Error("review output is saturated");
+    const reviewers = parseReviewers(reviewsResult.stdout);
+    const queueResult = await invoke(runner, commands, root, [
+      "gh",
+      "pr",
+      "view",
+      String(pr),
+      "--repo",
+      target.repository,
+      "--json",
+      "mergeQueueEntry",
+    ]);
+    let queued: boolean | "unknown" = "unknown";
+    if (queueResult.code === 0 && !queueResult.timedOut) {
+      try {
+        const queueValue = strictObject(JSON.parse(queueResult.stdout), "queue response");
+        requireExactKeys(queueValue, ["mergeQueueEntry"], "queue response");
+        queued = queueValue.mergeQueueEntry !== null && queueValue.mergeQueueEntry !== undefined;
+      } catch {
+        queued = "unknown";
+      }
+    }
+    const protectionCommand = [
+      "gh",
+      "api",
+      `repos/${target.repository}/branches/${encodeURIComponent(policy.baseRef)}/protection`,
+      "--jq",
+      "{approvals: .required_pull_request_reviews.required_approving_review_count, strict: .required_status_checks.strict, checks: [.required_status_checks.checks[]?.context]}",
+    ];
+    const protectionResult = await invoke(runner, commands, root, protectionCommand);
+    if (Buffer.byteLength(protectionResult.stdout) > 5_000_000)
+      throw new Error("branch protection output is saturated");
+    let protection: NonNullable<MergePolicyReceipt["protection"]>;
+    if (protectionResult.code === 0 && !protectionResult.timedOut) {
+      protection = { present: true, ...parseProtection(protectionResult.stdout) };
+    } else if (isMissingProtection(protectionResult)) {
+      protection = { present: false, requiredApprovals: 0, strict: false, requiredChecks: [] };
+    } else {
+      throw new Error("branch protection lookup failed");
+    }
+    const methods = parseMethods(
+      await requireCommand(runner, commands, root, [
+        "gh",
+        "api",
+        `repos/${target.repository}`,
+        "--jq",
+        "{merge: .allow_merge_commit, squash: .allow_squash_merge, rebase: .allow_rebase_merge}",
+      ]),
+    );
+    const checksResult = await invoke(runner, commands, root, [
+      "gh",
+      "pr",
+      "checks",
+      String(pr),
+      "--repo",
+      target.repository,
+      "--required",
+      "--json",
+      "bucket,link,name,state,workflow",
+    ]);
+    if (![0, 1, 8].includes(checksResult.code) || checksResult.timedOut)
+      throw new Error("required check lookup failed");
+    if (Buffer.byteLength(checksResult.stdout) > 5_000_000)
+      throw new Error("required check output is saturated");
+    const checks = parseChecks(checksResult.stdout);
+    const noRequiredChecks =
+      protection.present === false ||
+      (protection.present === true && protection.requiredChecks.length === 0);
+    const approvals = reviewers.filter((reviewer) => reviewer.state === "APPROVED").length;
+    const changesRequested =
+      policy.reviewDecision === "CHANGES_REQUESTED" ||
+      reviewers.some((reviewer) => reviewer.state === "CHANGES_REQUESTED");
+    const review: NonNullable<MergePolicyReceipt["review"]> = {
+      decision: policy.reviewDecision,
+      approvals,
+      changesRequested,
+      reviewers,
+    };
+    const mergeability: NonNullable<MergePolicyReceipt["mergeability"]> = {
+      mergeable: policy.mergeable,
+      mergeStateStatus: policy.mergeStateStatus,
+      queued,
+    };
+    const blockers: { code: Code; detail: string }[] = [];
+    if (policy.mergeable === "CONFLICTING" || policy.mergeStateStatus === "DIRTY")
+      blockers.push({ code: "policy_blocked", detail: "PR has merge conflicts" });
+    else if (
+      policy.mergeable === "UNKNOWN" ||
+      policy.mergeStateStatus === "UNKNOWN" ||
+      policy.mergeStateStatus === "BLOCKED" ||
+      policy.mergeStateStatus === "DRAFT"
+    )
+      blockers.push({
+        code: "policy_blocked",
+        detail: `mergeability is ${policy.mergeable}/${policy.mergeStateStatus}; retry when GitHub reports a final state`,
+      });
+    if (policy.reviewDecision === "CHANGES_REQUESTED" || changesRequested)
+      blockers.push({ code: "review_blocked", detail: "a reviewer requested changes" });
+    else if (policy.reviewDecision === "REVIEW_REQUIRED")
+      blockers.push({ code: "review_blocked", detail: "a required approval is missing" });
+    else if (policy.reviewDecision !== "APPROVED" && policy.reviewDecision !== "")
+      blockers.push({
+        code: "review_blocked",
+        detail: `review decision is unrecognized: ${policy.reviewDecision || "empty"}`,
+      });
+    if (checks.some((check) => check.bucket === "fail" || check.bucket === "cancel"))
+      blockers.push({ code: "checks_failed", detail: "one or more required checks failed or were cancelled" });
+    else if (checks.length === 0 && !noRequiredChecks)
+      blockers.push({
+        code: "checks_failed",
+        detail: "required check lookup returned no checks; green status is unproven",
+      });
+    const pendingChecks = checks.some((check) => check.bucket === "pending");
+    await verifyTarget(root, pr, target, runner, commands, expectedRepository);
+    const observed = {
+      ...target,
+      baseRef: policy.baseRef,
+      headRef: policy.headRef,
+      review,
+      mergeability,
+      protection,
+      methods,
+      checkAttempts: 1,
+      checks,
+    };
+    if (blockers.length > 1)
+      return {
+        ...basePolicyReceipt(
+          "multiple_blockers",
+          "blocked",
+          commands,
+          `${blockers.map((blocker) => blocker.detail).join("; ")}; this observation never guards a later mutation`,
+        ),
+        ...observed,
+      };
+    if (blockers.length === 1)
+      return {
+        ...basePolicyReceipt(
+          blockers[0]!.code,
+          "blocked",
+          commands,
+          `${blockers[0]!.detail}; this observation never guards a later mutation`,
+        ),
+        ...observed,
+      };
+    if (pendingChecks)
+      return {
+        ...basePolicyReceipt(
+          "checks_pending",
+          "pending",
+          commands,
+          "required checks remain pending in this single sample; this observation never guards a later mutation",
+        ),
+        ...observed,
+      };
+    return {
+      ...basePolicyReceipt(
+        "ready",
+        "ready",
+        commands,
+        "no policy blocker observed; this receipt grants no merge authority",
+      ),
+      ...observed,
+    };
+  } catch (error) {
+    const classified = classifyError(error);
+    return basePolicyReceipt(classified.code, classified.outcome, commands, classified.detail);
+  }
+}
+
 function classifyError(error: unknown): { code: Code; outcome: Outcome; detail: string } {
   const detail = error instanceof Error ? error.message : String(error);
   if (detail.startsWith("NOT_GIT_REPO:")) return { code: "not_git_repo", outcome: "refused", detail };
@@ -1253,7 +1678,9 @@ if (import.meta.main) {
   const args = process.argv.slice(2);
   const documentationOptions =
     args[0] === "documentation" ? parseDocumentationOptions(args.slice(1)) : undefined;
-  const options = args[0] === "documentation" ? undefined : parseOptions(args);
+  const policyOptions = args[0] === "policy" ? parseDocumentationOptions(args.slice(1)) : undefined;
+  const options =
+    args[0] === "documentation" || args[0] === "policy" ? undefined : parseOptions(args);
   const receipt = documentationOptions
     ? await runDocumentationCheck(
         documentationOptions.root,
@@ -1261,14 +1688,16 @@ if (import.meta.main) {
         {},
         documentationOptions.repo,
       )
-    : options
-      ? await runMergePreflight(options)
-      : baseReceipt(
-          "invalid_arguments",
-          "refused",
-          [],
-          "usage: merge-preflight.ts --root <repository> --pr <number> [--repo <owner/repo>] [--no-poll | --poll-with-static-blockers] | documentation --root <repository> --pr <number> [--repo <owner/repo>]",
-        );
+    : policyOptions
+      ? await runMergePolicy(policyOptions.root, policyOptions.pr, {}, policyOptions.repo)
+      : options
+        ? await runMergePreflight(options)
+        : baseReceipt(
+            "invalid_arguments",
+            "refused",
+            [],
+            "usage: merge-preflight.ts --root <repository> --pr <number> [--repo <owner/repo>] [--no-poll | --poll-with-static-blockers] | documentation --root <repository> --pr <number> [--repo <owner/repo>] | policy --root <repository> --pr <number> [--repo <owner/repo>]",
+          );
   console.log(JSON.stringify(receipt));
   process.exit(
     receipt.outcome === "ready"
