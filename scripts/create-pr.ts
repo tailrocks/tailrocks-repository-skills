@@ -16,6 +16,15 @@ interface GateInput {
   readonly proof_command: readonly string[];
 }
 
+interface CandidateIdentity {
+  readonly base_repository: string;
+  readonly head_repository: string;
+  readonly head_ref: string;
+  readonly base_ref: string;
+  readonly group: string;
+  readonly head_oid: string;
+}
+
 interface CreatePrInput {
   readonly schema: typeof createPrInputSchema;
   readonly repo_root: string;
@@ -28,6 +37,9 @@ interface CreatePrInput {
   readonly base_sha: string;
   readonly head_branch: string;
   readonly head_sha: string;
+  readonly candidate: CandidateIdentity;
+  readonly allow_reuse: boolean;
+  readonly expected_remote_head?: string;
   readonly title: string;
   readonly body_file: string;
   readonly body_sha256: string;
@@ -70,17 +82,39 @@ interface GateReceipt {
 }
 
 interface ExternalReceipt {
-  readonly kind: "actor" | "base_ref" | "existing_pr" | "push" | "remote_ref" | "create" | "render";
+  readonly kind:
+    | "actor"
+    | "base_ref"
+    | "existing_pr"
+    | "prior_closed"
+    | "push"
+    | "remote_ref"
+    | "create"
+    | "render";
   readonly command: readonly string[];
   readonly outcome: "success" | "failed" | "uncertain";
   readonly proof: string;
 }
 
+export interface PrMatch {
+  readonly number: number;
+  readonly url: string;
+  readonly base: string;
+  readonly head: string;
+}
+
+export interface PriorClosedPr {
+  readonly number: number;
+  readonly url: string;
+}
+
 export interface CreatePrReceipt {
   readonly schema: typeof createPrReceiptSchema;
-  readonly outcome: "success" | "refused" | "recovery_required";
+  readonly outcome: "success" | "reused" | "decision_required" | "refused" | "recovery_required";
   readonly code:
     | "opened"
+    | "reused"
+    | "decision_required"
     | "invalid_input"
     | "state_drift"
     | "gate_failed"
@@ -93,10 +127,26 @@ export interface CreatePrReceipt {
   readonly branch: string;
   readonly head: string;
   readonly url: string;
+  readonly pr_number?: number;
+  readonly observed_base?: string;
+  readonly matches?: readonly PrMatch[];
+  readonly prior_closed?: readonly PriorClosedPr[];
   readonly executed_units: number;
   readonly gates: readonly GateReceipt[];
   readonly external_actions: readonly ExternalReceipt[];
   readonly detail: string;
+}
+
+interface OpenPullRequest {
+  readonly number: number;
+  readonly url: string;
+  readonly state: string;
+  readonly base_ref: string;
+  readonly base_sha: string;
+  readonly head_ref: string;
+  readonly head_sha: string;
+  readonly head_repo: string;
+  readonly author: string;
 }
 
 const shaPattern = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
@@ -193,6 +243,25 @@ function parseCommand(value: unknown, label: string): readonly string[] {
   return command;
 }
 
+function parseCandidate(value: unknown): CandidateIdentity {
+  const candidate = object(value, "candidate");
+  exactKeys(
+    candidate,
+    ["base_repository", "head_repository", "head_ref", "base_ref", "group", "head_oid"],
+    "candidate",
+  );
+  const headOid = candidate.head_oid;
+  if (typeof headOid !== "string" || !shaPattern.test(headOid)) throw new Error("candidate head_oid is invalid");
+  return {
+    base_repository: canonicalRepository(candidate.base_repository),
+    head_repository: canonicalRepository(candidate.head_repository),
+    head_ref: safeRef(candidate.head_ref, "candidate head_ref"),
+    base_ref: safeRef(candidate.base_ref, "candidate base_ref"),
+    group: safeText(candidate.group, "candidate group", 128),
+    head_oid: headOid,
+  };
+}
+
 function parseInput(raw: unknown): CreatePrInput {
   const value = object(raw, "input");
   exactKeys(
@@ -209,12 +278,15 @@ function parseInput(raw: unknown): CreatePrInput {
       "base_sha",
       "head_branch",
       "head_sha",
+      "candidate",
+      "allow_reuse",
       "title",
       "body_file",
       "body_sha256",
       "draft",
       "required_trailers",
       "gates",
+      ...(value.expected_remote_head === undefined ? [] : ["expected_remote_head"]),
     ],
     "input",
   );
@@ -239,6 +311,20 @@ function parseInput(raw: unknown): CreatePrInput {
     throw new Error("base_sha is invalid");
   if (typeof value.head_sha !== "string" || !shaPattern.test(value.head_sha))
     throw new Error("head_sha is invalid");
+  const candidate = parseCandidate(value.candidate);
+  if (typeof value.allow_reuse !== "boolean") throw new Error("allow_reuse must be boolean");
+  const expectedRemoteHead =
+    value.expected_remote_head === undefined ? undefined : value.expected_remote_head;
+  if (expectedRemoteHead !== undefined && (typeof expectedRemoteHead !== "string" || !shaPattern.test(expectedRemoteHead)))
+    throw new Error("expected_remote_head is invalid");
+  if (
+    candidate.base_repository !== repository ||
+    candidate.head_repository !== `${headOwner}/${repositoryName}` ||
+    candidate.head_ref !== headBranch ||
+    candidate.base_ref !== baseBranch ||
+    candidate.head_oid !== value.head_sha
+  )
+    throw new Error("candidate tuple differs from the declared branch identity");
   const title = safeText(value.title, "title", 256);
   if (typeof value.body_file !== "string" || !path.isAbsolute(value.body_file))
     throw new Error("body_file must be absolute");
@@ -281,6 +367,9 @@ function parseInput(raw: unknown): CreatePrInput {
     base_sha: value.base_sha,
     head_branch: headBranch,
     head_sha: value.head_sha,
+    candidate,
+    allow_reuse: value.allow_reuse,
+    ...(expectedRemoteHead === undefined ? {} : { expected_remote_head: expectedRemoteHead }),
     title,
     body_file: value.body_file,
     body_sha256: value.body_sha256,
@@ -588,7 +677,158 @@ async function runRemoteWithReceipt(
   }
 }
 
-async function proveRemotePreconditions(
+function parsePullRequestEntry(entry: unknown, repository: string): OpenPullRequest {
+  const record = object(entry, "pull request entry");
+  const number = record.number;
+  if (!Number.isSafeInteger(number) || (number as number) < 1)
+    throw new Error("pull request entry number is invalid");
+  const url = record.html_url;
+  if (typeof url !== "string" || !exactPrUrl(url, repository) || !url.endsWith(`/${number}`))
+    throw new Error("pull request entry URL is invalid");
+  if (record.state !== "open") throw new Error("pull request entry state is invalid");
+  const base = object(record.base, "pull request entry base");
+  const head = object(record.head, "pull request entry head");
+  const headRepo = object(head.repo, "pull request entry head repo");
+  const user = object(record.user, "pull request entry author");
+  const author = user.login;
+  if (typeof author !== "string" || !/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(author))
+    throw new Error("pull request entry author is invalid");
+  if (typeof base.sha !== "string" || !shaPattern.test(base.sha))
+    throw new Error("pull request entry base SHA is invalid");
+  if (typeof head.sha !== "string" || !shaPattern.test(head.sha))
+    throw new Error("pull request entry head SHA is invalid");
+  return {
+    number: number as number,
+    url,
+    state: "open",
+    base_ref: safeRef(base.ref, "pull request entry base ref"),
+    base_sha: base.sha,
+    head_ref: safeRef(head.ref, "pull request entry head ref"),
+    head_sha: head.sha,
+    head_repo: canonicalRepository(headRepo.full_name),
+    author,
+  };
+}
+
+function parsePullRequestPages(stdout: string, repository: string): OpenPullRequest[] {
+  let existing: unknown = null;
+  try {
+    existing = JSON.parse(stdout) as unknown;
+  } catch {
+    throw new Error("existing open pull request lookup failed");
+  }
+  if (!Array.isArray(existing)) throw new Error("existing open pull request lookup failed");
+  const pullRequests = (existing as unknown[]).flatMap((page) => (Array.isArray(page) ? page : [page]));
+  if (pullRequests.length > 100) throw new Error("open pull request list is saturated");
+  return pullRequests.map((entry) => parsePullRequestEntry(entry, repository));
+}
+
+async function queryOpenPullRequests(
+  input: CreatePrInput,
+  ghExecutable: string,
+  root: string,
+  runner: CreatePrRunner,
+  receipts: ExternalReceipt[],
+): Promise<OpenPullRequest[]> {
+  const existingCommand = [
+    ghExecutable,
+    "api",
+    `repos/${input.repository}/pulls`,
+    "--method",
+    "GET",
+    "-f",
+    "state=open",
+    "-f",
+    `head=${input.head_owner}:${input.head_branch}`,
+    "-f",
+    "per_page=100",
+    "--paginate",
+    "--slurp",
+  ];
+  const existingResult = await runRemoteWithReceipt(
+    runner,
+    { command: existingCommand, cwd: root },
+    "existing_pr",
+    receipts,
+  );
+  let matches: OpenPullRequest[] = [];
+  try {
+    if (!commandSucceeded(existingResult)) throw new Error("existing open pull request lookup failed");
+    matches = parsePullRequestPages(existingResult.stdout, input.repository);
+  } catch (error) {
+    receipts.push(external("existing_pr", existingCommand, "failed", digest(existingResult.stdout)));
+    throw error;
+  }
+  receipts.push(external("existing_pr", existingCommand, "success", `count=${matches.length}`));
+  return matches;
+}
+
+async function queryClosedPullRequests(
+  input: CreatePrInput,
+  ghExecutable: string,
+  root: string,
+  runner: CreatePrRunner,
+  receipts: ExternalReceipt[],
+): Promise<{ closed: PriorClosedPr[]; screened: boolean; total: number }> {
+  const closedCommand = [
+    ghExecutable,
+    "api",
+    `repos/${input.repository}/pulls`,
+    "--method",
+    "GET",
+    "-f",
+    "state=closed",
+    "-f",
+    `head=${input.head_owner}:${input.head_branch}`,
+    "-f",
+    "per_page=100",
+    "--paginate",
+    "--slurp",
+  ];
+  const closedResult = await runRemoteWithReceipt(
+    runner,
+    { command: closedCommand, cwd: root },
+    "prior_closed",
+    receipts,
+  );
+  try {
+    if (!commandSucceeded(closedResult)) throw new Error("closed pull request lookup failed");
+    const pages = JSON.parse(closedResult.stdout) as unknown;
+    if (!Array.isArray(pages)) throw new Error("closed pull request lookup failed");
+    const entries = (pages as unknown[]).flatMap((page) => (Array.isArray(page) ? page : [page]));
+    const unmerged: PriorClosedPr[] = [];
+    for (const entry of entries) {
+      const record = object(entry, "closed pull request entry");
+      if (record.state !== "closed") throw new Error("closed pull request entry is invalid");
+      if (record.merged_at !== undefined && record.merged_at !== null) continue;
+      const number = record.number;
+      const url = record.html_url;
+      if (!Number.isSafeInteger(number) || (number as number) < 1)
+        throw new Error("closed pull request entry is invalid");
+      if (typeof url !== "string" || !exactPrUrl(url, input.repository))
+        throw new Error("closed pull request entry is invalid");
+      if (unmerged.length < 20) unmerged.push({ number: number as number, url });
+    }
+    receipts.push(external("prior_closed", closedCommand, "success", `count=${unmerged.length}`));
+    return { closed: unmerged, screened: true, total: unmerged.length };
+  } catch {
+    receipts.push(external("prior_closed", closedCommand, "uncertain", digest(closedResult.stdout)));
+    return { closed: [], screened: false, total: 0 };
+  }
+}
+
+function parseLsRemoteHead(result: CreatePrCommandResult, headBranch: string): string | null {
+  if (!commandSucceeded(result)) return null;
+  const trimmed = result.stdout.trim();
+  if (trimmed === "") return "";
+  const lines = trimmed.split("\n");
+  if (lines.length !== 1) return null;
+  const match = lines[0]!.match(/^([a-f0-9]{40}|[a-f0-9]{64})\trefs\/heads\/(.+)$/);
+  if (!match || match[2] !== headBranch || !shaPattern.test(match[1]!)) return null;
+  return match[1]!;
+}
+
+async function proveActorAndBase(
   input: CreatePrInput,
   ghExecutable: string,
   root: string,
@@ -638,40 +878,6 @@ async function proveRemotePreconditions(
     throw new Error("target repository base ref differs from declared base SHA");
   }
   receipts.push(external("base_ref", baseCommand, "success", input.base_sha));
-  const existingCommand = [
-    ghExecutable,
-    "api",
-    `repos/${input.repository}/pulls`,
-    "--method",
-    "GET",
-    "-f",
-    "state=open",
-    "-f",
-    `head=${input.head_owner}:${input.head_branch}`,
-    "-f",
-    "per_page=100",
-    "--paginate",
-    "--slurp",
-  ];
-  const existingResult = await runRemoteWithReceipt(
-    runner,
-    { command: existingCommand, cwd: root },
-    "existing_pr",
-    receipts,
-  );
-  let existing: unknown = null;
-  try {
-    existing = JSON.parse(existingResult.stdout) as unknown;
-  } catch {
-    // The exact empty array below remains the only accepted proof.
-  }
-  const pages = Array.isArray(existing) ? existing : [];
-  const pullRequests = pages.flatMap((page) => (Array.isArray(page) ? page : [page]));
-  if (!commandSucceeded(existingResult) || !Array.isArray(existing) || pullRequests.length !== 0) {
-    receipts.push(external("existing_pr", existingCommand, "failed", digest(existingResult.stdout)));
-    throw new Error("absence of an existing open pull request is unproven");
-  }
-  receipts.push(external("existing_pr", existingCommand, "success", "none"));
 }
 
 export async function createPullRequest(
@@ -691,6 +897,8 @@ export async function createPullRequest(
   let pushAttempted = false;
   let created = false;
   let url = "";
+  let priorClosed: PriorClosedPr[] = [];
+  let historyNote = "";
   let gateParent = "";
   let pushParent = "";
   let receipt: CreatePrReceipt | undefined;
@@ -717,53 +925,233 @@ export async function createPullRequest(
     await safeExecutable(ghExecutable);
     const localRunner = runtime.localRunner ?? defaultLocalRunner;
     const remoteRunner = runtime.remoteRunner ?? defaultRemoteRunner;
-    await repositorySnapshot(input, gitExecutable, localRunner);
-    const gateWorkspace = await prepareGateWorkspace(input, gitExecutable, localRunner);
-    gateParent = path.dirname(gateWorkspace);
-    const gateRunner = runtime.gateRunner ?? isolatedGateRunner(gateWorkspace);
-    for (const gate of input.gates) {
-      await safeExecutable(gate.command[0]!);
-      await safeExecutable(gate.proof_command[0]!);
-      const result = await gateRunner({ command: gate.command, cwd: gateWorkspace });
-      if (!commandSucceeded(result)) {
+    let gateWorkspace = "";
+    const runGates = async (): Promise<CreatePrReceipt | null> => {
+      if (!gateWorkspace) {
+        gateWorkspace = await prepareGateWorkspace(input, gitExecutable, localRunner);
+        gateParent = path.dirname(gateWorkspace);
+      }
+      const gateRunner = runtime.gateRunner ?? isolatedGateRunner(gateWorkspace);
+      for (const gate of input.gates) {
+        await safeExecutable(gate.command[0]!);
+        await safeExecutable(gate.proof_command[0]!);
+        const result = await gateRunner({ command: gate.command, cwd: gateWorkspace });
+        if (!commandSucceeded(result)) {
+          gates.push({
+            id: gate.id,
+            command: gate.command,
+            proof_command: gate.proof_command,
+            outcome: "failed",
+            units: 0,
+            output_sha256: digest(result.stdout),
+          });
+          return {
+            ...baseReceipt("gate_failed", `gate failed: ${gate.id}`),
+            repository: input.repository,
+            branch: input.head_branch,
+            head: input.head_sha,
+            prior_closed: priorClosed,
+            gates,
+          };
+        }
+        const proof = await gateRunner({ command: gate.proof_command, cwd: gateWorkspace });
+        const units = commandSucceeded(proof) ? parseProof(proof.stdout) : 0;
         gates.push({
           id: gate.id,
           command: gate.command,
           proof_command: gate.proof_command,
-          outcome: "failed",
-          units: 0,
+          outcome: units > 0 ? "passed" : "vacuous",
+          units,
           output_sha256: digest(result.stdout),
         });
-        return remember({
-          ...baseReceipt("gate_failed", `gate failed: ${gate.id}`),
-          repository: input.repository,
-          branch: input.head_branch,
-          head: input.head_sha,
-          gates,
-        });
+        if (units === 0)
+          return {
+            ...baseReceipt("gate_vacuous", `gate proof is zero or malformed: ${gate.id}`),
+            repository: input.repository,
+            branch: input.head_branch,
+            head: input.head_sha,
+            prior_closed: priorClosed,
+            gates,
+          };
+        executedUnits += units;
       }
-      const proof = await gateRunner({ command: gate.proof_command, cwd: gateWorkspace });
-      const units = commandSucceeded(proof) ? parseProof(proof.stdout) : 0;
-      gates.push({
-        id: gate.id,
-        command: gate.command,
-        proof_command: gate.proof_command,
-        outcome: units > 0 ? "passed" : "vacuous",
-        units,
-        output_sha256: digest(result.stdout),
+      return null;
+    };
+    const canFastForward = async (oldHead: string): Promise<boolean> => {
+      const result = await localRunner({
+        command: [gitExecutable, "merge-base", "--is-ancestor", oldHead, input.head_sha],
+        cwd: input.repo_root,
       });
-      if (units === 0)
-        return remember({
-          ...baseReceipt("gate_vacuous", `gate proof is zero or malformed: ${gate.id}`),
+      return commandSucceeded(result);
+    };
+    const decisionReceipt = (
+      detail: string,
+      matches: readonly OpenPullRequest[],
+    ): CreatePrReceipt => ({
+      schema: createPrReceiptSchema,
+      outcome: "decision_required",
+      code: "decision_required",
+      repository: input.repository,
+      branch: input.head_branch,
+      head: input.head_sha,
+      url: "",
+      executed_units: executedUnits,
+      gates,
+      external_actions: externalActions,
+      matches: matches.map((match) => ({
+        number: match.number,
+        url: match.url,
+        base: match.base_ref,
+        head: match.head_sha,
+      })),
+      prior_closed: priorClosed,
+      detail: `${detail}${historyNote}`,
+    });
+    const renderExisting = async (match: OpenPullRequest): Promise<CreatePrReceipt> => {
+      const render = [
+        ghExecutable,
+        "pr",
+        "view",
+        match.url,
+        "--repo",
+        input.repository,
+        "--json",
+        "body,headRefName,headRefOid,baseRefName,baseRefOid,url,title,isDraft,author,state",
+      ];
+      const renderResult = await runRemoteWithReceipt(
+        remoteRunner,
+        { command: render, cwd: root },
+        "render",
+        externalActions,
+      );
+      let rendered: Record<string, unknown> | null = null;
+      try {
+        rendered = object(JSON.parse(renderResult.stdout) as unknown, "render receipt");
+        exactKeys(
+          rendered,
+          [
+            "body",
+            "headRefName",
+            "headRefOid",
+            "baseRefName",
+            "baseRefOid",
+            "url",
+            "title",
+            "isDraft",
+            "author",
+            "state",
+          ],
+          "render receipt",
+        );
+      } catch {
+        rendered = null;
+      }
+      const author =
+        rendered?.author && typeof rendered.author === "object" && !Array.isArray(rendered.author)
+          ? (rendered.author as Record<string, unknown>).login
+          : undefined;
+      const observedBase = rendered?.baseRefOid;
+      if (
+        !commandSucceeded(renderResult) ||
+        !rendered ||
+        rendered.headRefName !== input.head_branch ||
+        rendered.headRefOid !== input.head_sha ||
+        rendered.baseRefName !== input.base_branch ||
+        typeof observedBase !== "string" ||
+        !shaPattern.test(observedBase) ||
+        rendered.url !== match.url ||
+        rendered.state !== "OPEN" ||
+        author !== input.actor
+      ) {
+        externalActions.push(external("render", render, "uncertain", digest(renderResult.stdout)));
+        return {
+          ...baseReceipt("render_failed", "reused PR render or identity is unproven"),
+          outcome: "recovery_required",
           repository: input.repository,
           branch: input.head_branch,
           head: input.head_sha,
+          url: match.url,
+          pr_number: match.number,
+          prior_closed: priorClosed,
+          executed_units: executedUnits,
           gates,
-        });
-      executedUnits += units;
-    }
+          external_actions: externalActions,
+        };
+      }
+      externalActions.push(external("render", render, "success", input.head_sha));
+      return {
+        schema: createPrReceiptSchema,
+        outcome: "reused",
+        code: "reused",
+        repository: input.repository,
+        branch: input.head_branch,
+        head: input.head_sha,
+        url: match.url,
+        pr_number: match.number,
+        observed_base: observedBase,
+        prior_closed: priorClosed,
+        executed_units: executedUnits,
+        gates,
+        external_actions: externalActions,
+        detail: `reused PR #${match.number} at the expected head${historyNote}`,
+      };
+    };
+    const suitabilityReasons = async (match: OpenPullRequest): Promise<string[]> => {
+      const reasons: string[] = [];
+      const headRepo = `${input.head_owner}/${input.repository.split("/")[1]!}`;
+      if (match.base_ref !== input.base_branch)
+        reasons.push(`base is ${match.base_ref} but the request binds ${input.base_branch}`);
+      if (match.head_repo !== headRepo)
+        reasons.push(`head repo is ${match.head_repo} but the request binds ${headRepo}`);
+      if (match.head_ref !== input.head_branch)
+        reasons.push(`head ref is ${match.head_ref} but the request binds ${input.head_branch}`);
+      if (match.author !== input.actor)
+        reasons.push(`author is ${match.author} but the request binds ${input.actor}`);
+      if (match.head_sha !== input.head_sha) {
+        if (!input.allow_reuse)
+          reasons.push(
+            `head is ${match.head_sha} but the request binds ${input.head_sha}, and reuse is forbidden`,
+          );
+        else if (input.expected_remote_head === undefined)
+          reasons.push(
+            `head is ${match.head_sha} but the request binds ${input.head_sha}, and no expected remote head was declared`,
+          );
+        else if (match.head_sha !== input.expected_remote_head)
+          reasons.push(
+            `head is ${match.head_sha} but the request expects ${input.head_sha} from ${input.expected_remote_head}`,
+          );
+        else if (!(await canFastForward(match.head_sha)))
+          reasons.push(
+            `head ${match.head_sha} is not an ancestor of ${input.head_sha}; no fast-forward exists`,
+          );
+      } else if (!input.allow_reuse) {
+        reasons.push(`PR #${match.number} already covers the candidate but reuse is forbidden`);
+      }
+      return reasons;
+    };
     await repositorySnapshot(input, gitExecutable, localRunner);
-    await proveRemotePreconditions(input, ghExecutable, root, remoteRunner, externalActions);
+    await proveActorAndBase(input, ghExecutable, root, remoteRunner, externalActions);
+    const openMatches = await queryOpenPullRequests(input, ghExecutable, root, remoteRunner, externalActions);
+    const prior = await queryClosedPullRequests(input, ghExecutable, root, remoteRunner, externalActions);
+    priorClosed = prior.closed;
+    historyNote = prior.screened ? "" : "; closed-PR history is unscreened";
+    let reuseMatch: OpenPullRequest | null = null;
+    if (openMatches.length >= 2)
+      return remember(
+        decisionReceipt(
+          `${openMatches.length} open PRs match ${input.head_owner}:${input.head_branch}; refusing to pick one`,
+          openMatches,
+        ),
+      );
+    if (openMatches.length === 1) {
+      const match = openMatches[0]!;
+      const reasons = await suitabilityReasons(match);
+      if (reasons.length > 0) return remember(decisionReceipt(reasons.join("; "), openMatches));
+      if (match.head_sha === input.head_sha) return remember(await renderExisting(match));
+      reuseMatch = match;
+    }
+    const gateFailure = await runGates();
+    if (gateFailure) return remember(gateFailure);
     await repositorySnapshot(input, gitExecutable, localRunner);
 
     // Remote Git must use a repository created by this entrypoint. The source
@@ -793,7 +1181,9 @@ export async function createPullRequest(
       "remote_ref",
       externalActions,
     );
-    if (!commandSucceeded(remoteRefBeforePush) || remoteRefBeforePush.stdout.trim() !== "") {
+    const remoteHead = parseLsRemoteHead(remoteRefBeforePush, input.head_branch);
+    let leaseOld: string | null = null;
+    if (remoteHead === null) {
       externalActions.push(
         external(
           "remote_ref",
@@ -803,111 +1193,155 @@ export async function createPullRequest(
         ),
       );
       return remember({
+        ...baseReceipt("remote_ref_failed", `remote branch state is unproven${historyNote}`),
+        repository: input.repository,
+        branch: input.head_branch,
+        head: input.head_sha,
+        prior_closed: priorClosed,
+        executed_units: executedUnits,
+        gates,
+        external_actions: externalActions,
+      });
+    } else if (remoteHead === "") {
+      externalActions.push(external("remote_ref", remoteRef, "success", "absent"));
+      leaseOld = "";
+    } else if (remoteHead === input.head_sha) {
+      externalActions.push(external("remote_ref", remoteRef, "success", "at-head"));
+    } else if (
+      input.allow_reuse &&
+      input.expected_remote_head !== undefined &&
+      remoteHead === input.expected_remote_head &&
+      (await canFastForward(remoteHead))
+    ) {
+      externalActions.push(external("remote_ref", remoteRef, "success", remoteHead));
+      leaseOld = remoteHead;
+    } else {
+      externalActions.push(external("remote_ref", remoteRef, "failed", remoteHead));
+      return remember({
         ...baseReceipt(
           "remote_ref_failed",
-          "remote branch is present or its absence is unproven; create-only push refused",
+          `remote branch is at ${remoteHead} but the request binds ${input.head_sha}; stopping without force-push${historyNote}`,
         ),
         repository: input.repository,
         branch: input.head_branch,
         head: input.head_sha,
+        prior_closed: priorClosed,
         executed_units: executedUnits,
         gates,
         external_actions: externalActions,
       });
     }
-    externalActions.push(external("remote_ref", remoteRef, "success", "absent"));
 
-    const push = [
-      gitExecutable,
-      ...gitTransportOptions,
-      "push",
-      "--no-verify",
-      `--force-with-lease=refs/heads/${input.head_branch}:`,
-      input.remote_url,
-      `${input.head_sha}:refs/heads/${input.head_branch}`,
-    ];
-    pushAttempted = true;
-    const pushResult = await runRemoteWithReceipt(
-      remoteRunner,
-      { command: push, cwd: pushWorkspace },
-      "push",
-      externalActions,
-    );
-    externalActions.push(
-      external(
-        "push",
-        push,
-        commandSucceeded(pushResult) ? "success" : "uncertain",
-        digest(pushResult.stdout),
-      ),
-    );
-    const remoteRefResult = await runRemoteWithReceipt(
-      remoteRunner,
-      { command: remoteRef, cwd: pushWorkspace },
-      "remote_ref",
-      externalActions,
-    );
     const expectedRef = `${input.head_sha}\trefs/heads/${input.head_branch}`;
-    const pushSucceeded = commandSucceeded(pushResult);
-    if (!pushSucceeded) {
-      const remoteRefMatches =
-        commandSucceeded(remoteRefResult) && remoteRefResult.stdout.trim() === expectedRef;
-      const absent = commandSucceeded(remoteRefResult) && remoteRefResult.stdout.trim() === "";
+    if (leaseOld !== null) {
+      const push = [
+        gitExecutable,
+        ...gitTransportOptions,
+        "push",
+        "--no-verify",
+        `--force-with-lease=refs/heads/${input.head_branch}:${leaseOld}`,
+        input.remote_url,
+        `${input.head_sha}:refs/heads/${input.head_branch}`,
+      ];
+      pushAttempted = true;
+      const pushResult = await runRemoteWithReceipt(
+        remoteRunner,
+        { command: push, cwd: pushWorkspace },
+        "push",
+        externalActions,
+      );
       externalActions.push(
         external(
-          "remote_ref",
-          remoteRef,
-          remoteRefMatches || absent ? "success" : "uncertain",
-          remoteRefMatches ? input.head_sha : absent ? "absent" : digest(remoteRefResult.stdout),
+          "push",
+          push,
+          commandSucceeded(pushResult) ? "success" : "uncertain",
+          digest(pushResult.stdout),
         ),
       );
-      return remember({
-        ...baseReceipt(
-          "push_failed",
-          remoteRefMatches
-            ? "push failed but the expected remote branch was observed; PR creation refused"
-            : absent
-              ? "push failed and exact remote discovery proved the branch absent"
-              : "push failed and pushed branch identity is unproven",
-        ),
-        outcome: "recovery_required",
-        repository: input.repository,
-        branch: input.head_branch,
-        head: input.head_sha,
-        executed_units: executedUnits,
-        gates,
-        external_actions: externalActions,
-      });
+      const remoteRefResult = await runRemoteWithReceipt(
+        remoteRunner,
+        { command: remoteRef, cwd: pushWorkspace },
+        "remote_ref",
+        externalActions,
+      );
+      const pushSucceeded = commandSucceeded(pushResult);
+      if (!pushSucceeded) {
+        const remoteRefMatches =
+          commandSucceeded(remoteRefResult) && remoteRefResult.stdout.trim() === expectedRef;
+        const absent = commandSucceeded(remoteRefResult) && remoteRefResult.stdout.trim() === "";
+        externalActions.push(
+          external(
+            "remote_ref",
+            remoteRef,
+            remoteRefMatches || absent ? "success" : "uncertain",
+            remoteRefMatches ? input.head_sha : absent ? "absent" : digest(remoteRefResult.stdout),
+          ),
+        );
+        return remember({
+          ...baseReceipt(
+            "push_failed",
+            remoteRefMatches
+              ? `push failed but the expected remote branch was observed; refusing to continue${historyNote}`
+              : absent
+                ? `push failed and exact remote discovery proved the branch absent${historyNote}`
+                : `push failed and pushed branch identity is unproven${historyNote}`,
+          ),
+          outcome: "recovery_required",
+          repository: input.repository,
+          branch: input.head_branch,
+          head: input.head_sha,
+          prior_closed: priorClosed,
+          executed_units: executedUnits,
+          gates,
+          external_actions: externalActions,
+        });
+      }
+      if (!commandSucceeded(remoteRefResult) || remoteRefResult.stdout.trim() !== expectedRef) {
+        const absent = commandSucceeded(remoteRefResult) && remoteRefResult.stdout.trim() === "";
+        externalActions.push(
+          external(
+            "remote_ref",
+            remoteRef,
+            absent ? "success" : "uncertain",
+            absent ? "absent" : digest(remoteRefResult.stdout),
+          ),
+        );
+        return remember({
+          ...baseReceipt(
+            commandSucceeded(pushResult) ? "remote_ref_failed" : "push_failed",
+            absent && !commandSucceeded(pushResult)
+              ? `push failed and exact remote discovery proved the branch absent${historyNote}`
+              : `pushed branch identity is foreign or unproven${historyNote}`,
+          ),
+          outcome: absent && !commandSucceeded(pushResult) ? "refused" : "recovery_required",
+          repository: input.repository,
+          branch: input.head_branch,
+          head: input.head_sha,
+          prior_closed: priorClosed,
+          executed_units: executedUnits,
+          gates,
+          external_actions: externalActions,
+        });
+      }
+      pushed = true;
+      externalActions.push(external("remote_ref", remoteRef, "success", input.head_sha));
     }
-    if (!commandSucceeded(remoteRefResult) || remoteRefResult.stdout.trim() !== expectedRef) {
-      const absent = commandSucceeded(remoteRefResult) && remoteRefResult.stdout.trim() === "";
-      externalActions.push(
-        external(
-          "remote_ref",
-          remoteRef,
-          absent ? "success" : "uncertain",
-          absent ? "absent" : digest(remoteRefResult.stdout),
+    if (reuseMatch) return remember(await renderExisting(reuseMatch));
+    await proveActorAndBase(input, ghExecutable, root, remoteRunner, externalActions);
+    const reopened = await queryOpenPullRequests(
+      input,
+      ghExecutable,
+      root,
+      remoteRunner,
+      externalActions,
+    );
+    if (reopened.length !== 0)
+      return remember(
+        decisionReceipt(
+          `a matching open PR appeared after the push; the branch holds ${input.head_sha} and the operator decides`,
+          reopened,
         ),
       );
-      return remember({
-        ...baseReceipt(
-          commandSucceeded(pushResult) ? "remote_ref_failed" : "push_failed",
-          absent && !commandSucceeded(pushResult)
-            ? "push failed and exact remote discovery proved the branch absent"
-            : "pushed branch identity is foreign or unproven",
-        ),
-        outcome: absent && !commandSucceeded(pushResult) ? "refused" : "recovery_required",
-        repository: input.repository,
-        branch: input.head_branch,
-        head: input.head_sha,
-        executed_units: executedUnits,
-        gates,
-        external_actions: externalActions,
-      });
-    }
-    pushed = true;
-    externalActions.push(external("remote_ref", remoteRef, "success", input.head_sha));
-    await proveRemotePreconditions(input, ghExecutable, root, remoteRunner, externalActions);
     const finalRemoteRefResult = await runRemoteWithReceipt(
       remoteRunner,
       { command: remoteRef, cwd: pushWorkspace },
@@ -919,11 +1353,15 @@ export async function createPullRequest(
         external("remote_ref", remoteRef, "uncertain", digest(finalRemoteRefResult.stdout)),
       );
       return remember({
-        ...baseReceipt("remote_ref_failed", "remote head changed immediately before PR creation"),
+        ...baseReceipt(
+          "remote_ref_failed",
+          `remote head changed immediately before PR creation${historyNote}`,
+        ),
         outcome: "recovery_required",
         repository: input.repository,
         branch: input.head_branch,
         head: input.head_sha,
+        prior_closed: priorClosed,
         executed_units: executedUnits,
         gates,
         external_actions: externalActions,
@@ -956,11 +1394,15 @@ export async function createPullRequest(
     if (!commandSucceeded(createResult) || !exactPrUrl(url, input.repository)) {
       externalActions.push(external("create", create, createResult.timedOut ? "uncertain" : "failed", ""));
       return remember({
-        ...baseReceipt("create_failed", "PR creation failed or returned an untrusted URL"),
+        ...baseReceipt(
+          "create_failed",
+          `PR creation failed or returned an untrusted URL${historyNote}`,
+        ),
         outcome: "recovery_required",
         repository: input.repository,
         branch: input.head_branch,
         head: input.head_sha,
+        prior_closed: priorClosed,
         executed_units: executedUnits,
         gates,
         external_actions: externalActions,
@@ -1025,12 +1467,16 @@ export async function createPullRequest(
     ) {
       externalActions.push(external("render", render, "uncertain", digest(renderResult.stdout)));
       return remember({
-        ...baseReceipt("render_failed", "created PR render or identity is unproven"),
+        ...baseReceipt(
+          "render_failed",
+          `created PR render or identity is unproven${historyNote}`,
+        ),
         outcome: "recovery_required",
         repository: input.repository,
         branch: input.head_branch,
         head: input.head_sha,
         url,
+        prior_closed: priorClosed,
         executed_units: executedUnits,
         gates,
         external_actions: externalActions,
@@ -1045,10 +1491,11 @@ export async function createPullRequest(
       branch: input.head_branch,
       head: input.head_sha,
       url,
+      prior_closed: priorClosed,
       executed_units: executedUnits,
       gates,
       external_actions: externalActions,
-      detail: "non-vacuous gates, exact push, PR creation, and render proved",
+      detail: `non-vacuous gates, exact push, PR creation, and render proved${historyNote}`,
     });
   } catch (error) {
     return remember({
@@ -1058,6 +1505,7 @@ export async function createPullRequest(
       branch: input.head_branch,
       head: input.head_sha,
       url,
+      prior_closed: priorClosed,
       executed_units: executedUnits,
       gates,
       external_actions: externalActions,
@@ -1150,5 +1598,11 @@ if (import.meta.main) {
     receipt = baseReceipt("invalid_input", error instanceof Error ? error.message : "CLI refused");
   }
   process.stdout.write(`${JSON.stringify(receipt)}\n`);
-  process.exit(receipt.outcome === "success" ? 0 : receipt.outcome === "recovery_required" ? 3 : 2);
+  process.exit(
+    receipt.outcome === "success" || receipt.outcome === "reused"
+      ? 0
+      : receipt.outcome === "recovery_required"
+        ? 3
+        : 2,
+  );
 }
