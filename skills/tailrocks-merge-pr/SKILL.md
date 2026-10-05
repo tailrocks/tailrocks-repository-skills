@@ -113,6 +113,11 @@ Before any action, read
    (`"auto"` unless the request forbids enqueueing, then `"never"`),
    `pollBoundMs` (0 with `--no-poll`, else a bound up to 300000).
 
+   Waiver enforcement is model-side. Check each waiver against the
+   preflight delivery and documentation findings before sending the
+   request. The core records waivers in the receipt. It never re-checks
+   them against the predicates.
+
    The merge route guards the PR head with
    `gh pr merge --match-head-commit <head>` (plus `--auto` for the enqueue
    route). That guard is not a compare-and-swap on a caller-selected base

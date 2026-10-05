@@ -19,6 +19,8 @@ one PR with one merge or enqueue attempt.
   `target_cas_unavailable`. That block never becomes a universal refusal.
 - The skill never uses `--admin`, rule bypass, disabled checks, a direct
   target push, a rule change, or branch deletion in the merge command.
+- Delivery and documentation waivers are enforced by the model, not by
+  the merge core. The core records them in the receipt.
 - The skill never deletes a source. Cleanup belongs to
   `tailrocks-repository-cleanup`.
 - Terminal states are `blocked`, `pending`, `queued`, `merged`, `failed`,

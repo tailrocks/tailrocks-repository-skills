@@ -18,3 +18,6 @@ them as merge preconditions.
 - Delivery and documentation findings remain visible in the receipt. Neither
   a review, an approval, repository prose, nor a `ready` receipt authorizes
   a merge by itself.
+- Waiver enforcement is model-side. The model grants a waiver only when
+  the active request carries it explicitly. The merge core records the
+  waiver in the receipt. It never re-checks the predicates.
