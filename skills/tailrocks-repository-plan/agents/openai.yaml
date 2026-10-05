@@ -1,0 +1,6 @@
+interface:
+  display_name: "Tailrocks: Repository Plan"
+  short_description: "Group audited work into ordered pull-request groups"
+  default_prompt: "Use $tailrocks-repository-skills:tailrocks-repository-plan to group the audited work into pull-request groups and define merge order. Do not change branches, pull requests, or the target."
+policy:
+  allow_implicit_invocation: true
