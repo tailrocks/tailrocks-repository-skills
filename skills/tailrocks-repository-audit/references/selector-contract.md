@@ -51,7 +51,7 @@ mutation.
 Require at least one source or explicit `--all-work`; empty input is a usage
 error. `--all-work` cannot be mixed with source selectors. A targeted audit may
 read only strictly necessary lineage and dependencies; unrelated work stays
-report-only.
+report-only. Report path parameters never widen scope.
 
 ## All-work coverage
 
