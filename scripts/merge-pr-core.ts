@@ -479,6 +479,12 @@ function parseQueueEntry(raw: string): boolean {
   return value.mergeQueueEntry !== null && value.mergeQueueEntry !== undefined;
 }
 
+function parseHeadOnly(raw: string): string {
+  const value = strictObject(JSON.parse(raw), "pull request response");
+  requireExactKeys(value, ["headRefOid"], "pull request response");
+  return safeSha(value.headRefOid, "pull request head");
+}
+
 async function queryRestPull(
   runner: CommandRunner,
   commands: (readonly string[])[],
@@ -771,6 +777,39 @@ export async function mergePullRequest(
         queueInQueue = state.mergeStateStatus === "QUEUED";
       }
     }
+  }
+
+  // Snapshot refs are opaque evidence pointers bound at request time. Re-read
+  // the live head before the attempt so a stale snapshot can never authorize
+  // a merge at a moved head.
+  if (request.reviewSnapshotRef !== undefined || request.checksSnapshotRef !== undefined) {
+    let liveHead: string;
+    try {
+      liveHead = parseHeadOnly(
+        await requireCommand(runner, commands, root, [
+          "gh",
+          "pr",
+          "view",
+          String(request.pr),
+          "--repo",
+          target.repository,
+          "--json",
+          "headRefOid",
+        ]),
+      );
+    } catch {
+      return fail(
+        "uncertain",
+        "state_unknown",
+        "snapshot revalidation failed; query the remote state before retry",
+      );
+    }
+    if (liveHead !== request.head)
+      return fail(
+        "refused",
+        "head_changed",
+        `expected head ${request.head} but observed ${liveHead}; the snapshots are stale, rebind the request and retry`,
+      );
   }
 
   let route: "direct" | "enqueue" = "direct";
