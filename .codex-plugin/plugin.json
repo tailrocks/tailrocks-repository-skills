@@ -1,7 +1,7 @@
 {
   "name": "tailrocks-repository-skills",
-  "version": "0.2.9",
-  "description": "Target-bound repository orchestration plus fail-closed pull-request creation, refresh, review, documentation, templates, merge preflight, audit, and cleanup.",
+  "version": "0.3.0",
+  "description": "Target-bound repository orchestration plus pull-request planning, consolidation, creation, refresh, review, documentation, templates, guarded merge, audit, and cleanup.",
   "author": {
     "name": "tailrocks",
     "url": "https://github.com/tailrocks"
@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "Repository Skills",
     "shortDescription": "Target-aware repository coordination, audit, and cleanup.",
-    "longDescription": "tailrocks-repository-merge audits selected sources against one exact destination, while the bundled pull-request skills create, refresh, review, document, template, and preflight landing eligibility; remote landing remains blocked until atomic target-base CAS and landed-target proof are available; audit and cleanup remain independently callable.",
+    "longDescription": "tailrocks-repository-merge coordinates selected sources into one exact destination through audit, plan, consolidate, and lifecycle phases, while the bundled pull-request skills plan, consolidate, create, refresh, review, document, template, and guard landing eligibility; audit, plan, consolidate, and cleanup remain independently callable.",
     "developerName": "Tailrocks",
     "category": "Developer Tools",
     "capabilities": [
@@ -33,7 +33,8 @@
     "websiteURL": "https://github.com/tailrocks/tailrocks-repository-skills",
     "defaultPrompt": [
       "Coordinate these sources into the exact selected repository target.",
-      "Review, create, refresh, document, template, or run the read-only merge preflight for this pull request; remote landing remains blocked until atomic target-base CAS and landed-target proof are available.",
+      "Plan these audited sources into ordered pull-request groups, or consolidate the selected groups into candidate branches.",
+      "Review, create, refresh, document, template, or land this pull request through its guarded owner.",
       "Audit these repository sources against the selected target.",
       "Clean up these resolved sources only after their evidence is verified."
     ]
