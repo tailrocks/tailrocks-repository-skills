@@ -409,18 +409,18 @@ or authenticate missing clients without permission.
 
 | Client | Version | Installation route | Loaded skill path | Direct selector | Named prose | Resources | Outcome |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Codex CLI | not run | standalone `.agents/skills` | not run | not run | not run | not run | unverified: no binary in this environment |
-| Codex CLI | not run | plugin marketplace | not run | not run | not run | not run | unverified: no binary in this environment |
-| Claude Code | not run | standalone `.claude/skills` | not run | not run | not run | not run | unverified: no binary in this environment |
-| Claude Code | not run | plugin marketplace | not run | not run | not run | not run | unverified: no binary in this environment |
-| Muse Code | not run | standalone `.agents/skills` | not run | not run | not run | not run | unverified: no binary in this environment |
-| Muse Code | not run | `.muse-plugin` route | not run | not run | not run | not run | unverified: no binary in this environment |
-| Antigravity CLI | not run | CLI skill paths | not run | not run | not run | not run | unverified: no binary in this environment |
-| Antigravity CLI | not run | root `plugin.json` route | not run | not run | not run | not run | unverified: no binary in this environment |
-| Cursor CLI | not run | project and user skill dirs | not run | not run | not run | not run | unverified: no binary in this environment |
-| Grok Build | not run | native `.grok/skills` | not run | not run | not run | not run | unverified: no binary in this environment |
-| Grok Build | not run | plugin source | not run | not run | not run | not run | unverified: no binary in this environment |
-| Kimi Code CLI | not run | current discovered dirs | not run | not run | not run | not run | unverified: no binary in this environment |
+| Codex CLI | not run | standalone `.agents/skills` | not run | not run | not run | not run | unverified: not run in this environment |
+| Codex CLI | not run | plugin marketplace | not run | not run | not run | not run | unverified: not run in this environment |
+| Claude Code | not run | standalone `.claude/skills` | not run | not run | not run | not run | unverified: not run in this environment |
+| Claude Code | not run | plugin marketplace | not run | not run | not run | not run | unverified: not run in this environment |
+| Muse Code | not run | standalone `.agents/skills` | not run | not run | not run | not run | unverified: not run in this environment |
+| Muse Code | not run | `.muse-plugin` route | not run | not run | not run | not run | unverified: not run in this environment |
+| Antigravity CLI | not run | CLI skill paths | not run | not run | not run | not run | unverified: not run in this environment |
+| Antigravity CLI | not run | root `plugin.json` route | not run | not run | not run | not run | unverified: not run in this environment |
+| Cursor CLI | not run | project and user skill dirs | not run | not run | not run | not run | unverified: not run in this environment |
+| Grok Build | not run | native `.grok/skills` | not run | not run | not run | not run | unverified: not run in this environment |
+| Grok Build | not run | plugin source | not run | not run | not run | not run | unverified: not run in this environment |
+| Kimi Code CLI | not run | current discovered dirs | not run | not run | not run | not run | unverified: not run in this environment |
 | Kimi Code CLI | not run | legacy `--skills-dir` | not run | not run | not run | not run | unverified: legacy route, verify before use |
-| OpenCode v1 | not run | `.opencode/skills` copy | not run | not run | not run | not run | unverified: no binary in this environment |
-| Amp Code | not run | directory-plugin adapter | not run | not run | not run | not run | unverified: no binary in this environment |
+| OpenCode v1 | not run | `.opencode/skills` copy | not run | not run | not run | not run | unverified: not run in this environment |
+| Amp Code | not run | directory-plugin adapter | not run | not run | not run | not run | unverified: not run in this environment |
