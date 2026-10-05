@@ -114,7 +114,7 @@ interface Options {
   readonly pollWithStaticBlockers?: boolean;
 }
 
-interface PullRequest {
+export interface PullRequest {
   readonly repository: string;
   readonly pr: number;
   readonly head: string;
@@ -195,7 +195,7 @@ function safeSha(value: unknown, label: string): string {
   return value;
 }
 
-async function verifyTarget(
+export async function verifyTarget(
   root: string,
   pr: number,
   expected: PullRequest | undefined,
@@ -257,7 +257,7 @@ async function verifyTarget(
   return target;
 }
 
-function parseChecks(raw: string): CheckState[] {
+export function parseChecks(raw: string): CheckState[] {
   const value = JSON.parse(raw) as unknown;
   if (!Array.isArray(value) || value.length > maxChecks)
     throw new Error("check response is invalid or saturated");
