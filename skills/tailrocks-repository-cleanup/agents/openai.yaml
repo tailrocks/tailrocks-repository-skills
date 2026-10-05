@@ -3,4 +3,4 @@ interface:
   short_description: "Remove only proven resolved repository sources"
   default_prompt: "Use $tailrocks-repository-skills:tailrocks-repository-cleanup for an explicit scoped cleanup request. Prove target resolution, obligations, ownership, quiescence, and restore safety first."
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true

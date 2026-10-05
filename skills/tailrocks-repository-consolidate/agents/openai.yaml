@@ -1,0 +1,6 @@
+interface:
+  display_name: "Tailrocks: Repository Consolidate"
+  short_description: "Integrate planned groups into candidate branches"
+  default_prompt: "Use $tailrocks-repository-skills:tailrocks-repository-consolidate to integrate the selected plan groups into candidate branches. Keep source branches unchanged. Never land the target."
+policy:
+  allow_implicit_invocation: true

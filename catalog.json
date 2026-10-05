@@ -2,6 +2,8 @@
   "skills": [
     "tailrocks-repository-merge",
     "tailrocks-repository-audit",
+    "tailrocks-repository-plan",
+    "tailrocks-repository-consolidate",
     "tailrocks-repository-cleanup",
     "tailrocks-create-pr",
     "tailrocks-refresh-pr",
