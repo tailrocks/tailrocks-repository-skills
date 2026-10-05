@@ -1,9 +1,11 @@
 ---
 name: tailrocks-merge-pr
 description: >-
-  Use when the user names tailrocks-merge-pr or requests landing of one PR.
-  Merge one authorized PR with an expected-head guard, or enqueue it, then
-  verify the landing. Do not create, refresh, review, or clean up PRs.
+  Use when the user names tailrocks-merge-pr or requests guarded landing of
+  one exact pull request. Verify target, checks, reviews, and policy, then
+  issue one merge or enqueue request and report blocked, pending, queued,
+  merged, failed, or uncertain. Do not review, create, refresh, document,
+  retarget, delete branches, or bypass the landing owner.
 argument-hint: "[PR] [--method merge|squash|rebase] [--strict-exact-base] [--no-poll]"
 disable-model-invocation: false
 license: Apache-2.0
