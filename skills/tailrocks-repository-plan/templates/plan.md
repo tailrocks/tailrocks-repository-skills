@@ -47,3 +47,11 @@ landing, revalidate the remaining groups against the new target.
 - Parallel prepare: <group sets>
 - Landing order: <ordered group IDs>
 - Revalidate rule: revalidate every unlanded group after each landing.
+
+## Acceptance stories
+
+Write one story per group in Given-When-Then form. Name the exact
+target and the observable result. A group lands only when its story
+passes on the current target.
+
+- G001: Given <target state>, when <group lands>, then <observable result>.
