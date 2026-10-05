@@ -189,11 +189,21 @@ invent a specialist result.
    **Complete when:** the report is delivered and no outward action occurred.
    Resolve every relative link in this file against the directory containing this SKILL.md, never the plugin skills root.
 
+## Group coverage
+
+When the review target is a planned group, check its coverage. Confirm
+that the diff includes every accepted work item of the group. Confirm
+that the diff excludes every deferred work item. Accepted work stays in.
+Deferred work stays out. Report one verdict: `covered` or `gap`. A gap
+names each missing accepted item and each included deferred item with
+file evidence.
+
 ## Output contract
 
 Report:
 
 - the reviewed range, files, and the intent sentence;
+- the group-coverage verdict (`covered` or `gap`) with item evidence;
 - the verdict against the approval bar in
   [`reporting.md`](references/reporting.md);
 - per finding: location (`file:line`), class, severity, evidence,
