@@ -1,18 +1,23 @@
 # tailrocks-repository-skills
 
-One portable package with exactly nine public skills:
+One portable package with exactly eleven public skills:
 
 - `tailrocks-repository-merge` is the sole end-to-end coordinator for
   selected-source integration.
 - `tailrocks-repository-audit` is an independently callable, read-only audit.
+- `tailrocks-repository-plan` is an independently callable, non-mutating
+  grouping of audited work into ordered pull requests.
+- `tailrocks-repository-consolidate` is an independently callable, planned
+  integration of selected groups into candidate branches. It preserves
+  sources. It never lands the target.
 - `tailrocks-repository-cleanup` is an independently callable, proof-gated
   cleanup operation.
 - `tailrocks-create-pr` creates a pull request after its branch and body
   gates pass.
 - `tailrocks-refresh-pr` reconciles an existing pull request with its branch.
 - `tailrocks-review-pr` performs a read-only, evidence-based review.
-- `tailrocks-merge-pr` owns the guarded pull-request landing policy; hosted
-  landing is currently fail-closed.
+- `tailrocks-merge-pr` owns the guarded pull-request landing policy. It
+  reports blocked, pending, queued, merged, failed, or uncertain.
 - `tailrocks-document` updates documentation required by a pull request.
 - `tailrocks-pr-template` creates or reconciles a repository pull-request
   template.
@@ -23,8 +28,9 @@ source-collection checkout or installation is required. Install the complete
 package or release archive. Do not copy an individual `SKILL.md` out of its
 skill directory.
 
-This package intentionally has no `tests/` directory and no GitHub Actions
-workflows. Releases are published manually from tagged commits.
+This package intentionally has no `tests/` directory. The repository keeps a
+generated `.github/workflows/ci.yml` file. Do not hand-edit that generated
+workflow. Releases are published manually from tagged commits.
 
 ## Runtime requirements
 
@@ -78,25 +84,24 @@ Review, PR creation, refresh, documentation, template work, and remote PR
 landing belong to the six bundled pull-request lifecycle skills. The relevant
 owners are `tailrocks-review-pr`, `tailrocks-create-pr`,
 `tailrocks-refresh-pr`, `tailrocks-document`, `tailrocks-pr-template`, and
-`tailrocks-merge-pr`; they are manual-only and must be explicitly selected
-when required. A review report does not authorize a merge, and loading a skill
-does not authorize side effects.
+`tailrocks-merge-pr`; each owner must be explicitly selected when required.
+A review report does not authorize a merge, and loading a skill does not
+authorize side effects.
 
-The current merge owner does not atomically compare-and-swap the selected
-target base ref and object ID during mutation, and it does not yet prove that
-the landed target is that guarded object. Remote landing therefore stays
-blocked until the owner supplies both guarantees. The bundled preflight is a
-read-only inspection only:
+The merge owner guards each landing. It verifies the exact target, checks,
+reviews, and policy before one merge or enqueue request. The bundled
+preflight is a read-only inspection only:
 
 ```sh
 bun /path/to/tailrocks-repository-skills/scripts/merge-preflight.ts \
   --root /path/to/target-repository --repo OWNER/REPO --pr 1663 --no-poll
 ```
 
-A `ready` receipt is not merge authority. Do not invoke
-`scripts/merge-pr.ts`, `gh pr merge`, a direct hosting API merge, a direct ref
-update/push, or another skill to bypass the owner. `--local-only` remains
-available for explicit disposable/local work and never claims hosted delivery.
+A `ready` receipt is not merge authority. To land a pull request, select
+the merge owner. Do not invoke `gh pr merge`, a direct hosting API merge, a
+direct ref update or push, or another skill to bypass the owner.
+`--local-only` remains available for explicit disposable and local work.
+It never claims hosted delivery.
 
 ## Native clients
 
@@ -104,6 +109,7 @@ Use the client-specific installation and invocation routes in
 [docs/client-invocation.md](docs/client-invocation.md). Codex, Claude, and
 Grok use plugin manifests or marketplaces; Muse and Antigravity use their
 native plugin manifests; Amp uses its bundled directory-plugin adapter and
-Kimi loads the bundled skill directories;
+Kimi loads the bundled skill directories; Cursor CLI discovers project and
+user skill directories and selects a skill from its `/` menu;
 OpenCode discovers `.opencode/skills` and uses `permission.skill`. Each route
 installs this package as one unit and does not depend on another repository.
