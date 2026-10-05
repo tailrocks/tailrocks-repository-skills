@@ -80,7 +80,7 @@ phase procedures and outputs as standalone calls of those owners.
 4. Check plan accounting and active operation permission.
 5. Prepare independent groups in parallel.
 6. Create or reuse their PRs.
-7. Review current candidates and resolve verified findings.
+7. Review current candidates and resolve verified findings through their fix owner: consolidate for integration fixes, create-pr or refresh-pr for metadata fixes.
 8. Land ready PRs in dependency order.
 9. Refresh the advanced target and remaining groups.
 10. Report the final state. Run cleanup only when separately authorized.
