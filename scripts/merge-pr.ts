@@ -30,7 +30,9 @@ async function verifyInstalled(entrypoint: string, skillFile: string): Promise<v
   }
 }
 
-// Compatibility endpoint for prior callers: validates requests and emits a receipt, but never mutates a remote.
+// Sole landing entrypoint: owns the installed package check, then passes one
+// stdin request to the merge core and prints its receipt. The core performs
+// the single guarded merge or enqueue attempt; this file adds no guard.
 if (import.meta.main) {
   let receipt: Record<string, unknown>;
   try {
@@ -58,11 +60,11 @@ if (import.meta.main) {
   }
   console.log(JSON.stringify(receipt));
   process.exit(
-    receipt.outcome === "success"
+    receipt.outcome === "merged"
       ? 0
       : receipt.outcome === "blocked" || receipt.outcome === "refused"
         ? 2
-        : receipt.outcome === "uncertain"
+        : receipt.outcome === "pending" || receipt.outcome === "queued" || receipt.outcome === "uncertain"
           ? 3
           : 1,
   );
