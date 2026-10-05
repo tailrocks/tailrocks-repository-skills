@@ -109,6 +109,14 @@ Complete all pages for branches, PRs, commits, files, reviews, and threads.
 Never label a truncated API response as complete. Snapshot source heads at
 start. Relist source heads before finishing. Report drift when sources moved.
 
+## Orphan handling
+
+An orphan is a source or work item with no clear parent, owner, or
+successor. Never drop an orphan silently. Give every orphan a stable
+source ID or work ID. Record its identity, its last known state, and
+the reason it has no parent. Assign disposition `Unknown` when evidence
+is insufficient. List every orphan in the gap list with its next owner.
+
 ## Dispositions
 
 | Disposition | Meaning |
