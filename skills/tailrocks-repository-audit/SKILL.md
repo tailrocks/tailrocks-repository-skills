@@ -1,11 +1,12 @@
 ---
 name: tailrocks-repository-audit
 description: >-
-  Use for an explicit read-only audit of selected repository sources against
-  one exact target branch, or for an explicitly requested all-work inventory.
-  Compare target-relative behavior and report evidence, scope, and gaps.
-argument-hint: "[SOURCES] [--repo OWNER/REPO] [--target-branch TARGET] [--all-work] [--audit-only]"
-disable-model-invocation: true
+  Use when the user names tailrocks-repository-audit or requests a read-only
+  audit of selected repository sources against one exact target. Report the
+  audit.md inventory, work map, evidence, and coverage. Do not change branches,
+  PRs, or the target; send plan work to tailrocks-repository-plan.
+argument-hint: "[SOURCES] [--repo OWNER/REPO] [--target-branch TARGET] [--all-work] [--audit-only] [--run-dir DIR] [--no-local-write]"
+disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
 ---
@@ -20,8 +21,9 @@ convergence. `--audit-only` is accepted for shared argument compatibility but
 does not change that boundary.
 
 Read the local [selector contract](references/selector-contract.md) before
-resolving sources. Read [recovery limits](references/recovery.md) only when
-evaluating recoverable work. Read [lifecycle evidence](references/lifecycle-composition.md)
+resolving sources. Read [work comparison](references/work-comparison.md)
+before comparing sources. Read [recovery limits](references/recovery.md) only
+when evaluating recoverable work. Read [lifecycle evidence](references/lifecycle-composition.md)
 when recording review, checks, or landing requirements.
 
 ## Procedure
@@ -51,28 +53,87 @@ when recording review, checks, or landing requirements.
    identity, incomplete API listing, active writer, and coverage gap. Same-name
    unrelated repositories remain outside scope.
 
-6. For every source record canonical identity and every raw selector spelling.
-   Inspect exact branch/ref or PR number, head and declared base, commits and
-   changed paths, target behavior, reviews and unresolved threads, required
-   checks, repository worklist, successors, dependencies, reverts, and linked
+6. Assign one stable source ID (`S001`, `S002`, ...) to every source. Record
+   canonical identity and every raw selector spelling for each source. Inspect
+   exact branch/ref or PR number, head and declared base, commits and changed
+   paths, target behavior, reviews and unresolved threads, required checks,
+   repository worklist, successors, dependencies, reverts, and linked
    obligations where available.
 
-7. Compare each source with the fresh selected target. Check exact, partial,
-   squash, cherry-pick, successor, reverted, equivalent, and target-specific
-   relationships. A shared commit or patch identifier alone does not prove
-   that target behavior is present.
+7. Assign one stable work ID (`W001`, `W002`, ...) to every work item. A work
+   item describes one intended outcome, not a branch name or one commit. Split
+   a mixed source into work items for analysis without changing its history.
+   One source can yield many work items. One work item can span many sources.
+   Compare each source with the fresh selected target first, then compare
+   related sources with each other under [work comparison](references/work-comparison.md).
+   Check exact, partial, squash, cherry-pick, successor, reverted, equivalent,
+   and target-specific relationships. A shared commit or patch identifier alone
+   does not prove that target behavior is present.
 
-8. Classify each selected goal as satisfied, justified, partial, superseded
-   with evidence, rejected while retaining valid work, cross-target,
-   conflicting, unresolved, or not applicable. State evidence and next owner.
-   Preserve a source PR and its original obligations when its declared base
-   differs from the selected target.
+8. Assign exactly one disposition to every work item from `## Dispositions`.
+   State evidence and next owner. Preserve a source PR and its original
+   obligations when its declared base differs from the selected target.
 
 ## Output
 
-Return one concise Markdown record containing the exact repository, target ref
-and OID, observation time, source membership and provenance, target-relative
-findings, lifecycle requirements, scan coverage, blockers, and any sources
-that appear eligible for a separately authorized cleanup. State plainly that
-the audit made no mutation and performed no cleanup. Save a report only when
-explicitly requested, outside the inspected repositories.
+Write the normative `audit.md` report from [templates/audit.md](templates/audit.md):
+header block, source table, work matrix, dispositions, gap list, coverage
+statement, and next action. When the active request names a report path, write
+the report there. Otherwise return one concise Markdown record with the same
+sections. Save a report only outside the inspected repositories.
+
+Never claim that tests ran. The audit is not a plan. The audit grants no
+mutation permission. State plainly that the audit made no mutation and
+performed no cleanup.
+
+## Run directory and object acquisition
+
+When the active request supplies `--run-dir`, use that directory. Otherwise
+use one owner-controlled external directory outside the inspected
+repositories. Download isolated objects only into the run directory. Isolated
+downloads are evidence collection, not target mutation. Never fetch into the
+inspected repository or checkout. Never execute branch code, hooks, filters,
+or build scripts.
+
+When `--no-local-write` is active, use remote evidence only. Record missing
+objects as explicit gaps. Never write local evidence in that mode.
+
+## Inventory rules
+
+Inventory all PR states: draft, open, closed-unmerged, and merged. A closed PR
+is not necessarily a merged PR. Record fork identity separately from the base
+repository. A deleted head remains a historical source with availability
+limits.
+
+Complete all pages for branches, PRs, commits, files, reviews, and threads.
+Never label a truncated API response as complete. Snapshot source heads at
+start. Relist source heads before finishing. Report drift when sources moved.
+
+## Dispositions
+
+| Disposition | Meaning |
+| --- | --- |
+| New | The target lacks a valid source contribution. |
+| Partial | The target or source has only part of the intended result. |
+| Equivalent | Different code provides the same relevant behavior, supported by evidence. |
+| Duplicate | Another accounted source contains the same contribution. |
+| Superseded | A stronger accepted implementation replaces this contribution. |
+| Reverted | History contains the change, but later work removed its behavior. |
+| Conflicting | Contributions cannot combine as-is without a decision or adaptation. |
+| Cross-target | The contribution has obligations for another target branch. |
+| Deferred | Valid unique work stays intentionally outside the current groups. |
+| Rejected | The contribution is unsuitable, with a specific evidence-based reason. |
+| Unknown | Evidence is insufficient. Unknown is not rejected or absent. |
+
+## Arguments
+
+| Argument | Meaning |
+| --- | --- |
+| `--repo` | Bind the one canonical repository. |
+| `--target-branch` | Select the one destination. Default is literal `main`. Never fall back after a lookup failure. |
+| `--all-work` | Authorize broad inventory. Mutually exclusive with source selectors. |
+| `--run-dir` | Select the external run directory. |
+| `--no-local-write` | Use remote evidence only. |
+| `--audit-only` | Compatibility no-op. Changes no boundary. |
+
+New report-path parameters stay proposed until a supported contract defines them.
