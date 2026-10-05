@@ -1,9 +1,12 @@
 ---
 name: tailrocks-refresh-pr
 description: >-
-  Use only when the user explicitly requests this skill. Reconcile an open pull request's title and body against the current diff: drifted prose rewritten, accurate prose kept verbatim, template sections re-selected. Extended by .tailrocks/pr.md. Do not use to open or merge a PR.
+  Use when the user names tailrocks-refresh-pr or requests correction of an
+  open pull request's title or body. Reconcile metadata against the current
+  diff: drifted prose rewritten, accurate prose kept verbatim. Do not open or
+  merge a PR.
 argument-hint: "[PR] [--repo OWNER/REPO]"
-disable-model-invocation: true
+disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
 ---
