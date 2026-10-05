@@ -1,12 +1,11 @@
 ---
 name: tailrocks-review-pr
 description: >-
-  Use only when the user explicitly requests this skill. Review a pull request,
-  branch, or diff and report verified findings: adversarially validated bugs,
-  structural regressions, triggered review lanes, and fixer routes. Always
-  read-only; never posts, merges, or approves.
+  Use when the user names tailrocks-review-pr or requests review of a pull
+  request, branch, or diff. Report verified findings and the group-coverage
+  verdict. Always read-only; never post, approve, or merge.
 argument-hint: "[PR | branch | range] [category | aspects] [--repo OWNER/REPO] [--deep] [--batch]"
-disable-model-invocation: true
+disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
 ---

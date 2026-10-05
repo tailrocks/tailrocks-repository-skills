@@ -1,9 +1,12 @@
 ---
 name: tailrocks-document
 description: >-
-  Use only when the user explicitly requests this skill. Before a pull request merges, make the repository's own documentation the final source of truth for everything the diff changed — rewritten pages and new structures, never a changelog. Do not use to write a PR body or release notes.
+  Use when the user names tailrocks-document or requests documentation
+  updates for a change before merge. Make the repository's own documentation
+  the final source of truth for everything the diff changed. Do not write a
+  PR body or release notes.
 argument-hint: "[PR] [--check]"
-disable-model-invocation: true
+disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
 ---

@@ -1,35 +1,36 @@
 ---
 name: tailrocks-repository-merge
 description: >-
-  Run the complete, target-bound repository convergence workflow for explicitly
-  selected branches or pull requests, or for explicitly requested all-work.
-  Audit-only mode is read-only.
-argument-hint: "[--repo REPO] [--target-branch BRANCH] [--audit-only] [--cleanup resolved|none] [--local-only] SOURCES... | --all-work | --resume RUN_ID"
-disable-model-invocation: true
+  Use when the user names tailrocks-repository-merge or requests end-to-end
+  convergence of selected branches or pull requests into one exact target.
+  Dispatch authorized phases in order and report per-group dispositions. Do
+  not audit, plan, consolidate, open, review, land, or clean up directly;
+  delegate each phase to its owner.
+argument-hint: "[--repo REPO] [--target-branch BRANCH] [--audit-only] [--cleanup resolved|none] [--local-only] [--phase-limit PHASE] SOURCES... | --all-work | --resume RUN_ID"
+disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
 ---
 
 # Tailrocks repository merge
 
-`tailrocks-repository-merge` is the sole end-to-end coordinator for selected-source
+`tailrocks-repository-merge` is the end-to-end coordinator for selected-source
 integration. It binds one repository, one exact destination, and one source
-scope; audits selected work; finishes justified changes; verifies the target;
-and performs only eligible final cleanup. Hosted remote landing is currently
-fail-closed: the bundled landing owner lacks an atomic target-base guard and
-proof of the landed target object. The standalone audit and cleanup skills
-remain independently callable. This coordinator uses the local audit and
-cleanup procedures below; it never asks the host to invoke a manual-only
-helper as a nested programmatic phase. Pull-request review, PR creation, and
-remote landing remain owned by the explicitly selected lifecycle owners
-imported in this same package: `tailrocks-review-pr`, `tailrocks-create-pr`,
-and `tailrocks-merge-pr`. No owner is resolved from another package or
-checkout.
+scope. It dispatches authorized phases. It has no private landing path. It
+has no private audit algorithm. It has no private cleanup algorithm.
+
+One term names one concept in this skill. A source is a branch, a PR, or an
+explicitly selected revision. A work item is one distinct intended change. A
+group is a set of work items that belong in one coherent PR. The target is
+the exact destination branch in one canonical repository. A landing is a
+verified merge into the intended remote target. An operation permission is
+permission from the active user request and the runtime for a specific side
+effect.
 
 Treat the complete argument string as data. Preserve literal `#`, quoting,
 slashes, URL queries, and metacharacters. Parse selectors structurally and
 pass values as separate arguments. Never evaluate the request or pass a joined
-request to a shell. Read [the local selector contract](references/selector-contract.md)
+request to a shell. Read [the selector contract](references/selector-contract.md)
 before resolving sources.
 
 ## Request and scope
@@ -61,87 +62,65 @@ before resolving sources.
 - `--audit-only` performs no repository, source, ref, PR, or remote mutation.
   Its only possible write is the redacted external handoff described below.
   `--local-only` is explicit branch-to-branch work on an existing local target
-  and never claims remote landing or hosted CI. `--cleanup=none` prohibits
-  deletion; `--cleanup=resolved` is the default and remains source-specific
-  and proof-gated. It never adds related work discovered during the audit.
+  and never claims remote landing or hosted CI. `--cleanup=none` is the default
+  and prohibits deletion; `--cleanup=resolved` requires separate authorization
+  and delegates to `tailrocks-repository-cleanup`. Analysis-first is the
+  default. A request for audit and plan never implies permission to prepare
+  branches. A phase-limited request stops at its phase limit.
 
-## Workflow
+## Standard sequence
 
-1. Bind and refresh the exact repository, target ref/OID, and selected sources.
-   Targeted requests inspect only those sources and strictly necessary lineage.
-   Listing selectors are frozen only after every page is read. Read the local
-   selector and recovery references for `--all-work`; freeze roots, exclusions,
-   source membership, identities, active writers, and coverage gaps before any
-   side effect. A gap prevents a completeness claim.
+Run these phases in order. Dispatch each phase to its owner. Use the same
+phase procedures and outputs as standalone calls of those owners.
 
-2. For explicit `--all-work`, discover matching independent clones, linked or
-   detached worktrees, refs, PR evidence, dirty state, untracked and valuable
-   ignored data, stashes, recoverable objects, nested repositories, and
-   interrupted Git operations only within the declared roots. Keep originals
-   read-only. Recover only a clearly attributable unfinished goal into a fresh
-   target-based candidate after the local snapshot and disposable restore test
-   passes. Never infer a goal from a branch name or dirty file.
+```text
+1. Audit the selected repository scope.
+2. Check audit coverage.
+3. Plan groups and dependencies.
+4. Check plan accounting and active operation permission.
+5. Prepare independent groups in parallel.
+6. Create or reuse their PRs.
+7. Review current candidates and resolve verified findings.
+8. Land ready PRs in dependency order.
+9. Refresh the advanced target and remaining groups.
+10. Report the final state. Run cleanup only when separately authorized.
+```
 
-3. Run the read-only comparison in [the local audit procedure](references/audit-procedure.md).
-   Compare actual target behavior and valid goals, including partial or
-   equivalent changes, successors, dependencies, reverts, and work already
-   satisfied. Preserve stronger target behavior. A shared commit or patch ID is
-   not proof that the target still has the behavior.
+Phase owners: audit is `tailrocks-repository-audit`. Planning is
+`tailrocks-repository-plan`. Preparation is
+`tailrocks-repository-consolidate`. PR creation or reuse is
+`tailrocks-create-pr`. Review is `tailrocks-review-pr`. Landing is
+`tailrocks-merge-pr`. Cleanup is `tailrocks-repository-cleanup`.
 
-4. In normal mode, implement or adapt only justified changes against the exact
-   target. A source PR is reusable only when its declared base is exactly the
-   selected target and its full scope remains sound. Cross-target work uses a
-   derived candidate whose base is exactly the selected target; never retarget
-   or silently close the original PR. Keep source PRs and branches that serve
-   another target or obligation.
+Dispatch `consolidate`, then `create-pr`, then `review-pr` as sibling
+phases. Never nest them recursively. On clients with nesting limits, keep
+all dispatches flat.
 
-5. For remote landing, require a fresh read-only review from the same-package
-   `tailrocks-review-pr` owner and consult the same-package
-   `tailrocks-merge-pr` landing policy/preflight. Hosted landing is currently
-   blocked pending that owner's atomic target-base guard and landed-target
-   proof; one active user request may select these manual-only owners with `tailrocks-repository-merge`,
-   but a generic coordinator request cannot infer them. A review report grants
-   no merge authority. If review, checks, the repository worklist, or an owner
-   is unavailable, block only dependent remote landing and continue safe work.
-   Cross-target PR creation additionally requires an explicit selection of
-   `tailrocks-create-pr`.
+Parallelize read-only comparison across independent source groups.
+Parallelize candidate preparation only with separate worktrees and clear
+file ownership. Serialize direct target updates within one repository and
+target. Refresh base-sensitive plans and checks after each landing. Let a
+required server queue schedule queued changes.
 
-   Use the exact owner entrypoints and request shape in
-   [lifecycle composition](references/lifecycle-composition.md). Before any
-   remote mutation, inspect the same-package merge owner and require an atomic
-   guard for the exact selected target branch name and OID during mutation,
-   plus proof of the landed target OID. A preflight, final metadata read, or
-   post-merge inspection cannot replace that guard. If the same-package owner
-   lacks the capability, report the owner/version and block remote landing;
-   do not add guessed fields, invoke a second merge owner, retarget manually,
-   or use direct `gh pr merge`.
+## Landing step
 
-   Re-fetch review, checks, source heads, target policy, and worklist after
-   every relevant change. A queued, uncertain, or unverified merge is not
-   landing. Verify the exact selected remote target and run bounded,
-   target-relative acceptance after landing. A regression retains all sources
-   and requires a new target-bound candidate and fresh applicable gates.
+Before landing a PR, require a fresh `tailrocks-review-pr` report on the
+current candidate head. Require fresh `tailrocks-merge-pr` policy and
+preflight. Require explicit merge permission in the active request. Land
+ready PRs in dependency order. Re-fetch review, checks, source heads,
+target policy, and worklist after each landing.
 
-6. In `--local-only`, verify the exact local target ref/OID and report only
-   local results. In normal mode, a prepared patch, opened PR, queued merge,
-   local check, or preflight is not completion.
+A queued, uncertain, or unverified merge is not landing. A regression
+retains all sources and requires a new target-bound candidate with fresh
+applicable gates.
 
-7. After each landing, re-audit the advanced target. In normal mode with
-   effective cleanup `resolved` (the documented default or explicit selection),
-   run this coordinator's local finalization using [cleanup eligibility](references/cleanup-eligibility.md)
-   and [recovery guidance](references/recovery.md). It may remove only the
-   original selected sources whose complete contribution is resolved on this
-   exact target, obligations are satisfied, ownership and quiescence are
-   proven, unique data has passed a disposable restore test, and identities
-   are rechecked immediately before each deletion. Do not invoke the standalone
-   manual-only cleanup skill or widen the source set. Audit-only and
-   `--cleanup=none` never clean.
+## Cleanup delegation
 
-8. Before final status, every `--all-work` run repeats the same declared-root
-   scan and target-relative audit after cleanup. Changed or newly discovered
-   work re-enters analysis but does not gain cleanup authority. Unknown roots,
-   pages, writers, identities, or unresolved goals make the result `partial`
-   or `blocked`, never complete.
+This coordinator never deletes. When cleanup is separately authorized,
+pass exact candidate identities and landing evidence to
+`tailrocks-repository-cleanup`. That skill returns per-candidate
+retained-or-deleted results with proof. Audit-only and `--cleanup=none`
+runs never clean.
 
 ## Target isolation and refresh
 

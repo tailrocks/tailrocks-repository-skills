@@ -1,24 +1,25 @@
 ---
 name: tailrocks-repository-cleanup
 description: >-
-  Use for an explicit, scoped request to remove already resolved source
-  branches, clones, or worktrees after proving exact target resolution, no
-  remaining obligations, ownership and quiescence, and actual restore safety.
-argument-hint: "[SOURCES] [--repo OWNER/REPO] [--target-branch TARGET] [--cleanup resolved|none] [--all-work]"
-disable-model-invocation: true
+  Use when the user names tailrocks-repository-cleanup or requests deletion
+  of already resolved sources. Delete only proven resolved candidates after
+  contribution, obligation, ownership, quiescence, and restore proof. Do not
+  implement, merge, close, or retarget PRs.
+argument-hint: "[SOURCES] [--repo OWNER/REPO] [--target-branch TARGET] [--cleanup none|resolved] [--all-work]"
+disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
 ---
 
 # Scoped repository cleanup
 
-This is an independently callable, manual-only cleanup capability. It removes
-only explicitly selected sources after target-relative resolution, obligation,
-ownership, quiescence, and restore proof. It never implements, merges, closes,
-or retargets PRs. `tailrocks-repository-merge` does not invoke this manual-only skill
-programmatically; its end-to-end workflow uses a local finalization procedure
-with the same gates. An active user request may select this skill explicitly
-when a separate cleanup invocation is intended.
+This skill is the sole deleter. It removes only explicitly selected sources
+after target-relative resolution, obligation, ownership, quiescence, and
+restore proof. It never implements, merges, closes, or retargets PRs.
+Consolidation completion never authorizes cleanup. The default is
+`--cleanup=none`. The coordinator delegates to this skill only when cleanup
+is separately authorized, and passes exact candidate identities with landing
+evidence.
 
 Read the local [selector contract](references/selector-contract.md),
 [cleanup eligibility](references/cleanup-eligibility.md), and
@@ -29,10 +30,12 @@ when checking PR review, checks, or other obligations.
 
 1. Require an explicit cleanup request with a nonempty source set or explicit
    `--all-work` as the sole scope. No selectors is a usage error. Treat
-   `--cleanup=none` as a hard no-delete instruction and
-   `--cleanup=resolved` as eligibility only. Preserve the original selector
-   arguments and target when this skill is explicitly selected alongside a
-   coordinator request; do not add sources discovered during audit.
+   `--cleanup=none` (the default) as a hard no-delete instruction and
+   `--cleanup=resolved` as eligibility only. A coordinator handoff supplies
+   exact candidate identities with landing evidence; accept only those
+   identities. Preserve the original selector arguments and target when this
+   skill is explicitly selected alongside a coordinator request; do not add
+   sources discovered during audit.
 
 2. Bind one repository and exact target under the local selector contract.
    Omitted target means literal `main`; a missing or ambiguous target stops.
@@ -84,8 +87,11 @@ when checking PR review, checks, or other obligations.
    `git update-ref -d <full-ref> <expected-old-oid>` or an equivalent CAS.
    Delete a filesystem candidate only by its exact proven path.
    Never use wildcards, broad recursive deletion, `git clean -fdx`, reset, force
-   update, global stash clearing, or merge/close commands. If a remote host
+   update, global stash clearing, or merge/close commands. Delete a remote ref
+   only through a supported identity-conditional route. If a remote host
    cannot condition deletion on expected identity, retain the remote ref.
+   Never delete PR history or attribution. Keep recovery information outside
+   every deletion target.
 
 9. Rescan the selected scope and target after each deletion. Report every removed
    and retained candidate with identity, restore result, action, and reason.
@@ -97,3 +103,5 @@ Cleanup is complete only for candidates whose contribution, obligations,
 ownership, quiescence, unique-data restore test, and immediate identity check
 all passed. A blocked candidate remains present. Return one concise Markdown
 record; save it only when explicitly requested and outside cleanup candidates.
+For a coordinator handoff, return per-candidate retained-or-deleted results
+with identity, proof, and reason.

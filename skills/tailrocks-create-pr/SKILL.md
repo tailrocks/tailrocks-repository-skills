@@ -1,9 +1,11 @@
 ---
 name: tailrocks-create-pr
 description: >-
-  Use only when the user explicitly requests this skill. Open a pull request for the current change in any repository: branch, commit in the repo's convention, body from its template, render check. Extended by .tailrocks/pr.md. Do not use to refresh or merge an existing PR.
+  Use when the user names tailrocks-create-pr or requests a pull request for
+  a prepared candidate. Reuse one suitable existing PR or open exactly one
+  new PR. Do not refresh metadata of another PR or merge.
 argument-hint: "[--branch <name>|--auto-branch] [--title <msg>] [--base <branch>] [--draft]"
-disable-model-invocation: true
+disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
 ---
@@ -65,11 +67,16 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
    repository's scheme (default: `fix/` / `feat/` / `docs/` / `chore/` /
    `refactor/` prefix). Suggest and confirm unless `--auto-branch` or
    `--branch` was given.
-   Before continuing on an existing branch, query pull requests for its exact
-   head and confirm remote ownership. An existing PR routes to
-   `tailrocks-refresh-pr`; a foreign-owned branch stops for user direction.
+   Before continuing on an existing branch, query open pull requests for its
+   exact branch and base relationship, and confirm remote ownership. Reuse
+   first: if exactly one suitable PR matches (same base, same scope, head at
+   the expected OID or a safe fast-forward away), reuse it. If several
+   conflicting PRs match, stop and report the evidence for a user decision.
+   If a closed-unmerged PR covers this branch, surface its history and check
+   why it closed before proceeding. A foreign-owned branch stops for user
+   direction.
    **Complete when:** the current branch is not the base, belongs to this work,
-   and backs no existing PR.
+   and either reuses one suitable existing PR or backs no existing PR.
 
 3. **Commit.** Uncommitted changes → commit inline: subject in the
    repository's convention, sign-off (`git commit -s`) when the repository
@@ -111,15 +118,28 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
    that disposable subject with network denied, ambient secrets removed, and
    writes confined to the copy. It fails closed before mutation when the sandbox is
    unavailable or a gate fails or proves zero units. On success it proves the
-   target base SHA and absence of an existing PR, rechecks live repository
-   identity, pushes the immutable head SHA to the exact HTTPS URL with an explicit empty expected-value lease for a create-only push (never overwriting an existing branch), and verifies the remote SHA. It repeats the
+   target base SHA, rechecks live repository identity, and resolves the
+   candidate identity (base repo, head repo, head ref, base ref, group,
+   expected head OID) against open PRs for the exact branch and base
+   relationship. If exactly one suitable PR exists, it returns a `reused`
+   receipt with the verified repo, PR number, head, base, title, and state,
+   pushing only a safe fast-forward of an owned branch first
+   (`--force-with-lease=<ref>:<old>` after rechecking the expected old head).
+   If several conflicting PRs match, it returns a `decision_required` receipt
+   with evidence and never picks one. Otherwise it pushes the immutable head
+   SHA to the exact HTTPS URL (create-only lease for a missing owned branch;
+   no push when the remote is already at the expected head; never overwriting
+   an unexpected or foreign-owned head), and verifies the remote SHA. It repeats the
    remote pre-create proof, rechecks the exact remote head immediately before
    creation, streams the fatal-UTF-8-validated and already-hashed body bytes through
    `--body-file -`, and verifies body, head SHA, base, URL, title, draft state,
    author, and open state. A
    `recovery_required` receipt means remote work partially happened: report
-   its exact action receipts and stop instead of retrying blindly.
-   **Complete when:** one `tailrocks.create-pr/v1` receipt reports `opened`.
+   its exact action receipts and stop instead of retrying blindly. A
+   `decision_required` receipt means the user must choose: report its evidence
+   and stop.
+   **Complete when:** one `tailrocks.create-pr/v1` receipt reports `opened`
+   or `reused`.
 
 6. **Report.** The receipt's PR URL, branch, gate unit counts, and the verify
    commands from the body.
@@ -127,7 +147,7 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
 ## Final gate
 
 Finish only when the entrypoint proves positive gate units, exact remote head,
-new open PR identity, and rendered body on a non-base branch. Failed or vacuous
+new or reused open PR identity, and rendered body on a non-base branch. Failed or vacuous
 gates must leave zero remote mutations. The body came from the repository's
 template or generator with no unfilled placeholder, and every commit carries
 all required trailers.

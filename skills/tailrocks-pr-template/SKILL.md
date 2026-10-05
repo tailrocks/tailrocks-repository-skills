@@ -1,9 +1,11 @@
 ---
 name: tailrocks-pr-template
 description: >-
-  Use only when the user explicitly requests this skill. Generate or reconcile a repository's sole GitHub-supported pull-request template. Preserve its exact existing target or create the standard target when absent; tailor sections and commands to repository evidence. Do not open, refresh, or merge a PR.
+  Use when the user names tailrocks-pr-template or requests a repository
+  pull-request template. Generate or reconcile the sole supported template
+  from repository evidence. Do not open, refresh, or merge a PR.
 argument-hint: "[repo path]"
-disable-model-invocation: true
+disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
 ---
