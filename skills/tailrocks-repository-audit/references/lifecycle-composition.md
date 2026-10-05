@@ -23,13 +23,13 @@ review, create, or merge selection. A review report is evidence only; if a
 fresh review, check state, worklist, or lifecycle owner is unavailable, report
 that landing blocker rather than claiming approval.
 
-If the report discusses landing readiness, record whether the same-package
-owner can atomically guard the exact target branch name and OID during mutation
-and prove the landed target OID. The current owner only observes the PR head
-through its read-only preflight; it does not guard a ref, mutate remotely, or
-provide selected target branch-name/OID CAS or landed target-ref proof. Record
-that owner gap as a landing blocker and separate owner work. Remote landing
-stays blocked until both guarantees exist. A preflight or metadata read is
-evidence, not an atomic guard and not merge authority. A source whose declared
-base differs from the selected target remains cross-target evidence with its
-original obligation.
+If the report discusses landing readiness, record the state of the
+same-package merge owner. The owner guards the expected PR head with
+`gh pr merge --match-head-commit` and then verifies the landed target.
+That guard is not a compare-and-swap on a caller-selected base OID.
+The owner reports blocked, pending, queued, merged, failed, or uncertain.
+A queued or uncertain result is not a landing. Only strict exact-base
+mode blocks with code `target_cas_unavailable`. A preflight or metadata
+read is evidence only. It grants no merge authority. A source whose
+declared base differs from the selected target remains cross-target
+evidence with its original obligation.

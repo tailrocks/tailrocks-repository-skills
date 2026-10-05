@@ -1,8 +1,8 @@
 # Lifecycle evidence boundaries
 
 Cleanup checks lifecycle obligations but owns no review, create, approve,
-merge, close, or retarget policy. A generic cleanup request never implies a
-manual-only lifecycle owner. An active request may explicitly select a named
+merge, close, or retarget policy. A generic cleanup request never implies
+a lifecycle owner. An active request may explicitly select a named
 owner; that owner must be invoked through its native entrypoint and exact
 closed schema.
 
@@ -27,9 +27,10 @@ repository worklist, successors, dependencies, reverts, and original-target
 obligations. Missing or stale lifecycle evidence is an unresolved obligation,
 so retain the source. Cleanup never invokes a review, create, or merge owner,
 supplies authorization, or treats a preflight/metadata read as a landing
-receipt. If landing readiness depends on the current merge owner, record its
-separate capability gap: it only observes the PR head through read-only
-preflight, does not guard or mutate any ref, and does not provide selected
-target branch-name/OID CAS or landed target-ref proof. Remote landing stays
-blocked until both guarantees exist. Preserve original source branches and PRs
-until their complete obligations are resolved.
+receipt. If landing readiness depends on the merge owner, record the state
+of its guarded landing. The owner guards the expected PR head. It reports
+blocked, pending, queued, merged, failed, or uncertain. It verifies the
+landed target. Only strict exact-base mode blocks with code
+`target_cas_unavailable`. A queued or uncertain result is not a landing.
+Preserve original source branches and PRs until their complete obligations
+are resolved.
