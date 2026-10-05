@@ -297,7 +297,7 @@ export function parseChecks(raw: string): CheckState[] {
       workflow: check.workflow,
       link: check.link,
       state: check.state,
-      bucket: check.bucket,
+      bucket: check.bucket as CheckState["bucket"],
     };
   });
   const identities = checks.map((check) => `${check.workflow}\0${check.name}\0${check.link}`);
@@ -664,7 +664,7 @@ function parseNameStatus(raw: string): { status: "A" | "M" | "D"; path: string }
     const pathname = fields[index + 1]!;
     if (!(rawStatus === "A" || rawStatus === "M" || rawStatus === "D") || !safeTreePath(pathname))
       throw new Error("diff contains an unmatched status or path");
-    result.push({ status: rawStatus, path: pathname });
+    result.push({ status: rawStatus as "A" | "M" | "D", path: pathname });
   }
   return result;
 }

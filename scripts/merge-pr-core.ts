@@ -205,7 +205,10 @@ function parseRequest(value: unknown): MergeRequest {
     exactKeys(waiver, ["gate", "reason"], `waiver ${index + 1}`);
     if (waiver.gate !== "delivery" && waiver.gate !== "documentation")
       throw new Error(`waiver ${index + 1} gate is invalid`);
-    return { gate: waiver.gate, reason: safeText(waiver.reason, `waiver ${index + 1} reason`, 2_000) };
+    return {
+      gate: waiver.gate as "delivery" | "documentation",
+      reason: safeText(waiver.reason, `waiver ${index + 1} reason`, 2_000),
+    };
   });
   if (new Set(waivers.map((waiver) => waiver.gate)).size !== waivers.length)
     throw new Error("waivers contain duplicate gates");
