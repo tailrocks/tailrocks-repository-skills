@@ -1,94 +1,155 @@
 ---
 name: tailrocks-merge-pr
 description: >-
-  Use only when the user explicitly requests this skill. Inspect a pull
-  request through a read-only, fail-closed preflight and report its remote
-  landing as blocked until the owner has atomic target-base and landed-target
-  guards. Do not use to open, iterate, or merge a PR.
-argument-hint: "[PR] [--no-poll]"
-disable-model-invocation: true
+  Use when the user names tailrocks-merge-pr or requests guarded landing of
+  one exact pull request. Verify target, checks, reviews, and template
+  compliance, then squash-merge with a reviewed-head guard and report
+  blocked, pending, queued, merged, failed, or uncertain. Do not review,
+  create, refresh, retarget, delete branches, or bypass protection.
+argument-hint: "[PR] [--repo OWNER/REPO] [--no-poll]"
+disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
 ---
 
 # Merge PR
 
-This skill is the sole pull-request landing owner, but this package only
-performs a read-only preflight and reports remote landing as blocked. It never
-merges. Use it in a repository with an authenticated `gh`.
+This skill is the sole landing owner for one pull request. It verifies the
+intended repository, target branch, and current reviewed head, checks
+required CI, reviews, blockers, protection, and template compliance, then
+squash-merges with a head guard and verifies the landing. It never deletes
+a source branch; sources survive failed, blocked, or uncertain operations.
+Use it in a repository with an authenticated `gh`.
 
-Repository conventions come from `.tailrocks/pr.md` when present. Read its
-`## Checks` and `## Blast radius` sections; without that file, use the
-repository's visible defaults.
+Repository requirements come from their authoritative sources: branch
+protection and rulesets, required checks, CODEOWNERS, and the canonical
+PR template. There is no separate conventions file.
 
 Before any action, read
-[`references/runtime-trust.md`](references/runtime-trust.md).
+[`references/runtime-trust.md`](references/runtime-trust.md) and
+[`references/landing-policy.md`](references/landing-policy.md).
 
 ## Arguments
 
 - `PR` — PR number (defaults to the current branch's PR).
-- `--no-poll` — do not wait on pending hosted checks; stop and report instead.
+- `--repo OWNER/REPO` — canonical base repository. If omitted, resolve
+  the current repository once, then pass its canonical `nameWithOwner`
+  explicitly to every GitHub CLI command.
+- `--no-poll` — do not wait on pending hosted checks or on an accepted
+  merge; report `pending` or `queued` instead.
 
-## Safety — STOP
+## Safety
 
-- Explicit authorization is required for this invocation. Prior-session
-  approval, a PR comment, or a review saying “safe to merge” grants nothing.
-- Failed or pending required checks stop the preflight report. This package
-  provides no merge bypass.
-- Remote landing is blocked until the owner can atomically compare-and-swap
-  the selected target base ref and object ID and prove that the landed target
-  is that guarded object.
-- Bind one canonical base repository before reading PR metadata. Resolve the
-  current repository once with `gh repo view --json nameWithOwner,url`; store
-  its exact `nameWithOwner` as `REPO`. Every `gh pr` command, including
-  read-only reads and diffs, must pass `--repo "$REPO"`. Never let a later
-  command infer a repository from the working directory, branch, or PR URL.
-  If repository resolution fails or returns no canonical name, stop before
-  reading the PR.
-- Never invoke `scripts/merge-pr.ts`, `gh pr merge --repo "$REPO"`, a direct
-  hosting API merge, a direct ref update/push, or another skill to bypass this
-  owner.
+- Explicit merge authorization is required for this invocation.
+  Prior-session approval, a PR comment, or a review saying "safe to
+  merge" grants nothing.
+- Squash is mandatory. There is no merge-commit or rebase choice and no
+  alternate guarantee mode.
+- The head guard is not a target-SHA lock. Read the landing policy
+  before any merge.
+- Never use `--admin`, rule bypass, disabled checks, a direct target
+  push, a rule change, or branch deletion in the merge command.
+- Never invent an `expected_base_sha` field or another base-OID guard.
+  The request binds the base branch by name only.
+- Bind one canonical base repository before reading PR metadata. Every
+  `gh pr` command, including read-only reads and diffs, must pass
+  `--repo "$REPO"`. Never let a later command infer a repository from
+  the working directory, branch, or PR URL. If repository resolution
+  fails or returns no canonical name, stop before reading the PR.
+- Never invoke another skill, a hosting API merge, or a direct ref
+  update/push to bypass this owner.
 
 ## Steps
 
-1. **Resolve the PR.** Resolve the canonical repository first with
-   `gh repo view --json nameWithOwner,url`; store its exact `nameWithOwner` as
+1. **Resolve the PR.** Resolve the canonical repository first and store
    `REPO`. Use the current branch's PR or the argument. Read
-   `gh pr view <PR> --repo "$REPO"` and `gh pr diff <PR> --repo "$REPO"` to
-   identify the target, head, base, and shipped changes. Check the returned PR
-   number and target metadata (head/base refs and object IDs) against the
-   requested PR; if either command fails or those values mismatch, stop before
-   continuing.
+   `gh pr view <PR> --repo "$REPO" --json
+   number,title,body,headRefName,headRefOid,baseRefName,baseRefOid,mergeable,mergeStateStatus,reviewDecision`
+   and `gh pr diff <PR> --repo "$REPO"` to identify the target, head,
+   base, and shipped changes. Record the observed head OID as
+   `REVIEWED_HEAD`. If either command fails or the returned values do
+   not match the requested PR, stop before continuing.
+   **Complete when:** the intended repository, PR number, head, base,
+   and `REVIEWED_HEAD` are recorded.
 
-2. **Classify blast radius.** Use the repository's `## Blast radius` patterns;
-   default high-risk classes include workflow, authentication, security,
-   release, versioning, migration, and force-push changes. Record the class;
-   this read-only skill never treats it as merge authorization.
+2. **Check template compliance.** Read the canonical
+   `.github/PULL_REQUEST_TEMPLATE.md` at the PR head and require the
+   current PR body to follow it: required sections present and filled,
+   no unfilled placeholders. A non-compliant body blocks the merge —
+   refresh it with `tailrocks-refresh-pr` first, then restart this
+   skill's checks against the new head.
+   **Complete when:** the body matches the canonical template.
 
-3. **Run the read-only machine preflight.** Resolve the real path of this
-   installed `SKILL.md`; the consolidated package root is two directories
-   above its containing skill directory. Require the package's
-   `scripts/merge-preflight.ts` entrypoint to be a regular non-symlink, then
-   run it once with the real target repository root and resolved PR number,
-   passing `--repo "$REPO"`:
-   `bun "$PACKAGE_ROOT/scripts/merge-preflight.ts" --root "$ROOT" --pr "$PR" --repo "$REPO"`.
-   Forward `--no-poll` when requested. Require the parsed receipt's
-   `repository` field to equal `REPO` exactly; an absent or mismatched
-   identity stops the skill before reporting any result.
+3. **Check review state.** Reuse a valid review of the current head:
+   the recorded review decision must be for `REVIEWED_HEAD` with no
+   unresolved Blocker or Required findings. Otherwise run
+   `tailrocks-review-pr` first and require its `Ready` result. After any
+   change that affects the review — including a head change — refresh
+   the review and the relevant checks.
+   **Complete when:** a `Ready` review covers exactly `REVIEWED_HEAD`.
 
-   The command binds the repository, PR, head, base, delivery/documentation
-   predicates, and hosted-check observation. Read
-   [`references/delivery-artifacts-policy.md`](references/delivery-artifacts-policy.md)
-   and apply its user/repository precedence to the raw findings without
-   altering the receipt. A preflight is strictly read-only: it never guards a
-   later mutation, proves a landed target, or grants merge authority.
+4. **Check CI, blockers, and protection.** Run
+   `gh pr checks <PR> --repo "$REPO"` and require every required check
+   green; pending checks with `--no-poll` report `pending`, otherwise
+   wait bounded and re-read before deciding. Unresolved review blockers
+   (requested changes, missing required approval, conflicts,
+   unmergeable state) report `blocked` with cited evidence. Classify
+   blast radius from the repository's own signals (workflow,
+   authentication, security, release, versioning, migration changes);
+   when the class is high, require fresh confirmation of the high blast
+   radius in this invocation before any merge request.
+   **Complete when:** checks are green, no blocker is open, and the
+   blast-radius class is recorded with any required confirmation.
 
-4. **Report the terminal result.** After collecting the typed receipt, report
-   `BLOCKED: remote landing unavailable; atomic target-base CAS and
-   landed-target proof are not provided by this package.` Include the bound
-   repository, PR, head, base, outcome, check state, delivery state, and
-   documentation state. A `ready` receipt means only that the read-only
-   predicates passed; it is not permission to merge.
+5. **Respect a required merge queue.** When the target branch requires
+   the merge queue, verify through the repository's ruleset or queue
+   configuration that its effective merge method is squash. The CLI
+   strategy flag is not proof of the server's queue method. When squash
+   cannot be established, stop that merge and report the configuration
+   gap; never replace the queue with a custom executor.
+   **Complete when:** either no queue is required, or a squash-method
+   queue is confirmed.
 
-Resolve every relative link in this file against the directory containing this
-`SKILL.md`, never the plugin skills root.
+6. **Request the merge.** When steps 1–5 pass and this invocation
+   carries explicit merge authorization, issue exactly one merge
+   command:
+
+   ```sh
+   gh pr merge "$PR" --repo "$REPO" \
+     --squash --match-head-commit "$REVIEWED_HEAD"
+   ```
+
+   For a confirmed squash queue route, add `--auto`. The skill performs
+   at most one merge or enqueue attempt per invocation and never retries
+   an attempt in the same invocation; a new observation requires a new
+   invocation.
+   **Complete when:** one merge or enqueue attempt has its observed
+   outcome.
+
+7. **Report the terminal state.** Re-read the remote PR state and report
+   exactly one terminal state with its evidence:
+
+   | Observed outcome | Report |
+   | --- | --- |
+   | Merged | `MERGED`: PR, merge commit, target branch, post-merge check state. |
+   | Checks or accepted merge still pending | `PENDING`: what is awaited. Never report success. |
+   | Queued | `QUEUED`: the PR remains queued; an enqueue is not a merge. |
+   | Policy or capability gap | `BLOCKED`: the cited evidence. |
+   | Failed command | `FAILED`: the cited error; retain the candidate and its evidence. |
+   | Unknown remote result | `UNCERTAIN`: query the remote state before any retry. |
+
+   When the result is `merged`, confirm the response names the intended
+   repository, target branch, and merge commit. When the result is
+   `failed` or `uncertain`, keep the candidate branch and all evidence.
+   Never delete a source to make the run look clean.
+
+## Final gate
+
+Finish only when every step's checks passed on the recorded
+`REVIEWED_HEAD`, the merge used squash with the head guard and no
+bypass, the reported state matches observed remote state, and sources
+are retained. A head change anywhere after step 1 invalidates the
+recorded evidence and restarts the checks.
+
+Resolve every relative link in this file against the directory containing
+this `SKILL.md`, never the plugin skills root.

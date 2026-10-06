@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "name": "tailrocks-repository-skills",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "displayName": "Tailrocks Repository Skills",
-  "description": "Target-bound repository orchestration and fail-closed pull-request lifecycle skills.",
+  "description": "Target-bound repository orchestration and pull-request lifecycle skills.",
   "compat": {
     "source": "native",
     "manifestDir": ".muse-plugin"
@@ -13,14 +13,6 @@
       {
         "id": "tailrocks-repository-merge",
         "path": "skills/tailrocks-repository-merge/SKILL.md"
-      },
-      {
-        "id": "tailrocks-repository-audit",
-        "path": "skills/tailrocks-repository-audit/SKILL.md"
-      },
-      {
-        "id": "tailrocks-repository-cleanup",
-        "path": "skills/tailrocks-repository-cleanup/SKILL.md"
       },
       {
         "id": "tailrocks-create-pr",
@@ -37,10 +29,6 @@
       {
         "id": "tailrocks-merge-pr",
         "path": "skills/tailrocks-merge-pr/SKILL.md"
-      },
-      {
-        "id": "tailrocks-document",
-        "path": "skills/tailrocks-document/SKILL.md"
       },
       {
         "id": "tailrocks-pr-template",

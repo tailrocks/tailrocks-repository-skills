@@ -1,7 +1,7 @@
 {
   "name": "tailrocks-repository-skills",
-  "description": "Target-bound repository orchestration plus fail-closed pull-request lifecycle, audit, and cleanup.",
-  "version": "0.2.9",
+  "description": "Target-bound repository orchestration plus pull-request lifecycle: template, create, refresh, review, and guarded merge.",
+  "version": "0.3.0",
   "author": {
     "name": "tailrocks",
     "url": "https://github.com/tailrocks"
@@ -11,10 +11,10 @@
   "license": "Apache-2.0",
   "keywords": [
     "repository",
-    "audit",
+    "pull-request",
     "review",
     "merge",
-    "cleanup",
+    "pr-template",
     "github"
   ]
 }
