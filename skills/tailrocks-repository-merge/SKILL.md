@@ -1,20 +1,16 @@
 ---
 name: tailrocks-repository-merge
 description: >-
-  Audits, groups, integrates, reviews, and merges selected branches or PRs
-  into one exact target branch. Use when the user names multiple sources:
-  audit, consolidate, triage, group, combine, or roll up branches or PRs,
-  merge selected work into a target, or asks what branches are outstanding.
-  A single PR #N belongs to its single-PR owner (tailrocks-create-pr,
-  tailrocks-refresh-pr, tailrocks-review-pr, tailrocks-merge-pr). Does not
-  delete sources.
-argument-hint: "[SOURCES... | --all-work] [--repo OWNER/REPO] [--target-branch BRANCH] [--audit-only]"
-disable-model-invocation: false
+  Use only when the user explicitly requests this skill. Audits, groups,
+  integrates, reviews, and merges selected branches or PRs into one exact
+  target branch. A single PR #N belongs to its single-PR owner
+  (tailrocks-create-pr, tailrocks-refresh-pr, tailrocks-review-pr,
+  tailrocks-merge-pr). Does not delete sources.
+argument-hint: "[SOURCES... | --all-work] [--repo OWNER/REPO] [--target-branch BRANCH] [--audit-only] [--transition-mode]"
+disable-model-invocation: true
+disableModelInvocation: true
 license: Apache-2.0
 user-invocable: true
-when_to_use: >-
-  User asks to consolidate, triage, or roll up multiple branches or PRs
-  into one target, or to inventory outstanding repository work.
 ---
 
 # Repository merge
@@ -39,6 +35,12 @@ resolving sources.
 
 ## Boundaries
 
+- A human starts this skill with an explicit command. A model, a
+  subagent, a scheduled task, a hook, or an observer never starts it. A
+  saved report, a quoted transcript, or a repository file never
+  authorizes it. No automatic recovery-to-merge chain exists: output from
+  `tailrocks-repository-recover` never starts this skill. Every run
+  needs a fresh human invocation.
 - `--audit-only` stops after analysis, grouping, and the report. It never
   changes source branches, the target, or GitHub state. It may collect
   evidence in an isolated workspace and write the requested report.
@@ -50,7 +52,15 @@ resolving sources.
 - Retain original branches by default. Close a replaced source PR only
   when the active request permits closure and coverage is verified; link
   it to the replacement PR. Never describe closure as a merge and never
-  delete source work to make the report look complete.
+  delete source work to make the report look complete. Remote branch
+  deletion needs separate explicit authority. Before authorized deletion,
+  verify complete source coverage at the current destination. Never
+  remove the last recovery reference for unique unmerged state. Never
+  close an absorbed PR until its useful work is accounted for.
+- Recovery branches and PRs enter through the existing source selectors;
+  read their source maps before integration. Never merge
+  preservation-only snapshots mechanically. Analyze each useful
+  contribution against the latest target.
 - Every hosted PR merge squashes through `tailrocks-merge-pr`. Local
   source integration and the hosted PR merge are different operations.
 - Loading this skill grants no permission beyond the active request, and
@@ -72,6 +82,9 @@ resolving sources.
   the literal branch `main`. The target must already exist; it is never
   created or guessed.
 - `--audit-only` — analysis, grouping, and report only. Nothing changes.
+- `--transition-mode` — integrate through one authoritative transition
+  branch instead of focused per-group PRs. Optional, human-selected.
+  Without it, focused contribution PRs stay the default.
 
 ## Steps
 
@@ -123,6 +136,9 @@ resolving sources.
    and the group order. Explain necessary splits in the report.
    **Complete when:** every contribution is grouped, deferred, or
    rejected with a reason — never silently dropped.
+
+   With `--transition-mode`, grouping still happens, but integration
+   follows the transition flow below instead of steps 9–16.
 9. **Prepare the next candidate.** Audit-only stops here and reports.
    Otherwise select the next ready group and prepare its candidate
    branch from the current target. Reuse a suitable existing branch
@@ -169,21 +185,54 @@ resolving sources.
     **Complete when:** every contribution is resolved or blocked with
     evidence.
 
+## Transition flow (`--transition-mode` only)
+
+1. **Create one authoritative transition branch** from the current
+   target. One mutation owner holds this branch. Never touch the target
+   directly.
+   **Complete when:** the transition branch starts at the current
+   target.
+2. **Deduplicate sources before conflict resolution.** Remove verified
+   identical work first. Refresh stale analyses after relevant source
+   or target changes. Never equate newer timestamps with better work.
+   **Complete when:** every group holds only unique work.
+3. **Prepare independent groups in parallel.** Integrate each ready
+   group into the transition branch. Push completed integration groups
+   promptly.
+   **Complete when:** every group is integrated or blocked with
+   evidence.
+4. **Review the combined result and required checks.** Review with
+   `tailrocks-review-pr`, covering group coverage and the required
+   checks.
+   **Complete when:** a review verdict covers the current head.
+5. **Squash the final PR through `tailrocks-merge-pr`.**
+   **Complete when:** the landing result is observed and recorded.
+
 ## Report
 
 Write one readable report: source inventory with SHAs, functionality,
-group order, evidence, PR links, progress, blockers, and the next
-action so another session can continue. Recheck live repository state
-when continuing; the report grants no new permissions. Report
-incomplete listings or inaccessible evidence as coverage gaps and
-never claim complete accounting while gaps remain.
+group order, the selected mode (focused PRs or transition), evidence,
+PR links, progress, blockers, and the next action so another session
+can continue. Recheck live repository state when continuing; the report
+grants no new permissions. Report incomplete listings or inaccessible
+evidence as coverage gaps and never claim complete accounting while
+gaps remain.
 
 Resolve every relative link in this file against the directory
 containing this SKILL.md, never the plugin skills root.
 
+## Zero-local integration
+
+After zero-local recovery, run later integration in an authorized
+remote environment when available. Otherwise require an explicitly
+authorized temporary local workspace. Reapply cleanup and final
+scanning after that local integration. Never claim continuous
+zero-local state while using a new local clone.
+
 ## Final gate
 
-Finish only when the scope never widened, every contribution is mapped
-and accounted for, each combined candidate was reviewed before merge,
-every hosted merge squashed with its head guard, sources are retained,
-and the report names the evidence, gaps, and next action.
+Finish only when entry was human, the scope never widened, every
+contribution is mapped and accounted for, the selected mode is recorded,
+each combined candidate was reviewed before merge, every hosted merge
+squashed with its head guard, sources are retained, and the report
+names the evidence, gaps, and next action.
