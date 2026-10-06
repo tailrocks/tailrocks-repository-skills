@@ -25,12 +25,13 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
 
 ## Boundaries
 
-- Write only the target returned by the installed
-  `../../scripts/pr-template-target.ts` resolver. Never copy or migrate an existing
+- Write only the target from step 1. Never copy or migrate an existing
   template to another location. Multiple candidates or a multiple-template
   directory without one sole supported file stop with zero writes. Do not
   commit, push, or open a PR — hand off to `tailrocks-create-pr` to ship the
   file.
+- Never write through a symlink: if the resolved target or any of its
+  parent directories is a symlink, stop with zero writes.
 - Every command in the template must be one the repository really runs —
   taken from its CI, task runner, or contributor docs. Never invent a gate,
   and never leave a `<placeholder>` command in the written file.
@@ -41,16 +42,18 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
 
 ## Steps
 
-1. **Resolve the target.** Derive the consolidated package root from this
-   `SKILL.md` path. Run its `../../scripts/pr-template-target.ts` with Bun,
-   `--skill-file` set to this absolute `SKILL.md`, and a JSON request on stdin:
-   `schema: tailrocks.pr-template-target-request/v1`, `operation: resolve`,
-   the canonical absolute Git root, and the exact 40-character `HEAD` as
-   `expected_head`. Retain the complete `RESOLVED` receipt. A `REFUSED`
-   receipt stops the run; do not select, rename, delete, or consolidate a
-   candidate yourself.
-   **Complete when:** the receipt names the sole target and says `CREATE` or
-   `UPDATE`, with `mutations: []`.
+1. **Resolve the target.** Run `git rev-parse --show-toplevel` and
+   `git rev-parse HEAD` in the target repository and record the canonical
+   root and `HEAD`. Then list the candidate templates: a file named
+   `PULL_REQUEST_TEMPLATE.md` in any letter case directly under the root,
+   `docs/`, or `.github/`, plus every `*.md` file directly under a
+   `.github/PULL_REQUEST_TEMPLATE/` directory in any letter case. Exactly
+   one candidate → update that exact path and case. More than one
+   candidate → stop with zero writes; do not select, rename, delete, or
+   consolidate a candidate yourself. No candidate → create
+   `.github/PULL_REQUEST_TEMPLATE.md`, unless a multiple-template
+   directory exists with no sole file — that also stops with zero writes.
+   **Complete when:** one target path is recorded as `CREATE` or `UPDATE`.
 
 2. **Read the base.** `references/PULL_REQUEST_TEMPLATE.md` — the section
    menu, the authoring-rules header, and the Verify-locally block shapes.
@@ -89,25 +92,25 @@ Before any action, read [`references/runtime-trust.md`](references/runtime-trust
    Verify-locally block with the repository's real commands, and state
    each block's include/drop condition in terms of this repository's paths
    (its docs directory, its migration directory). Guidance prose stays in
-   `<angle brackets>` for future authors; commands never do. Send the result
-   through the same installed script with `operation: publish`; copy `root`,
-   `expected_head`, `resolution_binding`, `target`, `before_sha256`, and
-   `parent_existed` exactly from the resolution receipt, and include `content`
-   plus its lowercase SHA-256 as `content_sha256`. Never write the target
-   directly. A `REFUSED`
-   receipt means zero further writes; resolve again after the operator
-   addresses the named conflict.
-   **Complete when:** the typed receipt says `PUBLISHED` with exactly the
-   resolved target in `mutations`, or `UNCHANGED` with `mutations: []`.
+   `<angle brackets>` for future authors; commands never do. Never publish
+   the base template verbatim, and never leave a `<placeholder>` command
+   inside an executable fence. Before writing, re-run step 1: the root,
+   `HEAD`, and candidate set must be unchanged, or stop with zero writes.
+   For `CREATE`, create the parent directory first; for `UPDATE`, skip the
+   write when the file already holds exactly the tailored content and
+   report unchanged. Write the target with the permitted file-editing
+   tool, then re-read it and require the bytes to match the intent.
+   **Complete when:** the target holds the tailored content, or already
+   held it and no write was needed.
 
-6. **Report.** The target and typed publication outcome; the section set with
-   each section's reason; the evidence
+6. **Report.** The target and publication outcome (published or unchanged);
+   the section set with each section's reason; the evidence
    behind each verify command, and the hand-off: `tailrocks-create-pr` to
    ship the file as a PR.
 
 ## Existing template
 
-When the resolver finds one supported template, update that exact path and
+When step 1 finds one supported template, update that exact path and
 case; this is reconciliation, not relocation or replacement. Keep what the
 repository's authors wrote and evidently use, fix commands that drifted from
 the real gates, add or drop sections per the evidence, and name every change
@@ -116,7 +119,7 @@ no deprecated-path migration route.
 
 ## Final gate
 
-Finish only when the publication receipt is `PUBLISHED` or `UNCHANGED`, its
-target is the resolved sole target, every command is traceable to the
-repository's own CI, task runner, or docs, every section has a stated reason,
-no executable `<placeholder>` command remains, and nothing was committed.
+Finish only when the written target is the resolved sole target, every
+command is traceable to the repository's own CI, task runner, or docs,
+every section has a stated reason, no executable `<placeholder>` command
+remains, and nothing was committed.
