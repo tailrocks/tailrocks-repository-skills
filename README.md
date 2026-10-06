@@ -1,32 +1,22 @@
 # tailrocks-repository-skills
 
-One portable package with exactly eleven public skills:
+One portable package with exactly six public skills:
 
-- `tailrocks-repository-merge` is the sole end-to-end coordinator for
-  selected-source integration.
-- `tailrocks-repository-audit` is an independently callable, read-only audit.
-- `tailrocks-repository-plan` is an independently callable, non-mutating
-  grouping of audited work into ordered pull requests.
-- `tailrocks-repository-consolidate` is an independently callable, planned
-  integration of selected groups into candidate branches. It preserves
-  sources. It never lands the target.
-- `tailrocks-repository-cleanup` is an independently callable, proof-gated
-  cleanup operation.
+- `tailrocks-repository-merge` audits, groups, integrates, reviews, and
+  merges selected repository work into one exact target.
 - `tailrocks-create-pr` creates a pull request after its branch and body
   gates pass.
 - `tailrocks-refresh-pr` reconciles an existing pull request with its branch.
 - `tailrocks-review-pr` performs a read-only, evidence-based review.
 - `tailrocks-merge-pr` owns the guarded pull-request landing policy. It
   reports blocked, pending, queued, merged, failed, or uncertain.
-- `tailrocks-document` updates documentation required by a pull request.
 - `tailrocks-pr-template` creates or reconciles a repository pull-request
   template.
 
-The six pull-request lifecycle skills are bundled here. Their references,
-templates, and required runtime resources ship with this package; no separate
-source-collection checkout or installation is required. Install the complete
-package or release archive. Do not copy an individual `SKILL.md` out of its
-skill directory.
+The six skills are bundled here. Their skill-local references ship with
+this package; no separate source-collection checkout or installation is
+required. Install the complete package or release archive. Do not copy an
+individual `SKILL.md` out of its skill directory.
 
 This package intentionally has no `tests/` directory. The repository keeps a
 generated `.github/workflows/ci.yml` file. Do not hand-edit that generated
@@ -34,18 +24,11 @@ workflow. Releases are published manually from tagged commits.
 
 ## Runtime requirements
 
-Git is required for repository operations. Bun runs the bundled lifecycle
-helpers. Windows is unsupported by the trusted lifecycle resolver. The
-resolver does not use inherited `PATH`, so `git` and `gh` must be in one of
-its fixed trusted directories:
-`/usr/local/bin`, `/usr/local/sbin`, `/opt/homebrew/bin`, `/opt/homebrew/sbin`,
-`/opt/local/bin`, `/opt/local/sbin`, `/usr/bin`, `/bin`, `/usr/sbin`, or
-`/sbin`. The `tailrocks-create-pr` gate runner supports macOS and Linux only,
-requiring `/usr/bin/sandbox-exec` on macOS or `/usr/bin/bwrap` on Linux.
+Git and `gh` are required for repository operations.
 Hosted lifecycle routes require an authenticated `gh` session with access to
 the target repository and support GitHub.com only; GitHub Enterprise is
 unsupported.
-Local-only and read-only audits can remain local.
+Read-only audits can remain local.
 
 ## Select sources and target
 
@@ -80,10 +63,10 @@ and data-restore proof.
 
 ## Lifecycle boundary
 
-Review, PR creation, refresh, documentation, template work, and remote PR
-landing belong to the six bundled pull-request lifecycle skills. The relevant
+Review, PR creation, refresh, template work, and remote PR
+landing belong to the bundled pull-request lifecycle skills. The relevant
 owners are `tailrocks-review-pr`, `tailrocks-create-pr`,
-`tailrocks-refresh-pr`, `tailrocks-document`, `tailrocks-pr-template`, and
+`tailrocks-refresh-pr`, `tailrocks-pr-template`, and
 `tailrocks-merge-pr`; each owner must be explicitly selected when required.
 A review report does not authorize a merge, and loading a skill does not
 authorize side effects.

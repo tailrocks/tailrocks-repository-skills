@@ -15,22 +15,6 @@
         "path": "skills/tailrocks-repository-merge/SKILL.md"
       },
       {
-        "id": "tailrocks-repository-audit",
-        "path": "skills/tailrocks-repository-audit/SKILL.md"
-      },
-      {
-        "id": "tailrocks-repository-plan",
-        "path": "skills/tailrocks-repository-plan/SKILL.md"
-      },
-      {
-        "id": "tailrocks-repository-consolidate",
-        "path": "skills/tailrocks-repository-consolidate/SKILL.md"
-      },
-      {
-        "id": "tailrocks-repository-cleanup",
-        "path": "skills/tailrocks-repository-cleanup/SKILL.md"
-      },
-      {
         "id": "tailrocks-create-pr",
         "path": "skills/tailrocks-create-pr/SKILL.md"
       },
@@ -45,10 +29,6 @@
       {
         "id": "tailrocks-merge-pr",
         "path": "skills/tailrocks-merge-pr/SKILL.md"
-      },
-      {
-        "id": "tailrocks-document",
-        "path": "skills/tailrocks-document/SKILL.md"
       },
       {
         "id": "tailrocks-pr-template",

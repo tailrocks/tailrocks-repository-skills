@@ -1,39 +1,27 @@
 # Native client routes
 
-The release contains eleven public skills and their skill-local references,
-templates, and package-level helper scripts. Install this repository as one
-package. Do not install or checkout a separate source collection. Discovery
-is separate from selection. Selection is separate from operation permission.
-Discovery does not authorize a merge, cleanup, or other side effect.
+The release contains six public skills and their skill-local references.
+Install this repository as one package. Do not install or checkout a
+separate source collection. Discovery is separate from selection. Selection
+is separate from operation permission. Discovery does not authorize a merge
+or other side effect.
 
 ## Runtime requirements
 
-All repository workflows require Git. Lifecycle helper scripts require Bun.
-Windows is unsupported by the trusted lifecycle resolver. The resolver does
-not use inherited `PATH`, so `git` and `gh` must be in one of its fixed
-trusted directories: `/usr/local/bin`,
-`/usr/local/sbin`, `/opt/homebrew/bin`, `/opt/homebrew/sbin`, `/opt/local/bin`,
-`/opt/local/sbin`, `/usr/bin`, `/bin`, `/usr/sbin`, or `/sbin`.
-The `tailrocks-create-pr` gate runner supports macOS and Linux only, requiring
-`/usr/bin/sandbox-exec` on macOS or `/usr/bin/bwrap` on Linux. Hosted
+All repository workflows require Git and `gh`. Hosted
 pull-request creation, refresh, review, and landing require an authenticated
 `gh` session with access to the target repository and support GitHub.com only;
 GitHub Enterprise is unsupported.
-Local-only and read-only audit routes may not need it.
+Read-only audit routes may not need it.
 
 The public skill names are:
 
 ```text
 tailrocks-repository-merge
-tailrocks-repository-audit
-tailrocks-repository-plan
-tailrocks-repository-consolidate
-tailrocks-repository-cleanup
 tailrocks-create-pr
 tailrocks-refresh-pr
 tailrocks-review-pr
 tailrocks-merge-pr
-tailrocks-document
 tailrocks-pr-template
 ```
 
@@ -46,7 +34,6 @@ skills at `.agents/skills/<name>/SKILL.md` and user skills at
 
 ```text
 $tailrocks-repository-merge --target-branch=release/next feature/auth
-$tailrocks-repository-audit --target-branch=main feature/auth
 ```
 
 Every `agents/openai.yaml` in this package sets
@@ -67,7 +54,6 @@ For a local checkout or extracted package, replace the marketplace source with
 
 ```text
 $tailrocks-repository-skills:tailrocks-repository-merge --target-branch=release/next feature/auth
-$tailrocks-repository-skills:tailrocks-repository-audit --target-branch=main feature/auth
 $tailrocks-repository-skills:tailrocks-create-pr feature/auth
 $tailrocks-repository-skills:tailrocks-review-pr #1663
 $tailrocks-repository-skills:tailrocks-merge-pr #1663
@@ -87,7 +73,6 @@ project skills at `.claude/skills/<name>/SKILL.md` and user skills at
 
 ```text
 /tailrocks-repository-merge --target-branch=release/next feature/auth
-/tailrocks-repository-audit --target-branch=main feature/auth
 ```
 
 Add the local marketplace and install the complete plugin in the desired
@@ -111,7 +96,6 @@ Use the plugin namespace:
 
 ```text
 /tailrocks-repository-skills:tailrocks-repository-merge --target-branch=release/next feature/auth
-/tailrocks-repository-skills:tailrocks-repository-audit --target-branch=main feature/auth
 /tailrocks-repository-skills:tailrocks-create-pr feature/auth
 /tailrocks-repository-skills:tailrocks-review-pr #1663
 /tailrocks-repository-skills:tailrocks-merge-pr #1663
@@ -127,7 +111,7 @@ authorization for Git, hosting, merge, and cleanup side effects.
 ## Amp Code
 
 The release includes an Amp directory-plugin adapter so the complete package,
-including the root helpers used by lifecycle skills, is loaded as one unit.
+including the skill directories, is loaded as one unit.
 Unpack or copy the extracted release product package into the project's plugin
 directory:
 
@@ -137,7 +121,7 @@ cp -R /path/to/extracted/tailrocks-repository-skills-release/. .amp/plugins/tail
 amp plugins list
 ```
 
-The adapter registers the eleven skills under the qualified names
+The adapter registers the six skills under the qualified names
 `tailrocks-repository-skills:<skill-name>`. Ask the running thread to select
 the exact qualified skill by name:
 
@@ -148,7 +132,7 @@ Use the tailrocks-repository-skills:tailrocks-review-pr skill on #1663. Report o
 
 Use `amp plugins list` to inspect discovery. Amp's per-skill importer
 does not retain arbitrary repository-root files; do not use that route for this
-package because lifecycle skills need the bundled root helpers. Amp may mask a
+package because skills need their bundled skill-local references. Amp may mask a
 same-named skill from a higher-precedence local or personal directory; inspect
 the source before relying on automatic invocation.
 
@@ -164,7 +148,6 @@ Select a skill with its registered `/<skill-name>` selector:
 
 ```text
 /tailrocks-repository-merge --target-branch=release/next feature/auth
-/tailrocks-repository-audit --target-branch=main feature/auth
 ```
 
 This package keeps `user-invocable: true` and
@@ -206,15 +189,15 @@ discovery with the native commands:
 
 ```sh
 muse skills list
-muse skills inspect tailrocks-repository-audit
-muse skills validate ./skills/tailrocks-repository-audit
+muse skills inspect tailrocks-repository-merge
+muse skills validate ./skills/tailrocks-repository-merge
 ```
 
 After the installed skill passes its self-containment check, install one
 skill with:
 
 ```sh
-muse skills install ./skills/tailrocks-repository-audit --scope user
+muse skills install ./skills/tailrocks-repository-merge --scope user
 ```
 
 The repository also ships `.muse-plugin/plugin.json`:
@@ -249,7 +232,6 @@ CLI converts a discovered skill to `/<skill-name>`:
 
 ```text
 /tailrocks-repository-merge --target-branch=release/next feature/auth
-/tailrocks-repository-audit --target-branch=main feature/auth
 ```
 
 The portable baseline is `name`, `description`, and the skill body. Do not
@@ -276,7 +258,6 @@ each complete skill directory, including its references. Select a skill with
 
 ```text
 /tailrocks-repository-merge --target-branch=release/next feature/auth
-/tailrocks-repository-audit --target-branch=main feature/auth
 ```
 
 Skill selection from the `/` menu is a CLI feature. It is not editor-only.
@@ -292,7 +273,7 @@ skills at `.kimi-code/skills` and `.agents/skills`. It discovers user skills
 at `$KIMI_CODE_HOME/skills` (normally `~/.kimi-code/skills`) and
 `~/.agents/skills`. Additional directories use `extra_skill_dirs` in
 `config.toml`. Keep the package root intact because skill-local resources
-and sibling `scripts/` files are required. Invoke with the direct selector:
+are required. Invoke with the direct selector:
 
 ```text
 /skill:tailrocks-repository-merge --target-branch=release/next feature/auth
@@ -302,8 +283,8 @@ and sibling `scripts/` files are required. Invoke with the direct selector:
 
 The current parser accepts `disableModelInvocation` and the hyphenated
 alias. This package keeps the value false for model selection. Skill
-nesting is limited to three levels. The coordinator therefore dispatches
-consolidate, create-pr, and review-pr as flat siblings. `kimi -p` sends a
+nesting is limited to three levels. The coordinator therefore selects each
+lifecycle owner explicitly without nesting. `kimi -p` sends a
 plain prompt. It is not a replacement for explicit `/skill:<name>`
 selection when deterministic routing is required.
 
@@ -323,8 +304,8 @@ legacy configuration to a current installation without verification.
 OpenCode v1 discovers Markdown skills from the project `.opencode/skills/`
 directory and uses `permission.skill`. It has no `skills.paths` setting;
 do not use the v2 `permissions`/`action` schema with a v1 client. Install
-the complete skill directories and their bundled helper
-scripts from an extracted release package; do not install a separate source
+the complete skill directories and their bundled references
+from an extracted release package; do not install a separate source
 collection. V1 ignores `disable-model-invocation` and `user-invocable` skill
 frontmatter; use `permission.skill` and the skill body as the safety boundary.
 Configure skill approval separately:
@@ -335,29 +316,21 @@ Configure skill approval separately:
   "permission": {
     "skill": {
       "tailrocks-repository-merge": "ask",
-      "tailrocks-repository-audit": "ask",
-      "tailrocks-repository-plan": "ask",
-      "tailrocks-repository-consolidate": "ask",
-      "tailrocks-repository-cleanup": "ask",
       "tailrocks-create-pr": "ask",
       "tailrocks-refresh-pr": "ask",
       "tailrocks-review-pr": "ask",
       "tailrocks-merge-pr": "ask",
-      "tailrocks-document": "ask",
       "tailrocks-pr-template": "ask"
     }
   }
 }
 ```
 
-For an extracted release package, copy all eleven skills and their runtime
-helpers as one install:
+For an extracted release package, copy all six skills as one install:
 
 ```sh
 mkdir -p .opencode/skills
-mkdir -p .opencode/scripts
 cp -R /path/to/extracted/tailrocks-repository-skills-release/skills/. .opencode/skills/
-cp -R /path/to/extracted/tailrocks-repository-skills-release/scripts/. .opencode/scripts/
 ```
 
 Request the skill by name in the prompt; do not use an undocumented slash
@@ -373,12 +346,10 @@ from authorization for Git, hosting, merge, or cleanup side effects.
 ## Shared lifecycle boundary
 
 The pull-request lifecycle owners are bundled in this package. Their roles are
-distinct: `tailrocks-repository-plan` groups audited work, without mutation,
-into ordered pull requests; `tailrocks-repository-consolidate` integrates
-selected groups into candidate branches and never lands the target;
+distinct: `tailrocks-repository-merge` audits, groups, integrates, reviews,
+and merges selected repository work into one exact target;
 `tailrocks-review-pr` reports only, `tailrocks-create-pr` creates a
 candidate, `tailrocks-refresh-pr` reconciles its metadata,
-`tailrocks-document` handles documentation coverage,
 `tailrocks-pr-template` manages the repository template, and
 `tailrocks-merge-pr` owns the guarded landing policy. Select the owner
 explicitly for the requested repository, source, and target scope.
