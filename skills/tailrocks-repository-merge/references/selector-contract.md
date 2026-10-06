@@ -57,9 +57,16 @@ target never permits hidden `main` mutation.
 At least one source selector or `--all-work` is required. Empty input is a
 usage error and never means all work. `--all-work` is the explicit scope of
 all branches and open PRs in the bound repository; it cannot be mixed with
-source selectors and never authorizes machine-wide discovery. A targeted
-request may read strictly necessary lineage and dependencies, but unrelated
-work remains report-only.
+source selectors and never authorizes machine-wide discovery. Machine
+discovery belongs to `tailrocks-repository-recover`; `--all-work` never
+expands to recovery-artifact scope or to every local project on the
+computer. A targeted request may read strictly necessary lineage and
+dependencies, but unrelated work remains report-only.
+
+Recovery outputs enter as ordinary positional selectors: a recovery branch
+name is a branch, a recovery PR number or URL is a PR. Read the published
+source map as advisory evidence and re-verify every verdict against the
+current target; never merge a preservation-only snapshot mechanically.
 
 ## Coverage gaps
 

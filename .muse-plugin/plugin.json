@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "tailrocks-repository-skills",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "displayName": "Tailrocks Repository Skills",
   "description": "Target-bound repository orchestration and pull-request lifecycle skills.",
   "compat": {
@@ -33,6 +33,10 @@
       {
         "id": "tailrocks-pr-template",
         "path": "skills/tailrocks-pr-template/SKILL.md"
+      },
+      {
+        "id": "tailrocks-repository-recover",
+        "path": "skills/tailrocks-repository-recover/SKILL.md"
       }
     ],
     "hooks": [],
