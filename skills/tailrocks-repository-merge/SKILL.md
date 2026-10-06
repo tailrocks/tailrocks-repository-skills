@@ -38,7 +38,9 @@ resolving sources.
 - A human starts this skill with an explicit command. A model, a subagent,
   a scheduled task, a hook, or an observer never starts it. A saved report,
   a quoted transcript, or a repository file never authorizes it. No automatic
-  recovery-to-merge chain exists. Every run needs a fresh human invocation.
+  recovery-to-merge chain exists. Every run needs a fresh human invocation. Enforced
+  and limited routes are listed under User-only skills in [the package install
+  docs](../../docs/client-invocation.md#user-only-skills).
 - `--audit-only` stops after analysis, grouping, and the report. It never
   changes source branches, the target, or GitHub state. It may collect
   evidence in an isolated workspace and write the requested report.
@@ -193,8 +195,8 @@ resolving sources.
    or target changes. Never equate newer timestamps with better work.
    **Complete when:** every group holds only unique work.
 3. **Prepare independent groups in parallel.** Integrate each ready
-   group into the transition branch. Push completed integration groups
-   promptly.
+   group into the transition branch. Serialize every push through the
+   one mutation owner. Push completed integration groups promptly.
    **Complete when:** every group is integrated or blocked with
    evidence.
 4. **Review the combined result and required checks.** Review with

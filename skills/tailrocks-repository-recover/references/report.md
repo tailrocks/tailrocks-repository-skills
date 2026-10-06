@@ -41,6 +41,15 @@ human handoff: the published source list (branch names, PR numbers, PR
 URLs), source-map locations, Target verdicts, and the exact merge
 command the human can run next.
 
+## Reruns
+
+Every run uses a new run ID and a new Run directory. A rerun reuses a
+suitable existing Recovery branch or PR without rewriting it. It never
+creates a needless duplicate branch or PR. It records prior run IDs in
+its run header and re-verifies inherited state before it trusts it.
+Report-only reruns stay safe: they change nothing outside their own Run
+directory.
+
 ## Examples
 
 Report-only recovery from the current repository:

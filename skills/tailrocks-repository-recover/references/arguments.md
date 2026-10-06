@@ -100,6 +100,7 @@ package from inside itself.
 ## Run header
 
 Record the run header before discovery: resolved repository, Target ref
-and SHA, every option value, host permissions, observation time, and the
-Run directory path. Later steps read this header. They never re-parse
+and SHA, every option value, host permissions, observation time, the
+Run directory path, and prior run IDs when continuing earlier work.
+Later steps read this header. They never re-parse
 the argument string.
