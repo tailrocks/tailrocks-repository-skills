@@ -1,6 +1,6 @@
 {
   "name": "tailrocks-repository-skills",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Target-bound repository orchestration plus pull-request lifecycle: template, create, refresh, review, and guarded merge.",
   "author": {
     "name": "tailrocks",
@@ -21,7 +21,7 @@
   "interface": {
     "displayName": "Repository Skills",
     "shortDescription": "Target-aware repository coordination and pull-request lifecycle.",
-    "longDescription": "tailrocks-repository-merge coordinates selected sources into one exact destination, while the bundled pull-request skills template, create, refresh, review, and guard landing eligibility. Six skills, selected explicitly.",
+    "longDescription": "tailrocks-repository-merge coordinates selected sources into one exact destination, while the bundled pull-request skills template, create, refresh, review, and guard landing eligibility. Seven skills: five model-selectable, two user-only.",
     "developerName": "Tailrocks",
     "category": "Developer Tools",
     "capabilities": [

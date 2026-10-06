@@ -1,6 +1,9 @@
 # Native client routes
 
-The release contains six public skills and their skill-local references.
+The release contains seven public skills and their skill-local references.
+Five are model-selectable; `tailrocks-repository-recover` and
+`tailrocks-repository-merge` are user-only and need an explicit human
+command (see [User-only skills](#user-only-skills)).
 Install this repository as one package. Do not install or checkout a
 separate source collection.
 
@@ -19,7 +22,7 @@ Three rules apply to every client below:
 
 1. **Vet first.** Read the manifests (`.claude-plugin/`,
    `.codex-plugin/`, root `plugin.json`, `.muse-plugin/`,
-   `.kimi-plugin/`), the six `skills/*/SKILL.md` files, and any hooks or
+   `.kimi-plugin/`), the seven `skills/*/SKILL.md` files, and any hooks or
    MCP configuration. This package ships skills and references only; it
    adds no hooks and no MCP servers.
 2. **Pin the source.** Prefer a tag or commit SHA over a floating branch
@@ -96,13 +99,28 @@ Read-only audit routes may not need it.
 The public skill names are:
 
 ```text
-tailrocks-repository-merge
+tailrocks-repository-recover   (user-only)
+tailrocks-repository-merge     (user-only)
 tailrocks-create-pr
 tailrocks-refresh-pr
 tailrocks-review-pr
 tailrocks-merge-pr
 tailrocks-pr-template
 ```
+
+## User-only skills
+
+`tailrocks-repository-recover` and `tailrocks-repository-merge` need
+an explicit human command. A model must not select them from task
+similarity. Enforced routes: Claude Code (`disable-model-invocation:
+true`), Codex (`policy.allow_implicit_invocation: false`), Kimi Code
+(`disableModelInvocation: true` plus the hyphenated alias), Grok Build
+(`disable-model-invocation: true`). Limited routes: Amp, Antigravity
+CLI, and Muse Code cannot enforce per-skill user-only entry — see the
+per-client sections and the
+[recovery entry policy](../skills/tailrocks-repository-recover/references/entry-policy.md)
+for the exact limitation and required host support. OpenCode gates them
+with `permission.skill: ask`.
 
 ## Codex CLI
 
@@ -123,9 +141,11 @@ $tailrocks-merge-pr #1663
 Codex documents no `$plugin:skill` colon form; same-named skills from
 different sources both appear in the selectors for the user to pick.
 
-Every `agents/openai.yaml` in this package sets
+Five `agents/openai.yaml` files set
 `policy.allow_implicit_invocation: true`, which permits model selection.
-Test an explicit selector and implicit model selection as separate cases.
+The recover and merge skills set `false`: only an explicit human
+`$skill` mention starts them. Test an explicit selector and implicit
+model selection as separate cases.
 
 ## Claude Code
 
@@ -176,7 +196,12 @@ Invoke with the direct selector:
 
 Skill nesting is limited to three levels; the coordinator selects each
 lifecycle owner explicitly without nesting. `kimi -p` sends a plain
-prompt and is not deterministic skill selection.
+prompt and is not deterministic skill selection. The recover and merge
+skills set `disableModelInvocation: true` (plus the hyphenated alias),
+which blocks automatic model invocation; invoke them with
+`/skill:tailrocks-repository-recover` and
+`/skill:tailrocks-repository-merge`. Audit enabled plugins: a
+`sessionStart.skill` injection may bypass the model-invocation gate.
 
 ## Antigravity CLI (`agy`)
 
@@ -193,7 +218,11 @@ Invoke with `/<skill-name>`:
 
 Use `/skills` to inspect collisions. Do not assume a `plugin:skill`
 qualifier and do not rely on undocumented frontmatter as a security
-boundary.
+boundary. Antigravity frontmatter supports only `name` and
+`description`: user-only entry cannot be enforced here. The agent
+auto-reads skills and every skill becomes a slash command. Invoke the
+recover and merge skills only through an explicit human `/<skill-name>`
+command.
 
 ## Grok Build
 
@@ -215,9 +244,10 @@ a name collides:
 /tailrocks-repository-skills:tailrocks-merge-pr #1663
 ```
 
-This package keeps `user-invocable: true` and
-`disable-model-invocation: false`. Do not treat `allowed-tools` metadata
-as an enforced tool-permission boundary; use the actual runtime
+This package keeps `user-invocable: true` everywhere.
+`disable-model-invocation` is `false` on the five ordinary PR skills and
+`true` on the recover and merge skills. Do not treat `allowed-tools`
+metadata as an enforced tool-permission boundary; use the actual runtime
 permissions.
 
 ## Muse Code
@@ -253,7 +283,10 @@ pickers but is not in the official docs; verify before relying on it, as
 well as any project/user shadowing of a bare plugin skill name. A plain
 `muse exec` prompt is not deterministic skill selection. Skill
 definitions stay model-neutral; a model choice belongs to the execution
-request, not to the distributed skills.
+request, not to the distributed skills. Muse documents no frontmatter
+user-only enforcement, and its skill-recall observer can surface skills
+automatically. Invoke the recover and merge skills only through an
+explicit human `/` picker command.
 
 ## Cursor CLI
 
@@ -281,8 +314,13 @@ cp -R /path/to/extracted/tailrocks-repository-skills-release/. .amp/plugins/tail
 amp plugins list
 ```
 
-The adapter registers the six skills under the qualified names
-`tailrocks-repository-skills:<skill-name>`. Ask the running thread to
+The adapter registers the seven skills under the qualified names
+`tailrocks-repository-skills:<skill-name>`. Amp cannot enforce
+per-skill user-only entry: it lists every discovered skill to the
+model. Curate `amp.skills.path`, disable untrusted skill sources, and
+remove untrusted `.amp/plugins/` directories; the recover and merge
+descriptions ask for a user request first, but that phrasing does not
+enforce. Ask the running thread to
 select the exact qualified skill by name:
 
 ```text
@@ -299,7 +337,7 @@ from `.amp/plugins/tailrocks-repository-skills/skills/<skill-id>/SKILL.md`.
 
 ## OpenCode v1
 
-Copy all six skill directories with their bundled references into the
+Copy all seven skill directories with their bundled references into the
 project `.opencode/skills/` directory:
 
 ```sh
@@ -325,6 +363,7 @@ skill approval separately:
   "$schema": "https://opencode.ai/config.json",
   "permission": {
     "skill": {
+      "tailrocks-repository-recover": "ask",
       "tailrocks-repository-merge": "ask",
       "tailrocks-create-pr": "ask",
       "tailrocks-refresh-pr": "ask",
@@ -339,7 +378,8 @@ skill approval separately:
 ## Shared lifecycle boundary
 
 The pull-request lifecycle owners are bundled in this package. Their roles are
-distinct: `tailrocks-repository-merge` audits, groups, integrates, reviews,
+distinct: `tailrocks-repository-recover` finds and preserves local work
+but never merges; `tailrocks-repository-merge` audits, groups, integrates, reviews,
 and merges selected repository work into one exact target;
 `tailrocks-review-pr` reports only, `tailrocks-create-pr` creates a
 candidate, `tailrocks-refresh-pr` reconciles its metadata,
@@ -368,7 +408,11 @@ Record one row per client and route. The default outcome is unverified.
 Record the reason for every unverified result. Do not call a route
 unsupported merely because its binary is absent. Do not call a route
 verified because a different client accepted the same files. Do not install
-or authenticate missing clients without permission.
+or authenticate missing clients without permission. User-only enforcement
+below is documented support, not runtime verification: enforced on
+Claude Code, Codex, Kimi Code, and Grok Build; limited (documented,
+unenforced) on Amp, Antigravity CLI, and Muse Code; gated by
+`permission.skill` on OpenCode v1.
 
 | Client | Version | Installation route | Loaded skill path | Direct selector | Named prose | Resources | Outcome |
 | --- | --- | --- | --- | --- | --- | --- | --- |

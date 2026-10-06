@@ -7,4 +7,5 @@ export default async function (amp: PluginAPI) {
 	await amp.registerSkill({ path: 'skills/tailrocks-merge-pr' })
 	await amp.registerSkill({ path: 'skills/tailrocks-pr-template' })
 	await amp.registerSkill({ path: 'skills/tailrocks-repository-merge' })
+	await amp.registerSkill({ path: 'skills/tailrocks-repository-recover' })
 }

@@ -1,9 +1,14 @@
 # tailrocks-repository-skills
 
-One portable package with exactly six public skills:
+One portable package with exactly seven public skills. Five are
+model-selectable; two are user-only and need an explicit human command:
 
-- `tailrocks-repository-merge` audits, groups, integrates, reviews, and
-  merges selected repository work into one exact target.
+- `tailrocks-repository-recover` (user-only) finds, analyzes, and
+  preserves one repository's local work: Git copies and related loose
+  files. It publishes marked recovery branches and PRs, and cleans
+  local state only after verified preservation.
+- `tailrocks-repository-merge` (user-only) audits, groups, integrates,
+  reviews, and merges selected repository work into one exact target.
 - `tailrocks-create-pr` creates a pull request after its branch and body
   gates pass.
 - `tailrocks-refresh-pr` reconciles an existing pull request with its branch.
@@ -13,7 +18,7 @@ One portable package with exactly six public skills:
 - `tailrocks-pr-template` creates or reconciles a repository pull-request
   template.
 
-The six skills are bundled here. Their skill-local references ship with
+The seven skills are bundled here. Their skill-local references ship with
 this package; no separate source-collection checkout or installation is
 required. Install the complete package or release archive. Do not copy an
 individual `SKILL.md` out of its skill directory.
@@ -43,8 +48,7 @@ tailrocks-repository-merge --target-branch=main https://github.com/OWNER/REPO/pu
 tailrocks-repository-merge --target-branch=integration https://github.com/OWNER/REPO/branches/all
 tailrocks-repository-merge --repo=OWNER/REPO --all-work --target-branch=main
 tailrocks-repository-merge --audit-only --target-branch=release/next feature/auth
-tailrocks-repository-merge --local-only --cleanup=none --target-branch=release/next feature/auth
-tailrocks-repository-merge --resume RUN_ID
+tailrocks-repository-merge --transition-mode --target-branch=main feature/a feature/b
 ```
 
 Sources may mix branches, qualified refs, `branch:N`, `#N`, PR numbers, PR
@@ -55,21 +59,38 @@ Empty input is an error; `--all-work` is the explicit repository-wide scope.
 The selected target must already exist and be unambiguous. The workflow never
 falls back to `HEAD`, `origin/HEAD`, a PR base, or a hosting default. A
 non-main target leaves `main` outside mutation scope. `--audit-only` is
-read-only. `--local-only` reports only an existing local target. Resume
-revalidates the saved repository, source, and target identities. Cleanup is
-source-specific; `--cleanup=none` retains sources, and resolved cleanup needs
-current target, obligation, ownership, quiescence, identity, authorization,
-and data-restore proof.
+read-only. `--transition-mode` integrates through one authoritative
+transition branch; without it, focused contribution PRs stay the default.
+Machine-wide discovery belongs to `tailrocks-repository-recover`;
+`--all-work` never expands to it.
+
+## Recover local work
+
+```text
+tailrocks-repository-recover
+tailrocks-repository-recover --repo https://github.com/OWNER/REPO --publish
+tailrocks-repository-recover --repo OWNER/REPO --publish --cleanup temp --local-state one --keep-checkout /path/to/checkout --keep-branch work
+tailrocks-repository-recover --repo OWNER/REPO --publish --cleanup all --local-state none --session-data target-only --clean-run-dir
+```
+
+Without `--publish`, recovery analyzes and reports only. Cleanup
+defaults to off and needs explicit options plus verified remote
+preservation. Recovery never merges; later integration needs a separate
+human invocation of `tailrocks-repository-merge` with the published
+source list.
 
 ## Lifecycle boundary
 
+Local-work recovery belongs to `tailrocks-repository-recover`;
+multi-source integration belongs to `tailrocks-repository-merge`.
 Review, PR creation, refresh, template work, and remote PR
 landing belong to the bundled pull-request lifecycle skills. The relevant
 owners are `tailrocks-review-pr`, `tailrocks-create-pr`,
 `tailrocks-refresh-pr`, `tailrocks-pr-template`, and
 `tailrocks-merge-pr`; each owner must be explicitly selected when required.
-A review report does not authorize a merge, and loading a skill does not
-authorize side effects.
+A review report does not authorize a merge, a recovery report does not
+authorize integration, and loading a skill does not
+authorize side effects. No automatic recovery-to-merge chain exists.
 
 The merge owner guards each landing. It verifies the exact target, checks,
 reviews, and policy before one merge or enqueue request. Read-only inspection uses native `gh` only:
