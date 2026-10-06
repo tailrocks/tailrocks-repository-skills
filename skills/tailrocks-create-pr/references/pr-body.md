@@ -2,40 +2,25 @@
 
 How `tailrocks-create-pr` sources the body skeleton and what the prose in it
 must and must not do. `tailrocks-refresh-pr` applies the same rules when it
-reconciles a body. The bundled `tailrocks-merge-pr` owner currently runs only
-a read-only preflight and does not consume this body contract.
+reconciles a body.
 
-## Template discovery — default before config
+## The only template
 
-Unless `.tailrocks/pr.md` names a generator command or another template path
-under `## Body`, the body skeleton comes from the repository's own template,
-looked up the way GitHub itself does:
+The body skeleton comes from exactly one path, read from the candidate
+revision at runtime, every time:
 
-1. `.github/PULL_REQUEST_TEMPLATE.md` — the default location; read this
-   file relative to the repository root in every repository.
-2. `PULL_REQUEST_TEMPLATE.md` or `docs/PULL_REQUEST_TEMPLATE.md` — GitHub's
-   alternate locations (any of the three, case-insensitive).
-3. `.github/PULL_REQUEST_TEMPLATE/` — a multi-template directory; ask which
-   one applies when more than one fits the change.
-4. None of the above → use the minimal fallback skeleton below for this
-   PR's body only, and recommend `tailrocks-pr-template`, which generates
-   the repository its own `.github/PULL_REQUEST_TEMPLATE.md` from its
-   structure and merged-PR history. Never install a canned template into a
-   repository as a side effect of opening one PR.
-
-```markdown
-## Summary
-
-## What ships
-
-## Verify locally
+```text
+.github/PULL_REQUEST_TEMPLATE.md
 ```
 
-Read the template at runtime, every time. Never reconstruct it from memory:
-repositories edit their templates, and a from-memory copy ships yesterday's
-sections. HTML comments in the template are authoring instructions for you —
-follow them, then strip them from the posted body along with every
-`<placeholder>`.
+There are no alternate locations, case variants, template directories,
+generator commands, or fallback skeletons. Never reconstruct the template
+from memory: repositories edit their templates, and a from-memory copy
+ships yesterday's sections. When the file is missing and edits are
+authorized, `tailrocks-pr-template` creates it; when edits are not
+authorized, report the missing file and stop. HTML comments in the
+template are authoring instructions for you — follow them, then strip
+them from the posted body along with every `<placeholder>`.
 
 ## Section discipline
 
