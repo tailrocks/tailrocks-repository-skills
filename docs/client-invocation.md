@@ -6,6 +6,68 @@ separate source collection. Discovery is separate from selection. Selection
 is separate from operation permission. Discovery does not authorize a merge
 or other side effect.
 
+## Install from GitHub
+
+Install through the client's native marketplace or plugin path. Do not
+hand-copy skill directories when a native route exists: the native path
+validates manifests and tracks versions for update and removal.
+
+1. **Vet first.** Read the manifests (`.claude-plugin/`,
+   `.codex-plugin/`, root `plugin.json`, `.muse-plugin/`,
+   `.kimi-plugin/`), the six `skills/*/SKILL.md` files, and any hooks or
+   MCP configuration. This package ships skills and references only; it
+   adds no hooks and no MCP servers.
+2. **Pin the source.** Prefer a tag or commit SHA over a floating branch
+   when the client accepts a ref.
+3. **Add the marketplace, then install.** Use the remote repository
+   `tailrocks/tailrocks-repository-skills`:
+
+```sh
+# Claude Code
+claude plugin marketplace add tailrocks/tailrocks-repository-skills
+claude plugin install tailrocks-repository-skills@tailrocks-repository-skills --scope user
+
+# Codex CLI
+codex plugin marketplace add tailrocks/tailrocks-repository-skills
+codex plugin add tailrocks-repository-skills@tailrocks-repository-skills
+
+# Antigravity CLI (validates, then installs globally)
+agy plugin install https://github.com/tailrocks/tailrocks-repository-skills
+
+# Grok Build (explicit trust required)
+grok plugin install tailrocks/tailrocks-repository-skills --trust
+```
+
+Kimi, Muse, Cursor, Amp, and OpenCode have no remote-URL route for this
+package: install from a local checkout or extracted release archive using
+their sections below. Gemini CLI extensions need a
+`gemini-extension.json`, which this package does not ship; use the
+Antigravity CLI route instead.
+
+4. **Least scope.** User scope enables the plugin everywhere; project or
+   local scope limits it to one repository. Trial in one repository first.
+5. **Verify after install.** List what the client loaded, open one skill,
+   and confirm the qualified selector resolves before real work:
+
+```sh
+claude plugin list
+codex plugin list
+agy plugin list
+grok plugin list
+muse skills list
+```
+
+6. **Maintain.** Update the marketplace and the plugin on a cadence;
+   remove what you stop using:
+
+```sh
+claude plugin marketplace update tailrocks-repository-skills
+claude plugin update tailrocks-repository-skills@tailrocks-repository-skills
+claude plugin uninstall tailrocks-repository-skills@tailrocks-repository-skills
+codex plugin marketplace upgrade
+codex plugin remove tailrocks-repository-skills@tailrocks-repository-skills
+```
+
 ## Runtime requirements
 
 All repository workflows require Git and `gh`. Hosted
@@ -242,12 +304,15 @@ use, revalidate the plugin schema against the installed build:
 
 ```sh
 agy plugin list
+agy plugin install https://github.com/tailrocks/tailrocks-repository-skills
 agy plugin install /path/to/tailrocks-repository-skills
 ```
 
-This is the native CLI plugin route, not an IDE-only convention. The
-current CLI docs expose bare skill IDs. Use `/skills` to inspect collisions.
-Do not assume a `plugin:skill` qualifier.
+The remote URL form is the recommended install; the local path form suits
+an extracted release or a checkout. This is the native CLI plugin route,
+not an IDE-only convention. The current CLI docs expose bare skill IDs.
+Use `/skills` to inspect collisions. Do not assume a `plugin:skill`
+qualifier.
 
 ## Cursor CLI
 

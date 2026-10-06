@@ -87,7 +87,10 @@ It never claims hosted delivery.
 
 ## Native clients
 
-Use the client-specific installation and invocation routes in
+Install from the remote repository through each client's native
+marketplace or plugin path; see [Install from
+GitHub](docs/client-invocation.md#install-from-github). Use the
+client-specific installation and invocation routes in
 [docs/client-invocation.md](docs/client-invocation.md). Codex, Claude, and
 Grok use plugin manifests or marketplaces; Muse and Antigravity use their
 native plugin manifests; Amp uses its bundled directory-plugin adapter and
