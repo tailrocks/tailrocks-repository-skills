@@ -72,15 +72,14 @@ A review report does not authorize a merge, and loading a skill does not
 authorize side effects.
 
 The merge owner guards each landing. It verifies the exact target, checks,
-reviews, and policy before one merge or enqueue request. The bundled
-preflight is a read-only inspection only:
+reviews, and policy before one merge or enqueue request. Read-only inspection uses native `gh` only:
 
 ```sh
-bun /path/to/tailrocks-repository-skills/scripts/merge-preflight.ts \
-  --root /path/to/target-repository --repo OWNER/REPO --pr 1663 --no-poll
+gh pr view 1663 --repo OWNER/REPO --json number,title,headRefOid,baseRefName,mergeable,mergeStateStatus,reviewDecision
+gh pr checks 1663 --repo OWNER/REPO
 ```
 
-A `ready` receipt is not merge authority. To land a pull request, select
+An inspection result is not merge authority. To land a pull request, select
 the merge owner. Do not invoke `gh pr merge`, a direct hosting API merge, a
 direct ref update or push, or another skill to bypass the owner.
 `--local-only` remains available for explicit disposable and local work.

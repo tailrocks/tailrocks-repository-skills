@@ -1,7 +1,7 @@
 {
   "name": "tailrocks-repository-skills",
   "version": "0.3.0",
-  "description": "Target-bound repository orchestration plus pull-request planning, consolidation, creation, refresh, review, documentation, templates, guarded merge, audit, and cleanup.",
+  "description": "Target-bound repository orchestration plus pull-request lifecycle: template, create, refresh, review, and guarded merge.",
   "author": {
     "name": "tailrocks",
     "url": "https://github.com/tailrocks"
@@ -11,32 +11,28 @@
   "license": "Apache-2.0",
   "keywords": [
     "repository",
-    "audit",
+    "pull-request",
     "review",
     "merge",
-    "cleanup",
+    "pr-template",
     "github"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Repository Skills",
-    "shortDescription": "Target-aware repository coordination, audit, and cleanup.",
-    "longDescription": "tailrocks-repository-merge coordinates selected sources into one exact destination through audit, plan, consolidate, and lifecycle phases, while the bundled pull-request skills plan, consolidate, create, refresh, review, document, template, and guard landing eligibility; audit, plan, consolidate, and cleanup remain independently callable.",
+    "shortDescription": "Target-aware repository coordination and pull-request lifecycle.",
+    "longDescription": "tailrocks-repository-merge coordinates selected sources into one exact destination, while the bundled pull-request skills template, create, refresh, review, and guard landing eligibility. Six skills, selected explicitly.",
     "developerName": "Tailrocks",
     "category": "Developer Tools",
     "capabilities": [
-      "Audit",
       "Pull Request",
-      "Merge preflight",
-      "Cleanup"
+      "Review",
+      "Guarded merge"
     ],
     "websiteURL": "https://github.com/tailrocks/tailrocks-repository-skills",
     "defaultPrompt": [
       "Coordinate these sources into the exact selected repository target.",
-      "Plan these audited sources into ordered pull-request groups, or consolidate the selected groups into candidate branches.",
-      "Review, create, refresh, document, template, or land this pull request through its guarded owner.",
-      "Audit these repository sources against the selected target.",
-      "Clean up these resolved sources only after their evidence is verified."
+      "Review, create, refresh, template, or land this pull request through its guarded owner."
     ]
   }
 }

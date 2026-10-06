@@ -356,15 +356,14 @@ explicitly for the requested repository, source, and target scope.
 
 The merge owner verifies the exact target, checks, reviews, and policy
 before one merge or enqueue request. It reports blocked, pending, queued,
-merged, failed, or uncertain. The bundled preflight is a read-only
-inspection:
+merged, failed, or uncertain. Read-only inspection uses native `gh` only:
 
 ```sh
-bun /path/to/tailrocks-repository-skills/scripts/merge-preflight.ts \
-  --root /path/to/target-repository --repo OWNER/REPO --pr 1663 --no-poll
+gh pr view 1663 --repo OWNER/REPO --json number,title,headRefOid,baseRefName,mergeable,mergeStateStatus,reviewDecision
+gh pr checks 1663 --repo OWNER/REPO
 ```
 
-A `ready` receipt does not authorize mutation. To land a pull request,
+An inspection result does not authorize mutation. To land a pull request,
 select the merge owner. Do not invoke `gh pr merge`, a direct hosting API
 merge, a direct ref update or push, a source-PR retarget, a second merge
 owner, or another skill to bypass this owner. `--local-only` can inspect an
