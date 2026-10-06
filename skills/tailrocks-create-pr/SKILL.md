@@ -1,16 +1,26 @@
 ---
 name: tailrocks-create-pr
 description: >-
-  Use when the user names tailrocks-create-pr or requests a pull request for
-  a prepared candidate. Reuse one suitable existing PR or open exactly one
-  new PR. Do not refresh metadata of another PR or merge.
+  Opens exactly one pull request for a branch, or reuses a suitable existing
+  PR. Use when the user says open, create, put up, or raise a PR, propose a
+  change, convert a branch to a PR, draft PR, MR, change, CL, or requests
+  review of their branch. Not for updating PR metadata
+  (tailrocks-refresh-pr), reviewing (tailrocks-review-pr), or merging
+  (tailrocks-merge-pr).
 argument-hint: "[--branch <name>|--auto-branch] [--title <msg>] [--base <branch>] [--draft]"
 disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
+when_to_use: >-
+  User asks to put up a pull request for the current branch, ship a branch
+  for review, draft a PR, or turn work into a merge request.
 ---
 
 # Create PR
+
+The user's instructions take precedence over guidelines provided in this
+skill. If explicit user instructions conflict with the skill's
+instructions, prioritize the user's instructions.
 
 Open a pull request for a self-contained change in the working repository
 with native Git and `gh` commands. Commits inline; no separate commit skill.

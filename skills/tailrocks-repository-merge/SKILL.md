@@ -1,17 +1,27 @@
 ---
 name: tailrocks-repository-merge
 description: >-
-  Use when the user names tailrocks-repository-merge or requests audit,
-  grouping, integration, review, or merge of selected repository branches
-  or pull requests into one exact target. Work in order with native git
-  and gh commands and report one readable result. Do not delete sources.
+  Audits, groups, integrates, reviews, and merges selected branches or PRs
+  into one exact target branch. Use when the user names multiple sources:
+  audit, consolidate, triage, group, combine, or roll up branches or PRs,
+  merge selected work into a target, or asks what branches are outstanding.
+  A single PR #N belongs to its single-PR owner (tailrocks-create-pr,
+  tailrocks-refresh-pr, tailrocks-review-pr, tailrocks-merge-pr). Does not
+  delete sources.
 argument-hint: "[SOURCES... | --all-work] [--repo OWNER/REPO] [--target-branch BRANCH] [--audit-only]"
 disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
+when_to_use: >-
+  User asks to consolidate, triage, or roll up multiple branches or PRs
+  into one target, or to inventory outstanding repository work.
 ---
 
 # Repository merge
+
+The user's instructions take precedence over guidelines provided in this
+skill. If explicit user instructions conflict with the skill's
+instructions, prioritize the user's instructions.
 
 Audit, group, integrate, review, and merge selected repository work into
 one exact target. Use native `git` for local work and `gh` for GitHub

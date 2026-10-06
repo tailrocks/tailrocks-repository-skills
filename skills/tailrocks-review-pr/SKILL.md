@@ -1,17 +1,26 @@
 ---
 name: tailrocks-review-pr
 description: >-
-  Use when the user names tailrocks-review-pr or requests review of a pull
-  request, branch, diff, or proposed change plan. Report findings with
-  concrete evidence and a Ready, Changes required, or Incomplete verdict.
-  Always read-only; never post, approve, or merge.
+  Reviews one pull request, branch, diff, or proposed plan and reports
+  findings with concrete evidence and a Ready, Changes required, or
+  Incomplete verdict. Use when the user says review, code review, look
+  over, check, or audit this PR, diff, MR, change, CL, or plan, or asks if
+  it is ready to merge. Read-only; never posts, approves, or merges.
+  Multi-source branch audits belong to tailrocks-repository-merge.
 argument-hint: "[PR | branch | range | plan] [--repo OWNER/REPO]"
 disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
+when_to_use: >-
+  User asks for a code review, feedback on a diff, or whether a change is
+  safe to land.
 ---
 
 # Review PR
+
+The user's instructions take precedence over guidelines provided in this
+skill. If explicit user instructions conflict with the skill's
+instructions, prioritize the user's instructions.
 
 Find defects and unnecessary complexity before merge: protect behavior,
 data, and maintainability, and recommend the smallest coherent correction.
