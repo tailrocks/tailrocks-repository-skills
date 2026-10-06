@@ -1,16 +1,25 @@
 ---
 name: tailrocks-pr-template
 description: >-
-  Use when the user names tailrocks-pr-template or requests a repository
-  pull-request template. Generate or reconcile the sole supported template
-  from repository evidence. Do not open, refresh, or merge a PR.
+  Creates or reconciles a repository's sole .github/PULL_REQUEST_TEMPLATE.md.
+  Use when the user says create or update the PR template,
+  PULL_REQUEST_TEMPLATE.md, PR boilerplate, default PR body, or standardize
+  PR descriptions. Anchors unsupported locations to the sole template. Does
+  not open, refresh, review, or merge any PR.
 argument-hint: "[repo path]"
 disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
+when_to_use: >-
+  User asks for a PR template file, default PR body, or PR description
+  boilerplate.
 ---
 
 # PR template
+
+The user's instructions take precedence over guidelines provided in this
+skill. If explicit user instructions conflict with the skill's
+instructions, prioritize the user's instructions.
 
 Give a repository one pull-request template at the single canonical path
 `.github/PULL_REQUEST_TEMPLATE.md` — the file `tailrocks-create-pr` and

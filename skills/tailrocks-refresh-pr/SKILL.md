@@ -1,17 +1,25 @@
 ---
 name: tailrocks-refresh-pr
 description: >-
-  Use when the user names tailrocks-refresh-pr or requests correction of an
-  open pull request's title or body. Reconcile metadata against the current
-  diff: drifted prose rewritten, accurate prose kept verbatim. Do not open or
-  merge a PR.
+  Reconciles an open PR's title and body against its current diff. Use when
+  the user says update, fix, retitle, rewrite, or sync the PR title, body,
+  or description, or that the PR body drifted or is out of date. Does not
+  push commits or rebase the branch. Not for opening
+  (tailrocks-create-pr) or merging (tailrocks-merge-pr) a PR.
 argument-hint: "[PR] [--repo OWNER/REPO]"
 disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
+when_to_use: >-
+  User says a PR title or description is stale, wrong, or out of date with
+  the diff.
 ---
 
 # Refresh PR
+
+The user's instructions take precedence over guidelines provided in this
+skill. If explicit user instructions conflict with the skill's
+instructions, prioritize the user's instructions.
 
 Reconcile an open PR's title and body against the current diff, so the body
 describes what the branch **actually ships now** — not what it shipped when

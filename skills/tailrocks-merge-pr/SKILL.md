@@ -1,18 +1,26 @@
 ---
 name: tailrocks-merge-pr
 description: >-
-  Use when the user names tailrocks-merge-pr or requests guarded landing of
-  one exact pull request. Verify target, checks, reviews, and template
-  compliance, then squash-merge with a reviewed-head guard and report
-  blocked, pending, queued, merged, failed, or uncertain. Do not review,
-  create, refresh, retarget, delete branches, or bypass protection.
+  Squash-merges one exact pull request into its target with a reviewed-head
+  guard. Use when the user says merge, land, squash, ship, or submit PR #N,
+  squash and merge, land the diff or change, merge the MR, or close a PR by
+  merging. Not for creating (tailrocks-create-pr), refreshing
+  (tailrocks-refresh-pr), or reviewing (tailrocks-review-pr); multi-source
+  consolidation belongs to tailrocks-repository-merge.
 argument-hint: "[PR] [--repo OWNER/REPO] [--no-poll]"
 disable-model-invocation: false
 license: Apache-2.0
 user-invocable: true
+when_to_use: >-
+  User says land, squash, ship, or submit a pull request, or asks to close
+  a PR by merging it.
 ---
 
 # Merge PR
+
+The user's instructions take precedence over guidelines provided in this
+skill. If explicit user instructions conflict with the skill's
+instructions, prioritize the user's instructions.
 
 This skill is the sole landing owner for one pull request. It verifies the
 intended repository, target branch, and current reviewed head, checks
