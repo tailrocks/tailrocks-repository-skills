@@ -1,8 +1,8 @@
 # Review checklist
 
 The area checks for `tailrocks-review-pr`. Every area that applies to the
-diff is checked; skipped areas carry a reason. Findings follow the
-severity and shape in `SKILL.md`.
+diff is checked. Skipped areas carry a reason. Give each finding the
+severity and shape from `SKILL.md`.
 
 ## 1. Functionality and integration
 

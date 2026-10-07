@@ -19,7 +19,7 @@ from memory: repositories edit their templates, and a from-memory copy
 ships yesterday's sections. When the file is missing and edits are
 authorized, `tailrocks-pr-template` creates it; when edits are not
 authorized, report the missing file and stop. HTML comments in the
-template are authoring instructions for you — follow them, then strip
+template are authoring instructions for you. Obey them. Then strip
 them from the posted body along with every `<placeholder>`.
 
 ## Section discipline
