@@ -81,7 +81,6 @@ revision. Bump both in one pull request per `maintenance.md`.
 
 ## `.github/PULL_REQUEST_TEMPLATE.md` is missing
 
-Cause: `velnor-actions generate` replaces the full `.github/` tree
-and drops hand-placed files. Fix: restore the file from version
-control. This gap stays until the generator preserve change lands.
-See `maintenance.md`.
+Cause: a hand edit or an old generator removed the file. Fix:
+restore the file from version control. The current generator
+preserves the file. See `maintenance.md`.
