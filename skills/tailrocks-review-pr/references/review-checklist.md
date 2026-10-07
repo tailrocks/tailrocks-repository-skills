@@ -102,6 +102,16 @@ severity and shape from `SKILL.md`.
   trailer is not proof of documentation correctness; a waived warning
   is not proof the behavior is safe. Report the important unresolved
   result without duplicating all linter output.
+- Require the docs to describe the system the diff creates, not the
+  change journey. Flag changelog passages, "as of this PR" dating, and
+  PR numbers in prose.
+- Require a section or page for each new capability and deletion of
+  removed behavior. Require each new page in navigation. Do not accept
+  an orphan page.
+- Require generated files to come from the project command. Never
+  accept a hand edit to a generated file.
+- Search the touched surfaces for stale references to removed or
+  renamed behavior.
 
 ## 9. Group coverage
 
@@ -110,3 +120,23 @@ relevant checks, and confirm excluded or deferred work is absent. Do not
 mistake matching commit names, patch IDs, or ancestry for behavior
 evidence, and do not apply previously squashed work again. Verdict:
 `covered` or `gap`, with item evidence either way.
+
+## 10. Scope and finding bar
+
+The diff is the scope. Report a correctness finding only in one of three
+classes. The code does not compile or parse. The code definitely gives
+wrong results on inputs its contract admits. The code breaks a quoted
+scoped rule. Calibrate each finding against the author intent in the
+title, body, and linked issues.
+
+Do not report these, in any area:
+
+- Issues in code the diff does not touch.
+- Code that looks wrong when a comment, a test, or the surrounding code
+  shows the shape is deliberate.
+- Style, naming, or formatting preferences that no scoped rule codifies.
+- Linter or formatter output. Report only important results, without
+  duplication.
+
+Verify each finding against the actual file, not the diff hunk alone.
+Read the other file before you report a cross-file claim.
