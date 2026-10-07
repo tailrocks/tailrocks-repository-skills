@@ -6,11 +6,11 @@ Never build a second general repository scanner in this package.
 
 Scanner checked: version 0.1.0, commit
 `13e534b5d2ad688a4d05901d36d5afc95bc454ce` (2026-10-03). No releases
-or tags exist; pin the commit and record `tool.source_commit` from
+or tags exist. Pin the commit and record `tool.source_commit` from
 each report. Recheck the scanner docs when it updates.
 
-Contents: setup; cheap pass; deep pass; exit codes; scope behavior;
-session paths; ordering rules; performance record; upstream gaps.
+Contents: setup, cheap pass, deep pass, exit codes, scope behavior,
+session paths, ordering rules, performance record, upstream gaps.
 
 ## Setup
 
@@ -25,7 +25,7 @@ repo-scan --state-dir "$RUN_DIR/repo-scan" scan "$REPO_URL" \
 ```
 
 Use a fresh isolated state dir per run. One owner process holds one
-state dir; parallel scans need separate state dirs.
+state dir. Parallel scans need separate state dirs.
 
 ## Cheap pass
 
@@ -38,7 +38,7 @@ time and the exit code.
 Run a deep pass only when the cheap pass justifies it: same command
 with `--status summary` (or `full`). If `coverage.status` is not
 complete, rerun the deep pass with `--force-rescan`. The scanner never
-narrows discovery by status; unknown values stay null.
+narrows discovery by status. Unknown values stay null.
 
 ## Exit codes
 
@@ -55,7 +55,7 @@ narrows discovery by status; unknown values stay null.
 Machine scope seeds priority roots first (`/tmp`, `/private/tmp`,
 `$HOME`, system temp, cargo home), then walks every mount-table root
 round-robin. Nothing is excluded by directory name. Symlinks are never
-followed; they are recorded as aliases. Denied or offline roots persist
+followed. They are recorded as aliases. Denied or offline roots persist
 as coverage gaps, never silent drops.
 
 The scanner is single-threaded by design. Never claim parallel scanner
@@ -106,7 +106,7 @@ from hidden scope exclusions.
 
 If a required scanner capability is missing, report the exact gap.
 Propose a small upstream change. Never expand this task into a scanner
-rewrite. Known gaps as checked: no isolated first-result-latency
-record; metadata-to-summary escalation reuse is not fully documented;
-bytes-of-content total is absent (use enumerated entries plus
-directories complete).
+rewrite. Known gaps as checked are three items. There is no isolated
+first-result-latency record. Metadata-to-summary escalation reuse is not
+fully documented. Bytes-of-content total is absent (use enumerated
+entries plus directories complete).

@@ -3,8 +3,8 @@
 Read this reference when step 4 inspects files without a Git
 directory. A clone scan is not a complete project recovery scan.
 
-Contents: identity set; evidence strength; included work; archives;
-session references; mixed sessions.
+Contents: identity set, evidence strength, included work, archives,
+session references, mixed sessions.
 
 ## Identity set
 

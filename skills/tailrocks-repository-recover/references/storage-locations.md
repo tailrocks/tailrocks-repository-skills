@@ -6,17 +6,17 @@ Treat every path as a search candidate, not a deletion target.
 Storage reference version: 1. Checked: 2026-10-07. Recheck upstream
 docs when a client updates.
 
-Contents: status labels; environment variables; per-client tables;
-shared rules; other candidates.
+Contents: status labels, environment variables, per-client tables,
+shared rules, other candidates.
 
 ## Status labels
 
 - **Documented**: the client's own docs state the path.
 - **Observed**: consistent third-party or field evidence states the
-  path; the client's own docs do not.
-- **Legacy**: an older documented path; check it only when migration
-  evidence exists.
-- **Unverified**: no solid source; resolve it at runtime from
+  path. The client's own docs do not state the path.
+- **Legacy**: it is an older documented path. Check it only when
+  migration evidence exists.
+- **Unverified**: there is no solid source. Resolve it at runtime from
   configuration or session evidence.
 
 ## Environment variables
@@ -48,7 +48,7 @@ Docs current to v2.1.286-v2.1.288.
 | Project scratchpads, tasks, subagent records, recorded file paths | Observed (field evidence) |
 | Worktrees and other configured storage paths | Unverified; resolve from configuration or session evidence |
 
-Note: `CLAUDE_CODE_SKIP_PROMPT_HISTORY=1` suppresses transcripts; such
+Note: `CLAUDE_CODE_SKIP_PROMPT_HISTORY=1` suppresses transcripts. Such
 sessions leave no record.
 
 ## Codex
@@ -115,7 +115,7 @@ Use session working-directory records to identify the project.
 ## Antigravity CLI
 
 Sources: antigravity.google CLI and skills docs. Checked 2026-10-07.
-No version shown; surfaces labeled Antigravity 2.0 / CLI / IDE.
+No version is shown. Surfaces are labeled Antigravity 2.0 / CLI / IDE.
 
 | Path | Status |
 |---|---|

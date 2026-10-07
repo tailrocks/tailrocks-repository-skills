@@ -1,121 +1,104 @@
 # tailrocks-repository-skills
 
-One portable package with exactly seven public skills. Five are
-model-selectable; two are user-only and need an explicit human command:
+One portable package with seven skills. The skills coordinate
+repository work and run the pull-request lifecycle: template, create,
+refresh, review, and guarded merge. Five skills are model-selectable.
+Two skills are user-only and need an explicit human command.
 
-- `tailrocks-repository-recover` (user-only) finds, analyzes, and
-  preserves one repository's local work: Git copies and related loose
-  files. It publishes marked recovery branches and PRs, and cleans
-  local state only after verified preservation.
-- `tailrocks-repository-merge` (user-only) audits, groups, integrates,
-  reviews, and merges selected repository work into one exact target.
-- `tailrocks-create-pr` creates a pull request after its branch and body
-  gates pass.
-- `tailrocks-refresh-pr` reconciles an existing pull request with its branch.
-- `tailrocks-review-pr` performs a read-only, evidence-based review.
-- `tailrocks-merge-pr` owns the guarded pull-request landing policy. It
-  reports blocked, pending, queued, merged, failed, or uncertain.
-- `tailrocks-pr-template` creates or reconciles a repository pull-request
-  template.
+## Skills
 
-The seven skills are bundled here. Their skill-local references ship with
-this package; no separate source-collection checkout or installation is
-required. Install the complete package or release archive. Do not copy an
-individual `SKILL.md` out of its skill directory.
+| Skill | Task |
+| --- | --- |
+| [`tailrocks-repository-recover`](skills/tailrocks-repository-recover/SKILL.md) | Preserve local work. User-only. |
+| [`tailrocks-repository-merge`](skills/tailrocks-repository-merge/SKILL.md) | Integrate sources into one target. User-only. |
+| [`tailrocks-create-pr`](skills/tailrocks-create-pr/SKILL.md) | Open one pull request. |
+| [`tailrocks-refresh-pr`](skills/tailrocks-refresh-pr/SKILL.md) | Reconcile title and body. |
+| [`tailrocks-review-pr`](skills/tailrocks-review-pr/SKILL.md) | Review and report. Read-only. |
+| [`tailrocks-merge-pr`](skills/tailrocks-merge-pr/SKILL.md) | Land under the guarded policy. |
+| [`tailrocks-pr-template`](skills/tailrocks-pr-template/SKILL.md) | Manage the PR template. |
 
-This package intentionally has no `tests/` directory. The repository keeps a
-generated `.github/workflows/ci.yml` file. Do not hand-edit that generated
-workflow. Releases are published manually from tagged commits.
+Each skill body lives in its own directory. Read
+`skills/tailrocks-review-pr/SKILL.md` for one complete example.
 
-## Runtime requirements
+## Install
 
-Git and `gh` are required for repository operations.
-Hosted lifecycle routes require an authenticated `gh` session with access to
-the target repository and support GitHub.com only; GitHub Enterprise is
-unsupported.
-Read-only audits can remain local.
+Install the package from the central `tailrocks` marketplace. Use
+the qualified id `tailrocks-repository-skills@tailrocks` wherever
+the client accepts it. Each row links its full section in
+`docs/installation.md`.
 
-## Select sources and target
+| Agent | Method |
+| --- | --- |
+| Claude Code | [Marketplace install](docs/installation.md#claude-code) |
+| Codex | [Marketplace add](docs/installation.md#codex) |
+| Amp | [Per-skill add](docs/installation.md#amp) |
+| Muse Code | [Marketplace install](docs/installation.md#muse-code) |
+| OpenCode | [Skill-directory copy](docs/installation.md#opencode) |
+| Antigravity | [Local-path install](docs/installation.md#antigravity) |
+| Grok Build | [Marketplace install](docs/installation.md#grok-build) |
+| Kimi Code | [In-session manager](docs/installation.md#kimi-code) |
 
-Positional arguments are sources. `--target-branch` is the one destination;
-when omitted, it means the literal branch `main`.
-
-```text
-tailrocks-repository-merge --target-branch=release/next feature/auth
-tailrocks-repository-merge --target-branch=main '#1663' feature/auth
-tailrocks-repository-merge --target-branch=main https://github.com/OWNER/REPO/pull/1103
-tailrocks-repository-merge --target-branch=main https://github.com/OWNER/REPO/pulls
-tailrocks-repository-merge --target-branch=integration https://github.com/OWNER/REPO/branches/all
-tailrocks-repository-merge --repo=OWNER/REPO --all-work --target-branch=main
-tailrocks-repository-merge --audit-only --target-branch=release/next feature/auth
-tailrocks-repository-merge --transition-mode --target-branch=main feature/a feature/b
-```
-
-Sources may mix branches, qualified refs, `branch:N`, `#N`, PR numbers, PR
-URLs, and listing URLs, but they must identify one repository. A bare number is
-a PR; `branch:N` selects a numeric branch. Listing selectors paginate fully.
-Empty input is an error; `--all-work` is the explicit repository-wide scope.
-
-The selected target must already exist and be unambiguous. The workflow never
-falls back to `HEAD`, `origin/HEAD`, a PR base, or a hosting default. A
-non-main target leaves `main` outside mutation scope. `--audit-only` is
-read-only. `--transition-mode` integrates through one authoritative
-transition branch; without it, focused contribution PRs stay the default.
-Machine-wide discovery belongs to `tailrocks-repository-recover`;
-`--all-work` never expands to it.
-
-## Recover local work
-
-```text
-tailrocks-repository-recover
-tailrocks-repository-recover --repo https://github.com/OWNER/REPO --publish
-tailrocks-repository-recover --repo OWNER/REPO --publish --cleanup temp --local-state one --keep-checkout /path/to/checkout --keep-branch work
-tailrocks-repository-recover --repo OWNER/REPO --publish --cleanup all --local-state none --session-data target-only --clean-run-dir
-```
-
-Without `--publish`, recovery analyzes and reports only. Cleanup
-defaults to off and needs explicit options plus verified remote
-preservation. Recovery never merges; later integration needs a separate
-human invocation of `tailrocks-repository-merge` with the published
-source list.
-
-## Lifecycle boundary
-
-Local-work recovery belongs to `tailrocks-repository-recover`;
-multi-source integration belongs to `tailrocks-repository-merge`.
-Review, PR creation, refresh, template work, and remote PR
-landing belong to the bundled pull-request lifecycle skills. The relevant
-owners are `tailrocks-review-pr`, `tailrocks-create-pr`,
-`tailrocks-refresh-pr`, `tailrocks-pr-template`, and
-`tailrocks-merge-pr`; each owner must be explicitly selected when required.
-A review report does not authorize a merge, a recovery report does not
-authorize integration, and loading a skill does not
-authorize side effects. No automatic recovery-to-merge chain exists.
-
-The merge owner guards each landing. It verifies the exact target, checks,
-reviews, and policy before one merge or enqueue request. Read-only inspection uses native `gh` only:
+Quick start on Claude Code (shell):
 
 ```sh
-gh pr view 1663 --repo OWNER/REPO --json number,title,headRefOid,baseRefName,mergeable,mergeStateStatus,reviewDecision
-gh pr checks 1663 --repo OWNER/REPO
+claude plugin marketplace add tailrocks/tailrocks-skills
+claude plugin install tailrocks-repository-skills@tailrocks --scope user
 ```
 
-An inspection result is not merge authority. To land a pull request, select
-the merge owner. Do not invoke `gh pr merge`, a direct hosting API merge, a
-direct ref update or push, or another skill to bypass the owner.
-`--local-only` remains available for explicit disposable and local work.
-It never claims hosted delivery.
+All repository workflows need Git and `gh`. Hosted pull-request
+work needs an authenticated `gh` session. Only GitHub.com is
+supported.
 
-## Native clients
+## Use
 
-Install from the remote repository through each client's native
-marketplace or plugin path; see [Install from
-GitHub](docs/client-invocation.md#install-from-github). Use the
-client-specific installation and invocation routes in
-[docs/client-invocation.md](docs/client-invocation.md). Codex, Claude, and
-Grok use plugin manifests or marketplaces; Muse and Antigravity use their
-native plugin manifests; Amp uses its bundled directory-plugin adapter and
-Kimi loads the bundled skill directories; Cursor CLI discovers project and
-user skill directories and selects a skill from its `/` menu;
-OpenCode discovers `.opencode/skills` and uses `permission.skill`. Each route
-installs this package as one unit and does not depend on another repository.
+Select the owner for the requested work. To review pull request
+1663 on Claude Code (session):
+
+```text
+/tailrocks-repository-skills:tailrocks-review-pr #1663
+```
+
+The skill returns a report with findings, evidence, and one verdict:
+Ready, Changes required, or Incomplete. The skill is read-only. See
+`docs/usage.md` for every owner, more examples, and the lifecycle
+boundary.
+
+## Documentation
+
+- `docs/README.md` indexes the guides.
+- `docs/installation.md` installs the package on eight agents.
+- `docs/usage.md` shows how to select each skill.
+- `docs/compatibility.md` records each route result.
+- `docs/maintenance.md` lists checks, policy, and release steps.
+- `docs/troubleshooting.md` fixes common failures.
+
+## Update and remove
+
+Refresh the marketplace, then the plugin. Remove the plugin when it
+is no longer needed. Commands per agent:
+
+- Claude Code: `claude plugin update
+  tailrocks-repository-skills@tailrocks` or `claude plugin
+  marketplace update tailrocks`. Remove with `claude plugin
+  uninstall tailrocks-repository-skills --scope user`.
+- Codex: `codex plugin marketplace upgrade tailrocks`. Remove with
+  `codex plugin remove tailrocks-repository-skills@tailrocks`.
+- Muse: `muse plugins marketplace update tailrocks`, then the
+  remove plus install sequence. Remove with `muse plugins remove
+  tailrocks-repository-skills@tailrocks`.
+- Kimi session: no `update` subcommand. Remove with `/plugins
+  remove tailrocks-repository-skills`, then `/reload`.
+- Amp, OpenCode, Antigravity, Grok: see
+  `docs/installation.md` for the exact steps.
+
+## Contribute
+
+Open an issue or a pull request on GitHub. Write all new and changed
+prose in ASD-STE100 Simplified Technical English, Issue 9 rules. Run
+`alint check`, the strict-JSON check, and the frontmatter check
+before the pull request. See `docs/maintenance.md` for the full
+list. Never add evaluation content.
+
+## License
+
+Apache License, Version 2.0. See `LICENSE` for the full text.

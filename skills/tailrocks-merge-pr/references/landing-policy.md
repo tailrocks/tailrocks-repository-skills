@@ -8,8 +8,8 @@ one PR with one merge or enqueue attempt.
   "$REVIEWED_HEAD"`, with `--auto` added only for a confirmed
   squash-method queue route. There is no merge-commit or rebase choice.
 - The head guard requires the PR head to still be the reviewed commit.
-  It is not a compare-and-swap on a caller-selected target SHA: a last
-  read and a later write still have a race window, and a local lock does
+  It is not a compare-and-swap on a caller-selected target SHA. A last
+  read and a later write still have a race window. A local lock does
   not prevent another remote writer. Never claim a target lock.
 - When base freshness matters, prefer a merge queue or a server-enforced
   freshness check. When those protections are absent, block an affected
