@@ -1,9 +1,9 @@
 <!--
 Base PR body template — the starting shape tailrocks-pr-template tailors
-into a repository's resolved pull-request template target. Never lands in a
-repository verbatim: every section survives only when the repository's
-structure and merged-PR history earn it, and every <placeholder> command is
-replaced with the repository's real gate.
+into a repository's resolved pull-request template target. This template
+never lands in a repository verbatim. Every section survives only when the
+repository's structure and merged-PR history earn it. Replace every
+<placeholder> command with the repository's real gate.
 
 Rules in one line each:
 - One paragraph per section, no hard-wrap (GitHub flows the text).
@@ -16,7 +16,7 @@ Rules in one line each:
 - Verify-locally URLs use http://localhost:<port>/... only — never deployed.
 - Every Verify-locally command is copy-pasteable and states its expected
   outcome when a bare exit code does not disambiguate pass from fail.
-- Drop the headings you don't need. "Related pull requests" is only when the
+- Drop the headings you do not need. "Related pull requests" is only when the
   PR spans multiple repos. "Behavior changes" is only when it adds signal
   beyond "What ships". "Not included" is only when scope boundaries or
   deferred work are useful to call out. "Migration notes" can read "None"
@@ -35,7 +35,7 @@ entirely when the PR stands alone.>
 
 <One paragraph answering: what is this pull request for? Name the shipped
 feature or behavior, who benefits, and how it changes their flow. Keep this
-short; the feature-level detail goes in the next sections.>
+short. The feature-level detail goes in the next sections.>
 
 ## What ships
 
@@ -112,9 +112,10 @@ filter alone does not say it. Drop when the PR ships no testable code.>
 
 ### Smoke
 
-<The shortest real-use path that exercises the changed behavior: the command
-to launch, the clicks or inputs, and the expected output that disambiguates
-a pass from a fail. Drop when the change has no runtime surface.>
+<Describe the shortest real-use path that exercises the changed behavior.
+Name the command to launch, the clicks or inputs, and the expected output.
+The expected output disambiguates a pass from a fail. Drop when the change
+has no runtime surface.>
 
 ```sh
 <launch command>
@@ -138,5 +139,5 @@ Serves at `http://localhost:<port>/`. Pages to walk:
 ## Migration notes
 
 <One paragraph naming what users or operators must do — schema rename,
-env-var addition, on-disk path move. "None." is fine; drop the section when
-it would only say that.>
+env-var addition, on-disk path move. "None." is fine. Drop the section
+when it would only say that.>

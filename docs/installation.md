@@ -202,9 +202,9 @@ Limits and evidence: hosted installs cap each repository at 200
 skills, 200 files, 10 MiB per file, 25 MiB per skill, text files
 only. A binary file blocks that skill from loading. Names keep 64
 characters or less and match their directory. Descriptions keep 1024
-characters or less. All seven skills in this package fit these caps:
-names are 28 characters or less, descriptions are 408 characters or
-less, and every payload file is text (observed 2026-10-07).
+characters or less. All seven skills in this package fit these caps.
+Names are 28 characters or less. Descriptions are 408 characters or
+less. Every payload file is text (observed 2026-10-07).
 Duplicates resolve first-`name`-wins: a local copy masks a repository
 copy, and a personal copy masks a workspace copy. Amp cannot enforce
 per-skill user-only entry: it lists every discovered skill to the
@@ -352,12 +352,7 @@ V2 instructions separate. Gate the two user-only skills with
   "permission": {
     "skill": {
       "tailrocks-repository-recover": "ask",
-      "tailrocks-repository-merge": "ask",
-      "tailrocks-create-pr": "ask",
-      "tailrocks-refresh-pr": "ask",
-      "tailrocks-review-pr": "ask",
-      "tailrocks-merge-pr": "ask",
-      "tailrocks-pr-template": "ask"
+      "tailrocks-repository-merge": "ask"
     }
   }
 }
@@ -439,7 +434,7 @@ route, delete the copied skill directories.
 
 Limits and evidence: the plugin install accepts a local path only.
 There is no public marketplace catalog JSON. The root manifest must
-not carry the Antigravity schema; this package carries the portable
+not carry the Antigravity schema. This package carries the portable
 Agent Plugins 1.0.0 schema (observed 2026-10-07). Antigravity
 frontmatter supports only `name` and `description`, so user-only
 entry cannot be enforced here. The agent auto-reads skills. Invoke
@@ -529,10 +524,10 @@ auto-discovers the catalog, so the marketplace URL is required:
 /plugins install https://github.com/tailrocks/tailrocks-repository-skills/commit/759849769249b5a4ada95595914ab8e81daf618b
 ```
 
-The commit pin is the recommended form. The pin above is the current
-central-catalog revision of this package (version 0.4.0). Apply
-every install, enable, disable, or remove with `/reload` or a new
-session.
+The commit pin is the recommended form. The pin above matches the
+current central-catalog revision. That revision predates the
+common-package restructure on this branch. Apply every install,
+enable, disable, or remove with `/reload` or a new session.
 
 Inspect the install (session):
 
@@ -566,9 +561,9 @@ copy: reinstall after upstream changes.
 Limits and evidence: fields cap at 32 KB each and 64 KB total
 `systemPrompt`. Non-`.md` command files are ignored. Paths stay
 confined to the plugin root. Manifest names match
-`[a-z0-9][a-z0-9_-]{0,63}`; this package name fits (observed
+`[a-z0-9][a-z0-9_-]{0,63}`. This package name fits (observed
 2026-10-07). The `.kimi-plugin/plugin.json` manifest must set
-`skills` to `./skills/`; without it, Kimi reads a root SKILL.md
+`skills` to `./skills/`. Without it, Kimi reads a root SKILL.md
 instead. This package sets it (observed 2026-10-07). Invocation
 nesting caps at three levels. Duplicates resolve Project over User
 over Extra over Built-in. The two user-only skills set
@@ -580,9 +575,9 @@ explicit `/skill:` command. Audit enabled plugins: a
 
 Older installs used the self-hosted `tailrocks-repository-skills`
 marketplace, which this restructure removed. Move each install to
-the central `tailrocks` marketplace in this order: uninstall each
-plugin per scope, remove the old marketplace, add the new
-marketplace, install the plugin. The order prevents duplicates.
+the central `tailrocks` marketplace in this order. Uninstall each
+plugin per scope. Remove the old marketplace. Add the new
+marketplace. Install the plugin. The order prevents duplicates.
 
 Claude Code (shell):
 

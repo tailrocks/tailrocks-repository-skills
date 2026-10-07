@@ -197,10 +197,10 @@ The skill accepts these arguments:
     earlier analysis. At the end, confirm that you resolved each contribution or
     blocked it with evidence.
 
-## Transition flow
+### Transition flow
 
 Use this flow only when `--transition-mode` is present. It replaces steps 9
-through 16.
+through 16 of the Procedure.
 
 1. **Create one authoritative transition branch** from the current target. One
    mutation owner holds this branch. Never touch the target directly. Before

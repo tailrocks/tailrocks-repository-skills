@@ -94,11 +94,12 @@ muse skills validate ./skills/tailrocks-review-pr
 Expected result, observed 2026-10-07: `claude plugin validate`
 passes with one author warning (the host manifest carries name,
 version, and description only, per the common structure).
-`muse plugins validate` reports `valid: true`, finds all seven
-skills through the portable root manifest, and lists warnings only:
-unrecognized skill frontmatter keys, inactive `.claude-plugin`
-overlay fields beside the authoritative root, and the generated
-`.github/CLAUDE.md` symlink. `muse skills validate` reports valid.
+`muse plugins validate` reports `valid: true`. It finds all seven
+skills through the portable root manifest. It lists warnings only.
+The warnings are unrecognized skill frontmatter keys, inactive
+`.claude-plugin` overlay fields beside the authoritative root, and
+the generated `.github/CLAUDE.md` symlink. `muse skills validate`
+reports valid.
 
 Known tension: `claude plugin validate --strict` exits 1 because it
 promotes the author warning to an error. Plain validation passes,
@@ -165,11 +166,11 @@ duplicates.
 Never add evaluation content to skills, references, templates, task
 definitions, or CI. This ban covers behavioral benchmarks, trigger
 precision and recall, repeated model trials, scored wording
-comparisons, model-family matrices, pressure scenarios, holdout
-datasets, judge or grader models, pass-rate targets, token and
-latency comparisons, mandatory failing baselines, and task trials
-under any name. Do not relabel such work as smoke, pressure, or
-compatibility checks. A sample task never proves behavior.
+comparisons, model-family matrices, and pressure scenarios. It also
+covers holdout datasets, judge or grader models, pass-rate targets,
+token and latency comparisons, mandatory failing baselines, and task
+trials under any name. Do not relabel such work as smoke, pressure,
+or compatibility checks. A sample task never proves behavior.
 
 Before aggregate commands, read each task definition and strip
 evaluation steps. Never trust the command name. To find violations,

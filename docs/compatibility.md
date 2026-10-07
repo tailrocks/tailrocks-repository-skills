@@ -24,11 +24,12 @@ verified only because a different client accepted the same files.
 | Grok Build | unversioned | Skills copy | Unverified: CLI absent. |
 | Kimi Code | unversioned | Manager pin | Unverified: CLI absent. |
 
-Trial result, 2026-10-07, Claude Code 2.1.289, isolated HOME:
-marketplace add ok, install ok, list showed the plugin enabled
-with all seven skills and no hooks or MCP servers, uninstall ok,
-marketplace remove ok, and the closing list was empty. The trial
-used a throwaway local marketplace built from the branch checkout.
+The trial ran on 2026-10-07 with Claude Code 2.1.289 in an
+isolated HOME. Marketplace add passed and install passed. The list
+showed the plugin enabled with all seven skills and no hooks or MCP
+servers. Uninstall passed and marketplace remove passed. The closing
+list was empty. The trial used a throwaway local marketplace built
+from the branch checkout.
 The real user config was untouched. No model task ran and no skill
 executed.
 
@@ -56,9 +57,9 @@ These facts were observed on 2026-10-07 from the package files. They
 are not install proofs:
 
 - All seven frontmatter names match their skill directories.
-- All names are 28 characters or less; all descriptions are 408
+- All names are 28 characters or less. All descriptions are 408
   characters or less. The Amp, OpenCode, and Kimi caps fit.
 - The root manifest carries the Agent Plugins 1.0.0 schema id.
 - The Kimi manifest sets `skills` to `./skills/`.
-- Every payload file under `skills/` is text; no file carries the
+- Every payload file under `skills/` is text. No file carries the
   executable bit.

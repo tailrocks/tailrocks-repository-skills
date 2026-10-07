@@ -4,7 +4,7 @@ Read this reference when step 8 opens PRs and when the run writes its
 report. Use the existing create, refresh, and review skills. Never
 implement another PR workflow.
 
-Contents: findings PR; candidate PRs; four states; handoff; examples.
+Contents: findings PR, candidate PRs, four states, handoff, examples.
 
 ## Findings PR
 
@@ -37,9 +37,9 @@ The report distinguishes:
 
 This skill never merges its Candidate PRs. It never calls
 `tailrocks-repository-merge` automatically. It finishes with a precise
-human handoff: the published source list (branch names, PR numbers, PR
-URLs), source-map locations, Target verdicts, and the exact merge
-command the human can run next.
+human handoff. The handoff includes the published source list (branch
+names, PR numbers, PR URLs), source-map locations, and Target verdicts.
+It includes the exact merge command the human can run next.
 
 ## Reruns
 

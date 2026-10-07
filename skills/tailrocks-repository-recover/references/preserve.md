@@ -2,8 +2,8 @@
 
 Read this reference when step 7 preserves work. It needs `--publish`.
 
-Contents: destination; sensitivity; branch naming; authorship;
-recipes; LFS; push rules; grouping.
+Contents: destination, sensitivity, branch naming, authorship,
+recipes, LFS, push rules, grouping.
 
 ## Destination
 
@@ -21,14 +21,14 @@ Preserve necessary sensitive data only through an existing authorized
 secure route. Keep the Source and report a Blocker when that route is
 unavailable. Never silently discard sensitive bytes to make cleanup
 pass. Cite secret locations and types without copying values. Never add
-`.env`, token, secret, or credential files to a preservation commit;
-prefer explicit pathspecs over blind `git add -A`.
+`.env`, token, secret, or credential files to a preservation commit.
+Prefer explicit pathspecs over blind `git add -A`.
 
 ## Branch naming
 
 Reuse a suitable existing branch without rewriting it. If it points at
 the same commit, reuse it and record that fact. If it points elsewhere,
-never move it; create a suffixed name instead. Never delete or rename
+never move it. Create a suffixed name instead. Never delete or rename
 existing Recovery branches.
 
 When no suitable branch exists, create a marked Recovery branch. Mark
@@ -56,12 +56,12 @@ recovery mechanism, not the original author.
 - Preserve stash entries without dropping them: resolve `git rev-parse
   stash@{n}` and create a branch at that commit. Never `stash pop`,
   `stash drop`, or `stash clear`.
-- Preserve interrupted operations without aborting them: branch at
-  `HEAD`, anchor each present `MERGE_HEAD`, `CHERRY_PICK_HEAD`, or
-  `REBASE_HEAD` commit with its own ref, and copy `MERGE_MSG` into the
+- Preserve interrupted operations without aborting them. Branch at
+  `HEAD`. Anchor each present `MERGE_HEAD`, `CHERRY_PICK_HEAD`, or
+  `REBASE_HEAD` commit with its own ref. Copy `MERGE_MSG` into the
   manifest. Never `--abort`, `--continue`, or `--quit` to simplify.
 - Anchor otherwise unreachable useful objects through suitable remote
-  recovery refs. A ref makes them reachable; an unreferenced object
+  recovery refs. A ref makes them reachable. An unreferenced object
   stays exposed to garbage collection. Never run `gc --prune=now`.
 - Use supplementary artifacts for state that a normal commit cannot
   preserve. Record each artifact hash in the manifest.

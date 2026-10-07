@@ -9,13 +9,13 @@ Two skills are user-only and need an explicit human command.
 
 | Skill | Task |
 | --- | --- |
-| `tailrocks-repository-recover` | Preserve local work. User-only. |
-| `tailrocks-repository-merge` | Integrate sources into one target. User-only. |
-| `tailrocks-create-pr` | Open one pull request. |
-| `tailrocks-refresh-pr` | Reconcile title and body. |
-| `tailrocks-review-pr` | Review and report. Read-only. |
-| `tailrocks-merge-pr` | Land under the guarded policy. |
-| `tailrocks-pr-template` | Manage the PR template. |
+| [`tailrocks-repository-recover`](skills/tailrocks-repository-recover/SKILL.md) | Preserve local work. User-only. |
+| [`tailrocks-repository-merge`](skills/tailrocks-repository-merge/SKILL.md) | Integrate sources into one target. User-only. |
+| [`tailrocks-create-pr`](skills/tailrocks-create-pr/SKILL.md) | Open one pull request. |
+| [`tailrocks-refresh-pr`](skills/tailrocks-refresh-pr/SKILL.md) | Reconcile title and body. |
+| [`tailrocks-review-pr`](skills/tailrocks-review-pr/SKILL.md) | Review and report. Read-only. |
+| [`tailrocks-merge-pr`](skills/tailrocks-merge-pr/SKILL.md) | Land under the guarded policy. |
+| [`tailrocks-pr-template`](skills/tailrocks-pr-template/SKILL.md) | Manage the PR template. |
 
 Each skill body lives in its own directory. Read
 `skills/tailrocks-review-pr/SKILL.md` for one complete example.
@@ -79,14 +79,14 @@ is no longer needed. Commands per agent:
 
 - Claude Code: `claude plugin update
   tailrocks-repository-skills@tailrocks` or `claude plugin
-  marketplace update tailrocks`; remove with `claude plugin
-  uninstall tailrocks-repository-skills`.
-- Codex: `codex plugin marketplace upgrade tailrocks`; remove with
+  marketplace update tailrocks`. Remove with `claude plugin
+  uninstall tailrocks-repository-skills --scope user`.
+- Codex: `codex plugin marketplace upgrade tailrocks`. Remove with
   `codex plugin remove tailrocks-repository-skills@tailrocks`.
 - Muse: `muse plugins marketplace update tailrocks`, then the
-  remove plus install sequence; remove with `muse plugins remove
+  remove plus install sequence. Remove with `muse plugins remove
   tailrocks-repository-skills@tailrocks`.
-- Kimi session: no `update` subcommand; remove with `/plugins
+- Kimi session: no `update` subcommand. Remove with `/plugins
   remove tailrocks-repository-skills`, then `/reload`.
 - Amp, OpenCode, Antigravity, Grok: see
   `docs/installation.md` for the exact steps.

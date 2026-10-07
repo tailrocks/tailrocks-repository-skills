@@ -2,8 +2,8 @@
 
 Read this reference when step 10 deletes and step 11 scans finally.
 
-Contents: permission; writers; recheck; dependencies; retention modes;
-loose deletion; exact paths; shared stores; run directory; final scan;
+Contents: permission, writers, recheck, dependencies, retention modes,
+loose deletion, exact paths, shared stores, run directory, final scan,
 truthful completion.
 
 ## Permission

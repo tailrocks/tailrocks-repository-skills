@@ -3,8 +3,8 @@
 Read this reference when step 1 parses arguments. It defines every
 option, default, and conflict rule.
 
-Contents: repository and target; scope and output; cleanup; report mode;
-conflict rules; parsing rules; run header.
+Contents: repository and target, scope and output, cleanup, report mode,
+conflict rules, parsing rules, run header.
 
 ## Repository and target
 
@@ -29,7 +29,7 @@ conflict rules; parsing rules; run header.
 - `--root PATH` adds one explicit scan root. Repeat it for more roots.
   It requires `--scope roots`.
 - `--hint PATH` adds one search start. Repeat it for more hints. A hint
-  never reduces machine scope. Hints add coverage; they never replace
+  never reduces machine scope. Hints add coverage. They never replace
   the declared scope.
 - `--publish` authorizes Recovery branches, the findings PR, and
   Candidate PRs. Without `--publish`, the run reports only.
@@ -99,8 +99,8 @@ package from inside itself.
 
 ## Run header
 
-Record the run header before discovery: resolved repository, Target ref
-and SHA, every option value, host permissions, observation time, the
-Run directory path, and prior run IDs when continuing earlier work.
-Later steps read this header. They never re-parse
+Record the run header before discovery. Record the resolved repository,
+Target ref and SHA, every option value, host permissions, observation
+time, and the Run directory path. Record prior run IDs when continuing
+earlier work. Later steps read this header. They never re-parse
 the argument string.

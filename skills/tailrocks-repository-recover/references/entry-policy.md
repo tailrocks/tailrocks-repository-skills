@@ -3,8 +3,8 @@
 Read this reference first in step 1. It states who may start this
 skill on each client. It also applies to `tailrocks-repository-merge`.
 
-Contents: the rule; enforced routes; limited routes; preserved routes;
-subagents; what never authorizes; selection is not permission.
+Contents: the rule, enforced routes, limited routes, preserved routes,
+subagents, what never authorizes, selection is not permission.
 
 ## The rule
 
@@ -19,7 +19,7 @@ These clients enforce a user-only control. The package sets it.
 
 - **Claude Code.** Frontmatter `disable-model-invocation: true` with
   `user-invocable: true`. Documented effect: the user can invoke the
-  skill; Claude cannot invoke it alone; its description stays out of
+  skill. Claude cannot invoke it alone. Its description stays out of
   context until invoked. Users can also set `skillOverrides` to
   `user-invocable-only` without editing files. Source: Claude skills
   docs, checked 2026-10-07, docs current to v2.1.286. Alias caution: an
@@ -27,7 +27,7 @@ These clients enforce a user-only control. The package sets it.
   skill names exact and check `/skills` output after install.
 - **Codex.** `policy.allow_implicit_invocation: false` in
   `agents/openai.yaml`. Documented effect: Codex never invokes the skill
-  from a user prompt; explicit `$skill` invocation still works. Source:
+  from a user prompt. Explicit `$skill` invocation still works. Source:
   Codex skills docs (now hosted on learn.chatgpt.com), checked
   2026-10-07, no version shown. Coarse backup: `enabled=false` under
   `[[skills.config]]` in `~/.codex/config.toml`, then restart Codex.
@@ -36,7 +36,7 @@ These clients enforce a user-only control. The package sets it.
   true`. Documented effect: blocks automatic model invocation. Manual
   route: `/skill:<name>`. Source: Kimi skills docs, checked 2026-10-07,
   unversioned docs. Gap: an enabled plugin can force-load a skill at
-  session start through `sessionStart.skill`; the docs do not state that
+  session start through `sessionStart.skill`. The docs do not state that
   the gate blocks that path. Treat that path as a bypass until proven
   otherwise. Audit enabled plugins and remove that injection for these
   two skills. Never set `type: flow` on an invokable skill.
@@ -60,14 +60,14 @@ automatically callable substitute.
   `disableGlobalAgentsSkills`) and plugin allow-listing, because
   `registerSkill` is explicit per plugin and `skills/` never
   auto-scans. Remove untrusted `.amp/plugins/` directories and skill
-  repos. The skill description asks for user request first; that
-  phrasing persuades, it does not enforce.
+  repos. The skill description asks for user request first. That
+  phrasing persuades. It does not enforce.
 - **Antigravity CLI.** Frontmatter supports only `name` and
   `description`. No enforcement field exists. Invocation is always
   dual-path: the agent auto-reads relevant skills, and the CLI
   auto-converts every skill to a slash command. Plugin controls act per
   bundle only. Source: Antigravity skills docs, checked 2026-10-07. The
-  verified human route is `/<skill-name>`; the model path cannot be
+  verified human route is `/<skill-name>`. The model path cannot be
   blocked on this host.
 - **Muse Code.** No frontmatter enforcement field is documented. Skills
   load from built-in, user, project, and plugin sources, and a
@@ -75,7 +75,7 @@ automatically callable substitute.
   only gates are per-skill enable and project trust, which do not
   enforce invocation party. Source: Muse extending and configuration
   docs, checked 2026-10-07. The verified human route is the `/` picker
-  slash shortcut; the model path cannot be blocked on this host.
+  slash shortcut. The model path cannot be blocked on this host.
 
 Required host support for full enforcement on these three hosts: a
 documented per-skill manual-only flag honored on every discovery route,
@@ -83,8 +83,8 @@ including observers and plugin injection.
 
 ## Preserved routes
 
-- **Cursor.** Honors `disable-model-invocation`; `/`-menu selection is
-  the human route.
+- **Cursor.** Cursor honors `disable-model-invocation`. `/`-menu
+  selection is the human route.
 - **OpenCode.** Ignores manual-only frontmatter. Gate with
   `permission.skill`: set these two skills to `ask`. The skill body is
   the remaining boundary.

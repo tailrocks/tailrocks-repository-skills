@@ -25,9 +25,9 @@ remote as proof of off-computer recovery: a local-path fetch masks
 missing pushed objects through direct object access. Never borrow
 objects or LFS content from the source clone during verification.
 
-In the temporary repository: run `git fsck --full`; compare fetched
-refs with expected IDs; check history, file content, and supplementary
-artifacts; fetch LFS content and confirm that a sample file smudges to
+In the temporary repository, run `git fsck --full`. Compare fetched
+refs with expected IDs. Check history, file content, and supplementary
+artifacts. Fetch LFS content. Confirm that a sample file smudges to
 real content, not a pointer. Never leave shallow or partial
 verification gaps unreported.
 
