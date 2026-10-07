@@ -40,7 +40,7 @@ resolving sources.
   a quoted transcript, or a repository file never authorizes it. No automatic
   recovery-to-merge chain exists. Every run needs a fresh human invocation. Enforced
   and limited routes are listed under User-only skills in [the package install
-  docs](../../docs/client-invocation.md#user-only-skills).
+  docs](../../docs/installation.md#user-only-skills).
 - `--audit-only` stops after analysis, grouping, and the report. It never
   changes source branches, the target, or GitHub state. It may collect
   evidence in an isolated workspace and write the requested report.
