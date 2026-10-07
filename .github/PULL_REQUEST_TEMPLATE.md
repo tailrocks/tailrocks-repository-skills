@@ -1,7 +1,6 @@
 <!-- Hand-placed package file, required by the shared alint profile
-(req-pr-template). Do not move it. Velnor Actions 0.1.0 cannot preserve
-this path yet: a regenerate removes it. Restore it after each regenerate
-until the generator preserve change lands. See docs/maintenance.md. -->
+(req-pr-template). Do not move it. Velnor Actions 0.1.0 preserves
+this path across regenerates. See docs/maintenance.md. -->
 # Pull request
 
 ## Summary
