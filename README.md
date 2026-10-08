@@ -74,22 +74,19 @@ boundary.
 
 ## Update and remove
 
-Refresh the marketplace, then the plugin. Remove the plugin when it
-is no longer needed. Commands per agent:
+Refresh the marketplace first. Then refresh the plugin
+`tailrocks-repository-skills@tailrocks`. Remove the plugin when you
+no longer need it. Follow the lifecycle steps in the agent section
+of `docs/installation.md`:
 
-- Claude Code: `claude plugin update
-  tailrocks-repository-skills@tailrocks` or `claude plugin
-  marketplace update tailrocks`. Remove with `claude plugin
-  uninstall tailrocks-repository-skills --scope user`.
-- Codex: `codex plugin marketplace upgrade tailrocks`. Remove with
-  `codex plugin remove tailrocks-repository-skills@tailrocks`.
-- Muse: `muse plugins marketplace update tailrocks`, then the
-  remove plus install sequence. Remove with `muse plugins remove
-  tailrocks-repository-skills@tailrocks`.
-- Kimi session: no `update` subcommand. Remove with `/plugins
-  remove tailrocks-repository-skills`, then `/reload`.
-- Amp, OpenCode, Antigravity, Grok: see
-  `docs/installation.md` for the exact steps.
+- [Claude Code](docs/installation.md#claude-code)
+- [Codex](docs/installation.md#codex)
+- [Amp](docs/installation.md#amp)
+- [Muse Code](docs/installation.md#muse-code)
+- [OpenCode](docs/installation.md#opencode)
+- [Antigravity](docs/installation.md#antigravity)
+- [Grok Build](docs/installation.md#grok-build)
+- [Kimi Code](docs/installation.md#kimi-code)
 
 ## Contribute
 
