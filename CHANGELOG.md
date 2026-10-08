@@ -35,6 +35,12 @@ Applied the common active-package structure on branch
   the new prose. Retargeted the install-guide links in
   `skills/tailrocks-repository-merge/SKILL.md`.
 
+## 0.4.1 - 2026-10-08
+
+- Regenerated CI with Velnor Actions 0.1.4.
+- Replaced the `.github/CLAUDE.md` symlink with a regular pointer
+  file. Installers that reject symlinks now accept the package.
+
 ## 0.4.0 - 2026-10-07
 
 Seven-skill package at commit `759849769249b5a4ada95595914ab8e81daf618b`
