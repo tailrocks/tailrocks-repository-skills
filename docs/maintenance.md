@@ -123,9 +123,9 @@ step is necessary. See the CI source section below.
 - alint: v0.17.0.
 - Shared profile: `standards/alint/active.yml` at
   tailrocks-skills commit
-  `d54adec8f3188962cdd2b8298350d24114b87079`.
+  `7bdfcdd610aa95bb13f62261cda1a53f0fa870d3`.
 - Pin:
-  `sha256-80c782b168658bbfb10aa01f43712435ef20313f5af22ffaddd6b08256b22616`.
+  `sha256-dae9e8f91ac3f5e6a28fb56d67f230fc4c23cc4fbab4763ecc5cc5477a903fba`.
 - markdownlint-cli2: 0.23.3.
 
 Bump the pin in one pull request: update the REV and HASH together
