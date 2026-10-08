@@ -24,9 +24,16 @@ Applied the common active-package structure on branch
 - Replaced the old docs/client-invocation.md install guide with the
   six standard guides under `docs/`.
 - Added `AGENTS.md` and `.github/PULL_REQUEST_TEMPLATE.md`.
-- Retargeted one documentation link in
-  `skills/tailrocks-repository-merge/SKILL.md` to the new install
-  guide. No skill text changed.
+- Rewrote all seven `skills/*/SKILL.md` files in ASD-STE100
+  Simplified Technical English: `tailrocks-create-pr`,
+  `tailrocks-refresh-pr`, `tailrocks-review-pr`,
+  `tailrocks-merge-pr`, `tailrocks-pr-template`,
+  `tailrocks-repository-recover`, `tailrocks-repository-merge`.
+  Restated each procedure as numbered imperative steps with one
+  result section and one completion-check list. Kept every skill
+  task unchanged. Updated the companion reference files to match
+  the new prose. Retargeted the install-guide links in
+  `skills/tailrocks-repository-merge/SKILL.md`.
 
 ## 0.4.0 - 2026-10-07
 
