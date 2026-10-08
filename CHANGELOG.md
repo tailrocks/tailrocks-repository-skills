@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1 - 2026-10-08
 
 Applied the common active-package structure on branch
 `standardize/common-package`:
@@ -34,6 +34,9 @@ Applied the common active-package structure on branch
   task unchanged. Updated the companion reference files to match
   the new prose. Retargeted the install-guide links in
   `skills/tailrocks-repository-merge/SKILL.md`.
+- Regenerated CI with Velnor Actions 0.1.4.
+- Replaced the `.github/CLAUDE.md` symlink with a regular pointer
+  file. Installers that reject symlinks now accept the package.
 
 ## 0.4.0 - 2026-10-07
 
