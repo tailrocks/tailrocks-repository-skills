@@ -1,2 +1,0 @@
-# Validate local Markdown references without making external sites a CI dependency.
-offline = true
