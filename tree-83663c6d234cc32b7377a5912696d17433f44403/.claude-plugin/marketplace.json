@@ -1,0 +1,19 @@
+{
+  "name": "tailrocks-repository-skills",
+  "metadata": {
+    "description": "Self-hosted marketplace for the tailrocks-repository-skills plugin. Add this repository directly: /plugin marketplace add tailrocks/tailrocks-repository-skills"
+  },
+  "owner": {
+    "name": "tailrocks",
+    "url": "https://github.com/tailrocks"
+  },
+  "plugins": [
+    {
+      "name": "tailrocks-repository-skills",
+      "source": "./",
+      "description": "Target-bound repository convergence workflows.",
+      "version": "0.1.0",
+      "category": "Repository Skills"
+    }
+  ]
+}

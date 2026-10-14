@@ -1,0 +1,17 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "tailrocks-repository-skills",
+  "description": "Target-bound repository audit, convergence, pull-request lifecycle composition, and safe cleanup.",
+  "keywords": [
+    "repository",
+    "audit",
+    "convergence",
+    "pull-request",
+    "merge",
+    "cleanup",
+    "github",
+    "ci"
+  ],
+  "homepage": "https://github.com/tailrocks/tailrocks-repository-skills",
+  "repository": "https://github.com/tailrocks/tailrocks-repository-skills"
+}

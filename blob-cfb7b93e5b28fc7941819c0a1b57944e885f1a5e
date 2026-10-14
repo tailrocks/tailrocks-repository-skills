@@ -1,0 +1,20 @@
+{
+  "name": "tailrocks-repository-skills",
+  "description": "Repository source orchestration with read-only audit, one end-to-end merge workflow, and proof-gated cleanup.",
+  "version": "0.2.0",
+  "author": {
+    "name": "tailrocks",
+    "url": "https://github.com/tailrocks"
+  },
+  "homepage": "https://github.com/tailrocks/tailrocks-repository-skills",
+  "repository": "https://github.com/tailrocks/tailrocks-repository-skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "repository",
+    "audit",
+    "review",
+    "merge",
+    "cleanup",
+    "github"
+  ]
+}

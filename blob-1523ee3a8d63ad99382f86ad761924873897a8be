@@ -1,0 +1,43 @@
+{
+  "name": "tailrocks-repository-skills",
+  "version": "0.2.0",
+  "description": "Target-bound repository orchestration and fail-closed pull-request lifecycle skills.",
+  "keywords": [
+    "repository",
+    "github",
+    "code-review",
+    "merge",
+    "ci",
+    "documentation",
+    "pr-template",
+    "release-gates"
+  ],
+  "author": {
+    "name": "tailrocks",
+    "url": "https://github.com/tailrocks"
+  },
+  "homepage": "https://github.com/tailrocks/tailrocks-repository-skills",
+  "license": "Apache-2.0",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Repository Skills",
+    "shortDescription": "Target-bound repository and pull-request lifecycle workflows.",
+    "longDescription": "Target-bound repository orchestration with fail-closed pull-request creation, review, documentation, refresh, merge, templates, audit, and cleanup.",
+    "capabilities": [
+      "Create",
+      "Review",
+      "Document",
+      "Refresh",
+      "Merge",
+      "Audit",
+      "Cleanup"
+    ],
+    "websiteURL": "https://github.com/tailrocks/tailrocks-repository-skills",
+    "defaultPrompt": [
+      "Coordinate these sources into the exact selected repository target.",
+      "Review or create this pull request after its gates pass.",
+      "Merge this pull request only after all gates pass."
+    ]
+  },
+  "repository": "https://github.com/tailrocks/tailrocks-repository-skills"
+}

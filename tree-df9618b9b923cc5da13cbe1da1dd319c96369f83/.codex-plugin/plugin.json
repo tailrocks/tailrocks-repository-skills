@@ -1,0 +1,42 @@
+{
+  "name": "tailrocks-repository-skills",
+  "version": "0.1.0",
+  "description": "Target-bound repository audit, convergence, pull-request lifecycle composition, and safe cleanup.",
+  "author": {
+    "name": "tailrocks",
+    "url": "https://github.com/tailrocks"
+  },
+  "homepage": "https://github.com/tailrocks/tailrocks-repository-skills",
+  "repository": "https://github.com/tailrocks/tailrocks-repository-skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "repository",
+    "audit",
+    "convergence",
+    "pull-request",
+    "merge",
+    "cleanup",
+    "github",
+    "ci"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Repository Skills",
+    "shortDescription": "Target-bound repository convergence workflows.",
+    "longDescription": "Audit selected sources, adapt justified improvements to an explicit destination, land them through existing pull-request lifecycle skills, verify, resume, and clean only eligible sources.",
+    "developerName": "Tailrocks",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Audit",
+      "Converge",
+      "Merge",
+      "Cleanup"
+    ],
+    "websiteURL": "https://github.com/tailrocks/tailrocks-repository-skills",
+    "defaultPrompt": [
+      "Audit these repository sources against the selected target.",
+      "Converge these changes into the selected target and land them.",
+      "Resume the target-bound repository campaign."
+    ]
+  }
+}

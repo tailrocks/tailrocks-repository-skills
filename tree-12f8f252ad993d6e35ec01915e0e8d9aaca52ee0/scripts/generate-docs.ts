@@ -1,0 +1,57 @@
+import { mkdir, readdir, rm, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+type Catalog = { skills: string[] };
+const root = path.resolve(import.meta.dir, "..");
+const repo = path.basename(root);
+const docsRoot = path.join(root, "docs");
+const sourceBase = "https://github.com/tailrocks/" + repo + "/blob/main";
+const quoted = (value: string): string => JSON.stringify(value);
+
+function parseSkill(raw: string, expected: string): { description: string; argumentHint: string | null; body: string } {
+  const match = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!match) throw new Error(expected + ": missing frontmatter");
+  const values: Record<string, string> = {};
+  for (const line of match[1].split("\n")) {
+    const at = line.indexOf(":");
+    if (at < 0) continue;
+    values[line.slice(0, at).trim()] = line.slice(at + 1).trim().replace(/^['"]|['"]$/g, "");
+  }
+  if (values.name !== expected || !values.description) throw new Error(expected + ": invalid frontmatter");
+  return { description: values.description, argumentHint: values["argument-hint"] ?? null, body: match[2].trim() };
+}
+
+async function filesAt(skill: string, folder: string): Promise<string[]> {
+  try {
+    return (await readdir(path.join(root, "skills", skill, folder), { withFileTypes: true }))
+      .filter((entry) => entry.isFile()).map((entry) => entry.name).sort();
+  } catch { return []; }
+}
+
+async function main(): Promise<void> {
+  const catalog = JSON.parse(await readFile(path.join(root, "catalog.json"), "utf8")) as Catalog;
+  if (!Array.isArray(catalog.skills) || new Set(catalog.skills).size !== catalog.skills.length)
+    throw new Error("catalog.json must contain unique skills");
+  await rm(docsRoot, { recursive: true, force: true });
+  await mkdir(path.join(docsRoot, "skills"), { recursive: true });
+  const index: Array<Record<string, unknown>> = [];
+  for (const name of catalog.skills) {
+    const parsed = parseSkill(await readFile(path.join(root, "skills", name, "SKILL.md"), "utf8"), name);
+    const refs = await filesAt(name, "references");
+    const templates = await filesAt(name, "templates");
+    const source = sourceBase + "/skills/" + name + "/SKILL.md";
+    const target = path.join(docsRoot, "skills", name);
+    await mkdir(target, { recursive: true });
+    const links = (folder: string, files: string[]) => files.length
+      ? files.map((file) => "- [" + file + "](../../../skills/" + name + "/" + folder + "/" + file + ")").join("\n")
+      : "None.";
+    const definition = parsed.body.replace(/\]\((?:\.\/)?(references|templates)\/([^)]*)\)/g, "](" + sourceBase + "/skills/" + name + "/$1/$2)").replace(/\]\(SKILL\.md\)/g, "](" + source + ")");
+    await writeFile(path.join(target, "index.md"), "---\ntitle: " + quoted("Tailrocks: " + name) + "\ndescription: " + quoted(parsed.description) + "\n---\n\nGenerated from [" + name + "/SKILL.md](" + source + ").\n\n" + parsed.description + "\n\n[Read the complete skill definition](definition.md).\n\n## References\n\n" + links("references", refs) + "\n\n## Templates\n\n" + links("templates", templates) + "\n", "utf8");
+    await writeFile(path.join(target, "definition.md"), "---\ntitle: " + quoted("Tailrocks: " + name + " — Skill definition") + "\ndescription: " + quoted("Verbatim definition of " + name + ".") + "\n---\n\nSource: [SKILL.md](" + source + ")\n\n---\n\n" + definition + "\n", "utf8");
+    index.push({ name, description: parsed.description, argumentHint: parsed.argumentHint, overview: "skills/" + name + "/index.md", definition: "skills/" + name + "/definition.md", source });
+  }
+  await writeFile(path.join(docsRoot, "index.json"), JSON.stringify(index, null, 2) + "\n", "utf8");
+  await writeFile(path.join(docsRoot, "README.md"), "# " + repo + "\n\nGenerated documentation for " + catalog.skills.length + " skills.\n\nRegenerate with: bun scripts/generate-docs.ts\n\n## Skills\n\n" + catalog.skills.map((name) => "- [" + name + "](skills/" + name + "/index.md)").join("\n") + "\n", "utf8");
+}
+
+await main();

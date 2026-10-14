@@ -1,0 +1,22 @@
+{
+  "name": "tailrocks-pull-request-skills",
+  "description": "Fail-closed pull-request workflows for creation, review, documentation, refresh, merge, and repository-native templates.",
+  "version": "0.28.0",
+  "author": {
+    "name": "tailrocks",
+    "url": "https://github.com/tailrocks"
+  },
+  "homepage": "https://github.com/tailrocks/tailrocks-pull-request-skills",
+  "repository": "https://github.com/tailrocks/tailrocks-pull-request-skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "pull-request",
+    "github",
+    "code-review",
+    "merge",
+    "ci",
+    "documentation",
+    "pr-template",
+    "release-gates"
+  ]
+}

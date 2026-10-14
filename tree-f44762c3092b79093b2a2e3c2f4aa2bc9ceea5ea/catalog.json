@@ -1,0 +1,11 @@
+{
+  "skills": [
+    "tailrocks-repository-merge",
+    "tailrocks-create-pr",
+    "tailrocks-refresh-pr",
+    "tailrocks-review-pr",
+    "tailrocks-merge-pr",
+    "tailrocks-pr-template",
+    "tailrocks-repository-recover"
+  ]
+}

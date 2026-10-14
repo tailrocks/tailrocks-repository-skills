@@ -1,0 +1,19 @@
+{
+  "name": "tailrocks-pull-request-skills",
+  "metadata": {
+    "description": "Self-hosted marketplace for the tailrocks-pull-request-skills plugin. Add this repository directly: /plugin marketplace add tailrocks/tailrocks-pull-request-skills"
+  },
+  "owner": {
+    "name": "tailrocks",
+    "url": "https://github.com/tailrocks"
+  },
+  "plugins": [
+    {
+      "name": "tailrocks-pull-request-skills",
+      "source": "./",
+      "description": "Fail-closed pull-request workflows for creation, review, documentation, refresh, merge, and repository-native templates.",
+      "version": "0.28.0",
+      "category": "Pull Request Skills"
+    }
+  ]
+}

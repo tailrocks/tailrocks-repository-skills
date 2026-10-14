@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "release/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Run release version contract
+        run: tests/release-version-contract.sh
+      - name: Run Claude install contract
+        run: tests/claude-install-contract.sh
+      - name: Check shell syntax
+        run: |
+          for script in \
+            tests/claude-install-acceptance.sh \
+            tests/claude-install-contract.sh \
+            tests/release-version-contract.sh \
+            tests/release-version-guard.sh; do
+            sh -n "$script"
+          done
+      - name: Validate JSON manifests
+        run: |
+          jq -e . \
+            plugin.json \
+            .codex-plugin/plugin.json \
+            .claude-plugin/plugin.json \
+            .claude-plugin/marketplace.json \
+            .muse-plugin/plugin.json \
+            catalog.json
+      - name: Validate product inventory and manifest semantics
+        run: |
+          set -eu
+          expected_skills='tailrocks-repository-merge tailrocks-repository-audit tailrocks-repository-cleanup'
+          test "$(find skills -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')" = 3
+          test -z "$(find skills -mindepth 1 -maxdepth 1 ! -type d -print -quit)"
+          test "$(find skills -type f -name SKILL.md | wc -l | tr -d ' ')" = 3
+          for skill in $expected_skills; do
+            test -s "skills/$skill/SKILL.md"
+          done
+          jq -e --argjson expected '["tailrocks-repository-audit", "tailrocks-repository-cleanup", "tailrocks-repository-merge"]' \
+            '.skills | type == "array" and length == 3 and sort == $expected' catalog.json >/dev/null
+          jq -e '
+            .name == "tailrocks-repository-skills" and
+            (.version | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+$")) and
+            .skills == "./skills/" and (.interface | type == "object")
+          ' .codex-plugin/plugin.json >/dev/null
+          jq -e '
+            .name == "tailrocks-repository-skills" and
+            (.version | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))
+          ' .claude-plugin/plugin.json .muse-plugin/plugin.json >/dev/null
+          jq -e '
+            .plugins | type == "array" and length == 1 and
+            .[0].name == "tailrocks-repository-skills" and .[0].source == "./"
+          ' .claude-plugin/marketplace.json >/dev/null

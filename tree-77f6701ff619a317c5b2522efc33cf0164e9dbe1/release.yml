@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Verify exact tag matches plugin versions
+        run: tests/release-version-guard.sh
+      - name: Verify deterministic package and source contracts (no client or agent result claimed)
+        env:
+          TAILROCKS_PACKAGE_OUTPUT: ${{ github.workspace }}/tailrocks-repository-skills-${{ github.ref_name }}.tar
+          TAILROCKS_PACKAGE_CHECKSUM_OUTPUT: ${{ github.workspace }}/tailrocks-repository-skills-${{ github.ref_name }}.tar.sha256
+        run: |
+          for script in tests/*.sh tests/fixtures/*.sh; do
+            sh -n "$script"
+          done
+          tests/run-contracts.sh
+      - name: Independently verify package SHA-256 receipt
+        run: sha256sum -c "tailrocks-repository-skills-${{ github.ref_name }}.tar.sha256"
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            plugin.json
+            catalog.json
+            tailrocks-repository-skills-${{ github.ref_name }}.tar
+            tailrocks-repository-skills-${{ github.ref_name }}.tar.sha256

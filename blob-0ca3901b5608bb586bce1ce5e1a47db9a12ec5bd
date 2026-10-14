@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "name": "tailrocks-repository-skills",
+  "version": "0.2.0",
+  "displayName": "Tailrocks Repository Skills",
+  "description": "Repository source orchestration.",
+  "compat": {
+    "source": "native",
+    "manifestDir": ".muse-plugin"
+  },
+  "capabilities": {
+    "skills": [
+      {
+        "id": "repo-merge",
+        "path": "skills/repo-merge/SKILL.md"
+      },
+      {
+        "id": "tailrocks-repository-audit",
+        "path": "skills/tailrocks-repository-audit/SKILL.md"
+      },
+      {
+        "id": "tailrocks-repository-cleanup",
+        "path": "skills/tailrocks-repository-cleanup/SKILL.md"
+      }
+    ],
+    "hooks": [],
+    "mcpServers": [],
+    "commands": [],
+    "reminders": []
+  }
+}
