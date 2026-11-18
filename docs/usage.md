@@ -103,6 +103,24 @@ and the skill that owns it. The skill is read-only. A READY verdict is
 not a merge. The agent never decides READY itself. The reference
 `finding-codes.md` in the skill lists every finding code.
 
+## Example: land a pull request
+
+Invoke the merge owner with a pull-request number:
+
+```text
+/tailrocks-repository-skills:tailrocks-pr-merge 1663
+```
+
+The skill runs one script with four steps: `ready`, `merge`,
+`dequeue`, and `watch`. Each step prints its plan first and writes
+nothing. A second run with `--confirm` set to the pull-request number
+does the write. The `merge` step needs a READY verdict on the
+base-branch policy. It enters the merge queue with the head commit
+pinned, or merges directly with the policy method. It never uses admin
+bypass and never deletes a branch. The `watch` step reports the merge
+commit, or the reason that the pull request left the queue. The
+reference `merge-rules.md` in the skill lists the gates.
+
 ## Lifecycle boundary
 
 Local-work recovery belongs to `tailrocks-repository-recover`.
