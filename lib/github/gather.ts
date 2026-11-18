@@ -24,7 +24,16 @@ import {
   parseThreads,
   sha,
 } from "./parse.ts";
-import { BASE_QUERY, CONTEXTS_PAGE_QUERY, ISSUE_QUERY, MERGEABILITY_QUERY, PR_QUERY, THREADS_PAGE_QUERY } from "./queries.ts";
+import {
+  BASE_QUERY,
+  COMMITS_PAGE_QUERY,
+  CONTEXTS_PAGE_QUERY,
+  ISSUE_QUERY,
+  MERGEABILITY_QUERY,
+  PR_QUERY,
+  REVIEWS_PAGE_QUERY,
+  THREADS_PAGE_QUERY,
+} from "./queries.ts";
 import { arr, bool, isObj, member, num, numOrNull, obj, oneOf, path, ReadError, str, strOrNull } from "./read.ts";
 import { gatherRules } from "./rules.ts";
 
@@ -71,16 +80,32 @@ function page(value: unknown, where: string): Page {
   };
 }
 
-/** Follow `hasNextPage` for at most MAX_PAGES pages. */
+/** A page of a list that is read from the end: `last: 100, before: cursor`. */
+function backPage(value: unknown, where: string): Page {
+  const o = obj(value, where);
+  const info = member(o, "pageInfo");
+  return {
+    nodes: arr(member(o, "nodes"), `${where}.nodes`),
+    hasNext: isObj(info) && member(info, "hasPreviousPage") === true,
+    cursor: isObj(info) ? strOrNull(member(info, "startCursor"), `${where}.startCursor`) : null,
+  };
+}
+
+/**
+ * Follow pages until the list ends. At most MAX_PAGES pages (1000 items) are
+ * read in all. A list that is still open after that is truncated.
+ * `older` puts each new page before the ones read so far.
+ */
 async function allPages(
   first: Page,
-  next: (after: string) => Promise<Page>,
+  next: (cursor: string) => Promise<Page>,
+  older = false,
 ): Promise<{ readonly nodes: readonly unknown[]; readonly truncated: boolean }> {
-  const nodes = [...first.nodes];
+  let nodes = [...first.nodes];
   let current = first;
-  for (let i = 0; i < MAX_PAGES && current.hasNext && current.cursor !== null; i += 1) {
+  for (let i = 1; i < MAX_PAGES && current.hasNext && current.cursor !== null; i += 1) {
     current = await next(current.cursor);
-    nodes.push(...current.nodes);
+    nodes = older ? [...current.nodes, ...nodes] : [...nodes, ...current.nodes];
   }
   return { nodes, truncated: current.hasNext };
 }
@@ -228,11 +253,19 @@ async function gather(repo: RepoSlug, number: number, options: GatherOptions): P
   const checks = parseChecks(checkNodes, problems);
 
   // Commits, reviews
-  const commitsConnection = obj(member(pr, "commits"), "commits");
-  const commitNodes = arr(member(commitsConnection, "nodes"), "commits.nodes");
-  const commits = parseCommits(commitNodes, problems);
-  const reviewsConnection = obj(member(pr, "reviews"), "reviews");
-  const reviewNodes = arr(member(reviewsConnection, "nodes"), "reviews.nodes");
+  const commitPages = await allPages(
+    backPage(member(pr, "commits"), "commits"),
+    async (before) =>
+      backPage(path(await graphql(run, COMMITS_PAGE_QUERY, { id: text(nodeId), before: text(before) }), "node", "commits"), "commits page"),
+    true,
+  );
+  const commits = parseCommits(commitPages.nodes, problems);
+  const reviewPages = await allPages(
+    backPage(member(pr, "reviews"), "reviews"),
+    async (before) =>
+      backPage(path(await graphql(run, REVIEWS_PAGE_QUERY, { id: text(nodeId), before: text(before) }), "node", "reviews"), "reviews page"),
+    true,
+  );
   const opinionatedConnection = obj(member(pr, "latestOpinionatedReviews"), "latestOpinionatedReviews");
   const opinionatedNodes = arr(member(opinionatedConnection, "nodes"), "latestOpinionatedReviews.nodes");
   const labelsConnection = obj(member(pr, "labels"), "labels");
@@ -330,13 +363,13 @@ async function gather(repo: RepoSlug, number: number, options: GatherOptions): P
     labels: arr(member(labelsConnection, "nodes"), "labels.nodes").map((l) => str(member(obj(l, "label"), "name"), "label.name")),
     checks,
     checksTruncated,
-    reviews: parseReviews(reviewNodes, problems),
-    reviewsTruncated: num(member(reviewsConnection, "totalCount"), "reviews.totalCount") > reviewNodes.length,
+    reviews: parseReviews(reviewPages.nodes, problems),
+    reviewsTruncated: reviewPages.truncated,
     latestOpinionatedReviews: parseOpinionated(opinionatedNodes, problems),
     threads,
     threadsTruncated: threadPages.truncated,
     commits,
-    commitsTruncated: num(member(commitsConnection, "totalCount"), "commits.totalCount") > commitNodes.length,
+    commitsTruncated: commitPages.truncated,
     queueEntry: parseQueueEntry(member(pr, "mergeQueueEntry")),
     lastQueueRemoval,
     linkedIssues,

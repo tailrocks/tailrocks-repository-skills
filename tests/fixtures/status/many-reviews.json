@@ -1,0 +1,3086 @@
+{
+  "schema": 1,
+  "capturedAt": "2026-11-18T21:16:46.029Z",
+  "repo": "example-org/example-repo",
+  "defaultBranch": "main",
+  "number": 1107,
+  "nodeId": "PR_example_1107",
+  "state": "OPEN",
+  "isDraft": false,
+  "isCrossRepository": false,
+  "author": "user-a",
+  "title": "Example change 1107",
+  "body": "## Why\n## Change\n## Verification\n## Live proof on example-lab\nRefs #609",
+  "baseRef": "main",
+  "baseSha": "30615a25ca503a42211eb26ef0a7d9f558ef8ac9",
+  "headRef": "feature/1107",
+  "headSha": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+  "mergeable": "CONFLICTING",
+  "mergeStateStatus": "DIRTY",
+  "reviewDecision": null,
+  "behindBy": 39,
+  "labels": [],
+  "checks": [
+    {
+      "name": "Alint",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:23:22Z",
+      "completedAt": "2026-11-18T06:23:39Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Build Linux job image candidate",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Job image candidate",
+      "event": "push",
+      "startedAt": "2026-11-18T05:49:00Z",
+      "completedAt": "2026-11-18T05:53:13Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Plan",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T07:32:25Z",
+      "completedAt": "2026-11-18T07:33:27Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Cargo Deny",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:31:45Z",
+      "completedAt": "2026-11-18T06:32:07Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Attest Linux job image candidate",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Job image candidate",
+      "event": "push",
+      "startedAt": "2026-11-18T06:24:51Z",
+      "completedAt": "2026-11-18T06:25:08Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Select source qualification",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T07:35:50Z",
+      "completedAt": "2026-11-18T07:35:59Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Source qualification ordinary harness",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "failure",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T07:45:34Z",
+      "completedAt": "2026-11-18T07:45:45Z",
+      "attempts": 1,
+      "failedAttempts": 1
+    },
+    {
+      "name": "Publish Linux job image",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "skipped",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Job image candidate",
+      "event": "push",
+      "startedAt": "2026-11-18T06:25:09Z",
+      "completedAt": "2026-11-18T06:25:08Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Cargo Machete",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:44:46Z",
+      "completedAt": "2026-11-18T06:45:01Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Source qualification keep harness",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "failure",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T07:44:09Z",
+      "completedAt": "2026-11-18T07:44:27Z",
+      "attempts": 1,
+      "failedAttempts": 1
+    },
+    {
+      "name": "Jactionlint",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:36:53Z",
+      "completedAt": "2026-11-18T06:37:11Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Source qualification generation and repository checks",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "failure",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T07:43:06Z",
+      "completedAt": "2026-11-18T07:43:15Z",
+      "attempts": 1,
+      "failedAttempts": 1
+    },
+    {
+      "name": "Ledger CLI",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:53:07Z",
+      "completedAt": "2026-11-18T06:53:49Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Source qualification",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "failure",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T08:02:25Z",
+      "completedAt": "2026-11-18T08:02:37Z",
+      "attempts": 1,
+      "failedAttempts": 1
+    },
+    {
+      "name": "Plan",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:55:04Z",
+      "completedAt": "2026-11-18T06:55:59Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Check / generator-samples / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:02Z",
+      "completedAt": "2026-11-18T06:56:30Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Check / maintenance-helpers / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:16Z",
+      "completedAt": "2026-11-18T07:05:24Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-actionlint / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:14Z",
+      "completedAt": "2026-11-18T06:57:25Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-ansible / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:12Z",
+      "completedAt": "2026-11-18T06:57:16Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-bun / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:13Z",
+      "completedAt": "2026-11-18T06:57:22Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-cli / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:02Z",
+      "completedAt": "2026-11-18T07:02:03Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-contract / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:12Z",
+      "completedAt": "2026-11-18T06:57:16Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-dbt / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:11Z",
+      "completedAt": "2026-11-18T06:57:05Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-gradle / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:16Z",
+      "completedAt": "2026-11-18T06:57:13Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-mise / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:12Z",
+      "completedAt": "2026-11-18T06:57:18Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-orchestrator / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:12Z",
+      "completedAt": "2026-11-18T06:59:11Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-rust / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:02Z",
+      "completedAt": "2026-11-18T06:57:07Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-tofu / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:15Z",
+      "completedAt": "2026-11-18T06:57:15Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-workflow-renderer / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:14Z",
+      "completedAt": "2026-11-18T06:57:42Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-cache-rules / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:14Z",
+      "completedAt": "2026-11-18T06:57:00Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-ci / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:02Z",
+      "completedAt": "2026-11-18T06:58:16Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-gen / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:12Z",
+      "completedAt": "2026-11-18T06:57:14Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-local / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:11Z",
+      "completedAt": "2026-11-18T06:57:15Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-model / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:12Z",
+      "completedAt": "2026-11-18T06:56:54Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-release / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:16Z",
+      "completedAt": "2026-11-18T06:57:11Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-render / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:12Z",
+      "completedAt": "2026-11-18T06:57:08Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-resource-probe / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:15Z",
+      "completedAt": "2026-11-18T06:57:20Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-attestation / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:16Z",
+      "completedAt": "2026-11-18T06:57:20Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-cli / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:13Z",
+      "completedAt": "2026-11-18T06:59:11Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-core / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:15Z",
+      "completedAt": "2026-11-18T06:56:59Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-github / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:12Z",
+      "completedAt": "2026-11-18T06:57:09Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-host / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:14Z",
+      "completedAt": "2026-11-18T07:04:50Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-host (local-mode) / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:14Z",
+      "completedAt": "2026-11-18T07:04:49Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-image-manifest / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:15Z",
+      "completedAt": "2026-11-18T06:57:03Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-qualification / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:15Z",
+      "completedAt": "2026-11-18T06:57:23Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-rust / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T06:56:14Z",
+      "completedAt": "2026-11-18T06:57:08Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Required verdict",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": true,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T07:34:44Z",
+      "completedAt": "2026-11-18T07:35:18Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Required",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": true,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T07:39:57Z",
+      "completedAt": "2026-11-18T07:39:59Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "DCO",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 974774,
+      "workflow": null,
+      "event": null,
+      "startedAt": "2026-11-18T05:22:43Z",
+      "completedAt": "2026-11-18T05:22:44Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    }
+  ],
+  "checksTruncated": false,
+  "reviews": [
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "9a8a33a4ce921bbd8fc564efbc8c33eea74ae0c3",
+      "submittedAt": "2026-11-16T23:20:01Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "9a8a33a4ce921bbd8fc564efbc8c33eea74ae0c3",
+      "submittedAt": "2026-11-16T23:28:05Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "9a8a33a4ce921bbd8fc564efbc8c33eea74ae0c3",
+      "submittedAt": "2026-11-16T23:59:33Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "9a8a33a4ce921bbd8fc564efbc8c33eea74ae0c3",
+      "submittedAt": "2026-11-16T23:59:36Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "9a8a33a4ce921bbd8fc564efbc8c33eea74ae0c3",
+      "submittedAt": "2026-11-16T23:59:38Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "14fe59f522926b3463d7b59e928f56b09c5fe0e2",
+      "submittedAt": "2026-11-17T00:24:18Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "14fe59f522926b3463d7b59e928f56b09c5fe0e2",
+      "submittedAt": "2026-11-17T00:25:01Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "14fe59f522926b3463d7b59e928f56b09c5fe0e2",
+      "submittedAt": "2026-11-17T00:25:03Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "14fe59f522926b3463d7b59e928f56b09c5fe0e2",
+      "submittedAt": "2026-11-17T00:25:05Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "14fe59f522926b3463d7b59e928f56b09c5fe0e2",
+      "submittedAt": "2026-11-17T00:25:07Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "14fe59f522926b3463d7b59e928f56b09c5fe0e2",
+      "submittedAt": "2026-11-17T00:31:34Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "a09f58998e6347d011ce0f2ee1af0aad2ce363a4",
+      "submittedAt": "2026-11-17T00:47:20Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "a09f58998e6347d011ce0f2ee1af0aad2ce363a4",
+      "submittedAt": "2026-11-17T00:56:06Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "a09f58998e6347d011ce0f2ee1af0aad2ce363a4",
+      "submittedAt": "2026-11-17T00:57:15Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "cdd3f1a52654d9aad22d57ee08aac21f2b97cf0f",
+      "submittedAt": "2026-11-17T01:11:37Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "cdd3f1a52654d9aad22d57ee08aac21f2b97cf0f",
+      "submittedAt": "2026-11-17T01:17:25Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:41:30Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:41:32Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:41:33Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:41:35Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:41:37Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:41:40Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:41:41Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:41:43Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:42:02Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:46:22Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T02:48:46Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:10:20Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:10:22Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:10:24Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:10:26Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:10:28Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: changes needed",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:20:03Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:35:37Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:35:39Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:35:40Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:35:41Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:35:43Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:35:44Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:35:46Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:13Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:15Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:20Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:21Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:23Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:24Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:26Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:28Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:29Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:29Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:30Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:35Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: changes needed\n**P1",
+      "commit": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "submittedAt": "2026-11-17T03:36:42Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "f8546bcdd1ba782289c01f9ad035b460ae07839a",
+      "submittedAt": "2026-11-17T04:09:44Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "f8546bcdd1ba782289c01f9ad035b460ae07839a",
+      "submittedAt": "2026-11-17T04:10:40Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "f8546bcdd1ba782289c01f9ad035b460ae07839a",
+      "submittedAt": "2026-11-17T04:11:21Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "f8546bcdd1ba782289c01f9ad035b460ae07839a",
+      "submittedAt": "2026-11-17T04:16:46Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "f8546bcdd1ba782289c01f9ad035b460ae07839a",
+      "submittedAt": "2026-11-17T04:22:49Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:06:45Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:06:47Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:06:49Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:06:51Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:06:53Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:13:24Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:14:29Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:33:23Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:33:25Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:33:27Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "submittedAt": "2026-11-17T05:33:29Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "73f0a30254b837663d8464b090a4db1408df685f",
+      "submittedAt": "2026-11-17T07:02:31Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "73f0a30254b837663d8464b090a4db1408df685f",
+      "submittedAt": "2026-11-17T07:02:33Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "73f0a30254b837663d8464b090a4db1408df685f",
+      "submittedAt": "2026-11-17T07:02:36Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "73f0a30254b837663d8464b090a4db1408df685f",
+      "submittedAt": "2026-11-17T07:10:11Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "18b54645288f2bf431ea476b96399dd365b845e6",
+      "submittedAt": "2026-11-17T07:15:33Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "18b54645288f2bf431ea476b96399dd365b845e6",
+      "submittedAt": "2026-11-17T07:15:35Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "18b54645288f2bf431ea476b96399dd365b845e6",
+      "submittedAt": "2026-11-17T07:24:37Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "18b54645288f2bf431ea476b96399dd365b845e6",
+      "submittedAt": "2026-11-17T07:26:03Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "18b54645288f2bf431ea476b96399dd365b845e6",
+      "submittedAt": "2026-11-17T07:36:16Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "18b54645288f2bf431ea476b96399dd365b845e6",
+      "submittedAt": "2026-11-17T07:36:17Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+      "submittedAt": "2026-11-17T08:02:27Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+      "submittedAt": "2026-11-17T08:02:29Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: approve",
+      "commit": "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+      "submittedAt": "2026-11-17T08:43:39Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+      "submittedAt": "2026-11-17T08:43:47Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+      "submittedAt": "2026-11-17T08:43:49Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+      "submittedAt": "2026-11-17T08:43:50Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+      "submittedAt": "2026-11-17T08:43:52Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+      "submittedAt": "2026-11-17T08:43:53Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+      "submittedAt": "2026-11-17T08:43:55Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "0683010d8dba2985fbf2c2cdc1576b33a75a02d3",
+      "submittedAt": "2026-11-17T17:57:01Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "0683010d8dba2985fbf2c2cdc1576b33a75a02d3",
+      "submittedAt": "2026-11-17T18:01:03Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "3d130f97000c6a810013b2261919fa0a99011dcd",
+      "submittedAt": "2026-11-17T18:31:18Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: approve",
+      "commit": "3d130f97000c6a810013b2261919fa0a99011dcd",
+      "submittedAt": "2026-11-17T19:01:32Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: approve",
+      "commit": "75d818a907b45c8e36acdc161ba36e2cbb37fee5",
+      "submittedAt": "2026-11-17T19:49:32Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "75d818a907b45c8e36acdc161ba36e2cbb37fee5",
+      "submittedAt": "2026-11-17T19:57:28Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "08e0982800833573b97288c10fc8e1a8ff9307b1",
+      "submittedAt": "2026-11-18T04:06:36Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "08e0982800833573b97288c10fc8e1a8ff9307b1",
+      "submittedAt": "2026-11-18T04:11:28Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: changes needed\nP1:",
+      "commit": "08e0982800833573b97288c10fc8e1a8ff9307b1",
+      "submittedAt": "2026-11-18T04:59:26Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T05:29:49Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T05:31:01Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T05:31:02Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T05:33:09Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: changes needed",
+      "commit": "08e0982800833573b97288c10fc8e1a8ff9307b1",
+      "submittedAt": "2026-11-18T05:33:50Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: approve",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T11:24:00Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T11:24:10Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T11:24:20Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T11:24:26Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T11:24:28Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: approve",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T13:52:05Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: changes needed\n## P1\nP1 1",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T14:12:30Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: approve",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T14:32:57Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: approve",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T15:03:55Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: approve",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T16:46:27Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: approve",
+      "commit": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "submittedAt": "2026-11-18T17:21:37Z"
+    }
+  ],
+  "reviewsTruncated": false,
+  "latestOpinionatedReviews": [],
+  "threads": [
+    {
+      "id": "thread-1",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-1.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Enforce an a",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-2",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-2.rs",
+      "line": 100,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Stage deltas",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-3",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-3.rs",
+      "line": 45,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Keep delta s",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-4",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-4.rs",
+      "line": 59,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Report faile",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-5",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-5.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Encode delta",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-6",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-6.rs",
+      "line": 21,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Skip delta l",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-7",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-7.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Exclude only",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-8",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-8.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Include file",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-9",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-9.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve dir",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-10",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-10.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Replace hard",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-11",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-11.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Recover when",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-12",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-12.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Bound delta ",
+      "lastAuthor": "user-a",
+      "commentCount": 4
+    },
+    {
+      "id": "thread-13",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-13.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Disambiguate",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-14",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-14.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Authenticate",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-15",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-15.rs",
+      "line": 59,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "<!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-16",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-16.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Decline delt",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-17",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-17.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Skip cleanup",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-18",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-18.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Delete resto",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-19",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-19.rs",
+      "line": 26,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Skip impossi",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-20",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-20.rs",
+      "line": 85,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "P1 <!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 6
+    },
+    {
+      "id": "thread-21",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-21.rs",
+      "line": 44,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "<!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 4
+    },
+    {
+      "id": "thread-22",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-22.rs",
+      "line": 106,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve har",
+      "lastAuthor": "user-a",
+      "commentCount": 4
+    },
+    {
+      "id": "thread-23",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-23.rs",
+      "line": 106,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Stream the c",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-24",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-24.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Bound the pa",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-25",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-25.rs",
+      "line": 67,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve the",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-26",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-26.rs",
+      "line": 114,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Detect compi",
+      "lastAuthor": "user-a",
+      "commentCount": 3
+    },
+    {
+      "id": "thread-27",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-27.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Decline post",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-28",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-28.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Skip deltas ",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-29",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-29.rs",
+      "line": 78,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "<!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-30",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-30.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "<!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-31",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-31.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Decline delt",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-32",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-32.rs",
+      "line": 118,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Preserve fra",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-33",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-33.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Refuse delta",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-34",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-34.rs",
+      "line": 72,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Namespace th",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-35",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-35.rs",
+      "line": 258,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "<!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-36",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-36.rs",
+      "line": 37,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Preserve una",
+      "lastAuthor": "chatgpt-codex-connector",
+      "commentCount": 1
+    },
+    {
+      "id": "thread-37",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-37.rs",
+      "line": 159,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bump cache c",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-38",
+      "isResolved": true,
+      "isOutdated": true,
+      "path": "src/file-38.rs",
+      "line": null,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Keep PR delt",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-39",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-39.rs",
+      "line": 86,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "P1 <!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-40",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-40.rs",
+      "line": 13,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Bound aggreg",
+      "lastAuthor": "chatgpt-codex-connector",
+      "commentCount": 1
+    },
+    {
+      "id": "thread-41",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-41.rs",
+      "line": 173,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "<!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "chatgpt-codex-connector",
+      "commentCount": 1
+    },
+    {
+      "id": "thread-42",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-42.rs",
+      "line": 28,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Skip source ",
+      "lastAuthor": "chatgpt-codex-connector",
+      "commentCount": 1
+    },
+    {
+      "id": "thread-43",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-43.rs",
+      "line": 214,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "<!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-44",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-44.rs",
+      "line": 129,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Refuse delta",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-45",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-45.rs",
+      "line": 94,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "<!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-46",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-46.rs",
+      "line": 20,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Validate sta",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-47",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-47.rs",
+      "line": 279,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Omit delta s",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-48",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-48.rs",
+      "line": 33,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "P1 <!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    }
+  ],
+  "threadsTruncated": false,
+  "commits": [
+    {
+      "oid": "197c08e124123e7d5988ef8bd431084296059baf",
+      "parents": [
+        "1be2ed95c6bf746783abb208b893db148e891b98"
+      ],
+      "tree": "03484415434a4facec05a93546122141a5369d7e",
+      "message": "commit 197c08e\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T14:48:24Z"
+    },
+    {
+      "oid": "e0c3ef35c2b5e197d7670035c8917751d799a6da",
+      "parents": [
+        "197c08e124123e7d5988ef8bd431084296059baf"
+      ],
+      "tree": "8dc93b2940372154420fafa7a33f78c98f0199c2",
+      "message": "commit e0c3ef3\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T15:01:08Z"
+    },
+    {
+      "oid": "a7ac14d1b33f5990ae96baedd2d2180f4b068bf7",
+      "parents": [
+        "e0c3ef35c2b5e197d7670035c8917751d799a6da",
+        "11a4c95747c75d2e2153d052eb1c82348492a31e"
+      ],
+      "tree": "abc5bfe5f915d29e4eb8bf9cfa111a4d2142f265",
+      "message": "commit a7ac14d\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T15:02:43Z"
+    },
+    {
+      "oid": "18c650e8792dba1d28b55338ffc64973c0acdb2e",
+      "parents": [
+        "a7ac14d1b33f5990ae96baedd2d2180f4b068bf7"
+      ],
+      "tree": "370a81b5ddad0ddf804ef99d61b8d4d96cf512ad",
+      "message": "commit 18c650e\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T15:18:51Z"
+    },
+    {
+      "oid": "2af83cffbf1f61dfb31a338a383328741a8dd0d9",
+      "parents": [
+        "18c650e8792dba1d28b55338ffc64973c0acdb2e"
+      ],
+      "tree": "99738bc0450032be7ed879ffff5a2cea9345204c",
+      "message": "commit 2af83cf\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T15:27:24Z"
+    },
+    {
+      "oid": "3c3315a4faf1e4ec3afb573e2bfac56b5fb78685",
+      "parents": [
+        "2af83cffbf1f61dfb31a338a383328741a8dd0d9"
+      ],
+      "tree": "53bf5af89d9e5239a0d726d1f5d476935f11a910",
+      "message": "commit 3c3315a\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T15:54:16Z"
+    },
+    {
+      "oid": "1b8dfc875031dea3902ee4dd2392f5fe01b0fbe3",
+      "parents": [
+        "3c3315a4faf1e4ec3afb573e2bfac56b5fb78685"
+      ],
+      "tree": "3d536534bfeca1a5eb306c78460d1cd8c9357a04",
+      "message": "commit 1b8dfc8\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T16:04:56Z"
+    },
+    {
+      "oid": "03b41e7d717d8c10883def4bf321182a8a6d2056",
+      "parents": [
+        "1b8dfc875031dea3902ee4dd2392f5fe01b0fbe3",
+        "0700cd61b933f508f566542794a7ed509dae9972"
+      ],
+      "tree": "ab12a7c1239397857baa48217eb5004341868c82",
+      "message": "commit 03b41e7\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T16:21:14Z"
+    },
+    {
+      "oid": "d05e81f894564ef639c929af2d69f8838108da49",
+      "parents": [
+        "03b41e7d717d8c10883def4bf321182a8a6d2056"
+      ],
+      "tree": "0c43cb057c8d98b4220f052af1f0e78255dee308",
+      "message": "commit d05e81f\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T16:38:25Z"
+    },
+    {
+      "oid": "0e0af2a653850412695b46432d422471ca61508e",
+      "parents": [
+        "d05e81f894564ef639c929af2d69f8838108da49",
+        "838b5dbef9daa61013139e294315fc549bc466b7"
+      ],
+      "tree": "ad5e6e6ba161b4ba32a7bc9d597ecee63b16fdd4",
+      "message": "commit 0e0af2a\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T16:40:41Z"
+    },
+    {
+      "oid": "a349144e3ad57cc11bd6784d4d2ca1f6df2ff69d",
+      "parents": [
+        "0e0af2a653850412695b46432d422471ca61508e",
+        "06e7cd3edaca7e56ed4382b96301ed8d5d81ca5d"
+      ],
+      "tree": "1b03ea95527c9a233d799904b5d68221addff864",
+      "message": "commit a349144\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T17:09:09Z"
+    },
+    {
+      "oid": "4401ba3645942b580ca5dc910e83fce2f02d524e",
+      "parents": [
+        "a349144e3ad57cc11bd6784d4d2ca1f6df2ff69d"
+      ],
+      "tree": "8f075473cdd3dab8a6d6057888c138acd81aa6e5",
+      "message": "commit 4401ba3\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T17:09:09Z"
+    },
+    {
+      "oid": "aed2d7fd53e3067d5787f1be0e62e318b7f490c0",
+      "parents": [
+        "4401ba3645942b580ca5dc910e83fce2f02d524e"
+      ],
+      "tree": "c102e2d99ce0ef86750266360ea934224d7189a6",
+      "message": "commit aed2d7f\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T17:14:06Z"
+    },
+    {
+      "oid": "ccb37e46016de6fea49b069ffde96a2ee12ccd23",
+      "parents": [
+        "aed2d7fd53e3067d5787f1be0e62e318b7f490c0"
+      ],
+      "tree": "2d8819a88dc17d5d6a2838dcca4e73c83207d4fe",
+      "message": "commit ccb37e4\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T17:18:15Z"
+    },
+    {
+      "oid": "8d5d66ffc1a4e18e8da55ef086c94c49fa9eff52",
+      "parents": [
+        "ccb37e46016de6fea49b069ffde96a2ee12ccd23"
+      ],
+      "tree": "028ba333de41886ec235be56e1a2ca93408ae0ef",
+      "message": "commit 8d5d66f\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T17:36:33Z"
+    },
+    {
+      "oid": "dc3b85f5c16ec17c951d871be8d404b580f91d9a",
+      "parents": [
+        "8d5d66ffc1a4e18e8da55ef086c94c49fa9eff52",
+        "ac512ed6658d00e1a5bbf14117f1d765627b839b"
+      ],
+      "tree": "7fe955d02cfccbdeee0124372f59dd5450cab823",
+      "message": "commit dc3b85f\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T17:36:33Z"
+    },
+    {
+      "oid": "c139a166e7d033a1aa1b5c32827945a4d4b6f014",
+      "parents": [
+        "dc3b85f5c16ec17c951d871be8d404b580f91d9a"
+      ],
+      "tree": "342ef00e84718ae0c371c622b141068634206588",
+      "message": "commit c139a16\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T18:19:41Z"
+    },
+    {
+      "oid": "b44c2c95fc608463dc66679491e6d9d1ee90661a",
+      "parents": [
+        "c139a166e7d033a1aa1b5c32827945a4d4b6f014",
+        "6d830d80b4f73c9bf7aba1b21e08be92abaa8c58"
+      ],
+      "tree": "6a596f6dbd1ce95f8ab8ef28bf743daa7c8ad104",
+      "message": "commit b44c2c9\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T18:38:06Z"
+    },
+    {
+      "oid": "796f272de01bee18e5110ad6ffda0306c3a0cd6c",
+      "parents": [
+        "b44c2c95fc608463dc66679491e6d9d1ee90661a"
+      ],
+      "tree": "30c08a5a096c68725ba0d05a58f1d0a41145ea7e",
+      "message": "commit 796f272\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T18:42:23Z"
+    },
+    {
+      "oid": "5be8080a805b297a8bc222837a63968c43ef1305",
+      "parents": [
+        "796f272de01bee18e5110ad6ffda0306c3a0cd6c"
+      ],
+      "tree": "0f7d732fb6886aef38f401f4ab047530cd0d7fd3",
+      "message": "commit 5be8080\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T18:57:31Z"
+    },
+    {
+      "oid": "4e30b4e1d7586675055e85103643cf7334dbeece",
+      "parents": [
+        "5be8080a805b297a8bc222837a63968c43ef1305"
+      ],
+      "tree": "38b34c3d74ed5dcea4bf870c84d6985a8ab320a6",
+      "message": "commit 4e30b4e\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T19:07:14Z"
+    },
+    {
+      "oid": "7679104a656711b79aa1f22c9b0a5823f4cacdf0",
+      "parents": [
+        "4e30b4e1d7586675055e85103643cf7334dbeece"
+      ],
+      "tree": "0163e558e5e1a4362be4ef101685d8b85421a279",
+      "message": "commit 7679104\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T19:12:56Z"
+    },
+    {
+      "oid": "cbbec1c46aaa5fa14704692a2427bd86ae0c1014",
+      "parents": [
+        "7679104a656711b79aa1f22c9b0a5823f4cacdf0",
+        "5faa43213a8fe22724088d7eb6e848620dcb5c3b"
+      ],
+      "tree": "1c1ac41468ef731b09eb110e52a3d1aa01d9dcca",
+      "message": "commit cbbec1c\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T19:46:49Z"
+    },
+    {
+      "oid": "04be1ab153cd82300ff706feb5328c3bf2a917d9",
+      "parents": [
+        "cbbec1c46aaa5fa14704692a2427bd86ae0c1014"
+      ],
+      "tree": "7b2ec6e22b8ff2cc1c54165821246dba17cc08ff",
+      "message": "commit 04be1ab\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T20:11:39Z"
+    },
+    {
+      "oid": "33c6b25eec5763ef9be78f4d40038498950d2707",
+      "parents": [
+        "04be1ab153cd82300ff706feb5328c3bf2a917d9"
+      ],
+      "tree": "a6591beca1746dfaec587c2565131bcad0332046",
+      "message": "commit 33c6b25\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T20:12:47Z"
+    },
+    {
+      "oid": "8eedfe2255e86b4375a45e434129abe0389cc315",
+      "parents": [
+        "33c6b25eec5763ef9be78f4d40038498950d2707"
+      ],
+      "tree": "7e5149c7a092013c10627207aa13cfa33041e751",
+      "message": "commit 8eedfe2\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T21:01:29Z"
+    },
+    {
+      "oid": "675db15a9484f74fa362977eed86f1682658d58c",
+      "parents": [
+        "8eedfe2255e86b4375a45e434129abe0389cc315",
+        "e4cb185c5eb26b63a57ceba49c1c84ff88161ed8"
+      ],
+      "tree": "1bab184beb5a7a1516e8d051a75282208d2724e1",
+      "message": "commit 675db15\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T21:01:30Z"
+    },
+    {
+      "oid": "4c4a32a4a4323c945ab48b6a8bc8c629d9689d74",
+      "parents": [
+        "33c6b25eec5763ef9be78f4d40038498950d2707"
+      ],
+      "tree": "687fc2928b305adc8bd910d1cd213b82718cad6c",
+      "message": "commit 4c4a32a\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T21:05:49Z"
+    },
+    {
+      "oid": "51ff983840bc3bb5e69fcb67741ed9b7c58898ce",
+      "parents": [
+        "675db15a9484f74fa362977eed86f1682658d58c"
+      ],
+      "tree": "22c6bd264d87a7e9bbe5212db0359ebdd29b49c9",
+      "message": "commit 51ff983\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T21:12:17Z"
+    },
+    {
+      "oid": "acd5881198153dfda2592ad9a1adf6b0c48e559f",
+      "parents": [
+        "4c4a32a4a4323c945ab48b6a8bc8c629d9689d74"
+      ],
+      "tree": "86084c3a3fa90b935b2820e405ec7c7af7e8eb2a",
+      "message": "commit acd5881\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T21:14:44Z"
+    },
+    {
+      "oid": "c3268768bf059640b0b705e1fabee8d56f4e7e0f",
+      "parents": [
+        "acd5881198153dfda2592ad9a1adf6b0c48e559f",
+        "51ff983840bc3bb5e69fcb67741ed9b7c58898ce"
+      ],
+      "tree": "124e8c01493a3e3ee18649cec9d1654e735374c2",
+      "message": "commit c326876\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T21:22:03Z"
+    },
+    {
+      "oid": "3a22673729c8acb588ef2c403c053c4487d6a7e7",
+      "parents": [
+        "c3268768bf059640b0b705e1fabee8d56f4e7e0f"
+      ],
+      "tree": "a334627c9ec9904a38df71355cac91bd8e059ef8",
+      "message": "commit 3a22673\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T21:25:29Z"
+    },
+    {
+      "oid": "1601e36d4feb40b6b48702b26c29372fb6bed666",
+      "parents": [
+        "3a22673729c8acb588ef2c403c053c4487d6a7e7"
+      ],
+      "tree": "c426ec6ac11609ab867d50768dc45618ae9684ad",
+      "message": "commit 1601e36\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T21:29:00Z"
+    },
+    {
+      "oid": "5ec12da2b9457c9e2e4263345d9e937fc02d12dc",
+      "parents": [
+        "51ff983840bc3bb5e69fcb67741ed9b7c58898ce",
+        "ede45522dc1e16a40401a8f0a127ae30b48abfbf"
+      ],
+      "tree": "048b637dbd47b7e6c823b43e932d398977f0a85a",
+      "message": "commit 5ec12da\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T21:53:12Z"
+    },
+    {
+      "oid": "13e83ada4d71531c280ba5579da25c0fc15cc566",
+      "parents": [
+        "5ec12da2b9457c9e2e4263345d9e937fc02d12dc"
+      ],
+      "tree": "a3a150a670d2a4ade5e1e610edbcf426939c0cca",
+      "message": "commit 13e83ad\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T21:53:27Z"
+    },
+    {
+      "oid": "b49aed9c4ce99ef38d6410e4b7c0ee7b8247ba3c",
+      "parents": [
+        "1601e36d4feb40b6b48702b26c29372fb6bed666"
+      ],
+      "tree": "53e4423eb65aa48f96154dda8b449eaf24018407",
+      "message": "commit b49aed9\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T22:13:33Z"
+    },
+    {
+      "oid": "3ed9c7f85282b7515239f9319f09beff1cad24e9",
+      "parents": [
+        "13e83ada4d71531c280ba5579da25c0fc15cc566"
+      ],
+      "tree": "eb3b30c648e3bb67b7a7a43c69146acf1a8ec8ff",
+      "message": "commit 3ed9c7f\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T22:33:00Z"
+    },
+    {
+      "oid": "0b0bf06d1df0d25e79f3bb37b7d9dd934fca3337",
+      "parents": [
+        "b49aed9c4ce99ef38d6410e4b7c0ee7b8247ba3c",
+        "3ed9c7f85282b7515239f9319f09beff1cad24e9"
+      ],
+      "tree": "b54968eb022317055679ce3bea8019f0c2801087",
+      "message": "commit 0b0bf06\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T23:09:21Z"
+    },
+    {
+      "oid": "9be5854b63c40b3c1e3f05c83e27f51bdcfc7f9b",
+      "parents": [
+        "0b0bf06d1df0d25e79f3bb37b7d9dd934fca3337"
+      ],
+      "tree": "3e4846d67e9a20befd4f6ac233a358645faa28e6",
+      "message": "commit 9be5854\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T23:10:32Z"
+    },
+    {
+      "oid": "055c20c3a3d9b57ebc2d56b29227873737220962",
+      "parents": [
+        "3ed9c7f85282b7515239f9319f09beff1cad24e9"
+      ],
+      "tree": "2221d060a09d7370340540d0b1736e656f76ae84",
+      "message": "commit 055c20c\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T23:10:56Z"
+    },
+    {
+      "oid": "9a8a33a4ce921bbd8fc564efbc8c33eea74ae0c3",
+      "parents": [
+        "9be5854b63c40b3c1e3f05c83e27f51bdcfc7f9b",
+        "055c20c3a3d9b57ebc2d56b29227873737220962"
+      ],
+      "tree": "a3a634775276bdcda9f666d8893e8111e63d17e5",
+      "message": "commit 9a8a33a\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T23:17:59Z"
+    },
+    {
+      "oid": "ef5fd4470d235d80463787fd8dc04208e57f488e",
+      "parents": [
+        "055c20c3a3d9b57ebc2d56b29227873737220962"
+      ],
+      "tree": "7d719e030709ae2ca82a0a7cdb575a48d67e6747",
+      "message": "commit ef5fd44\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-16T23:29:32Z"
+    },
+    {
+      "oid": "5b1f66228e264fe8ee49f84ad766cd474f19dc0d",
+      "parents": [
+        "ef5fd4470d235d80463787fd8dc04208e57f488e"
+      ],
+      "tree": "57cff5e6ea8041a16a9f344cdf6131ad5c87bc53",
+      "message": "commit 5b1f662\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T00:09:44Z"
+    },
+    {
+      "oid": "860192283434ffdca443bb1693fb17b6dd946c74",
+      "parents": [
+        "5b1f66228e264fe8ee49f84ad766cd474f19dc0d",
+        "8e624be902d8268626f24419fd034697ae54f560"
+      ],
+      "tree": "a5b4c55a1b3cec0144b65b10f52ed88a027afd60",
+      "message": "commit 8601922\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T00:09:44Z"
+    },
+    {
+      "oid": "7ef64287789f0f869544f3151ba7b42f437f8868",
+      "parents": [
+        "860192283434ffdca443bb1693fb17b6dd946c74"
+      ],
+      "tree": "26321679f230e6e7023e99e3e29e1cd121d063b4",
+      "message": "commit 7ef6428\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T00:11:34Z"
+    },
+    {
+      "oid": "1f456ffd2a3ed47e3e7b463595be384c0adbc741",
+      "parents": [
+        "7ef64287789f0f869544f3151ba7b42f437f8868"
+      ],
+      "tree": "eb83594502254ab20597b11d1f0c58b8dd4557e0",
+      "message": "commit 1f456ff\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T00:12:01Z"
+    },
+    {
+      "oid": "3bd9a480e8d19ed5890b50a799903cc06a971ca1",
+      "parents": [
+        "9a8a33a4ce921bbd8fc564efbc8c33eea74ae0c3"
+      ],
+      "tree": "cb7fef259a0520cc4efe82e0439435ee473ea239",
+      "message": "commit 3bd9a48\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T00:12:08Z"
+    },
+    {
+      "oid": "d6ad2518574265a45f65f25c7cb4d33f33dfe0c5",
+      "parents": [
+        "3bd9a480e8d19ed5890b50a799903cc06a971ca1"
+      ],
+      "tree": "11e2791527ee53b5ff0a03c6587b3449eeda78d3",
+      "message": "commit d6ad251\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T00:16:20Z"
+    },
+    {
+      "oid": "28e73080ee8561226639f16444da10db9aac6173",
+      "parents": [
+        "1f456ffd2a3ed47e3e7b463595be384c0adbc741"
+      ],
+      "tree": "faa9f90d0a611d88a494fdc3360a77b2c5442ee9",
+      "message": "commit 28e7308\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T00:19:52Z"
+    },
+    {
+      "oid": "14fe59f522926b3463d7b59e928f56b09c5fe0e2",
+      "parents": [
+        "d6ad2518574265a45f65f25c7cb4d33f33dfe0c5"
+      ],
+      "tree": "44a71492e0628400670b879d7960c486d78afc1a",
+      "message": "commit 14fe59f\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T00:22:42Z"
+    },
+    {
+      "oid": "fff26c903fa7133f86fcfbed7486825cec60a1ac",
+      "parents": [
+        "14fe59f522926b3463d7b59e928f56b09c5fe0e2",
+        "28e73080ee8561226639f16444da10db9aac6173"
+      ],
+      "tree": "940c64266e01024035dc194ad96e058e73f05f70",
+      "message": "commit fff26c9\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T00:34:24Z"
+    },
+    {
+      "oid": "a09f58998e6347d011ce0f2ee1af0aad2ce363a4",
+      "parents": [
+        "fff26c903fa7133f86fcfbed7486825cec60a1ac"
+      ],
+      "tree": "003bda6f5371c23e84eec9a8031b23c8c27650f4",
+      "message": "commit a09f589\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T00:43:14Z"
+    },
+    {
+      "oid": "cdd3f1a52654d9aad22d57ee08aac21f2b97cf0f",
+      "parents": [
+        "a09f58998e6347d011ce0f2ee1af0aad2ce363a4"
+      ],
+      "tree": "b50e0050fb795a88c2d2d29db52b1d672097e252",
+      "message": "commit cdd3f1a\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T01:06:24Z"
+    },
+    {
+      "oid": "e86581d50a22fceb05414e02f558e60fe6c74fd9",
+      "parents": [
+        "cdd3f1a52654d9aad22d57ee08aac21f2b97cf0f"
+      ],
+      "tree": "ff54c21990737810f8bc3d23dad47a4df3a118b5",
+      "message": "commit e86581d\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T02:26:06Z"
+    },
+    {
+      "oid": "8aecc615b6dff25b7334378ef63c925654adc696",
+      "parents": [
+        "e86581d50a22fceb05414e02f558e60fe6c74fd9"
+      ],
+      "tree": "f74c0e7a0176339c083471c8b71bf429c076769c",
+      "message": "commit 8aecc61\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T03:50:27Z"
+    },
+    {
+      "oid": "f8546bcdd1ba782289c01f9ad035b460ae07839a",
+      "parents": [
+        "8aecc615b6dff25b7334378ef63c925654adc696"
+      ],
+      "tree": "97ddac0e0d08157609b332fa78275a292d899916",
+      "message": "commit f8546bc\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T04:02:39Z"
+    },
+    {
+      "oid": "d351b9628ab6971dbc223d71b04360b97b058d26",
+      "parents": [
+        "f8546bcdd1ba782289c01f9ad035b460ae07839a"
+      ],
+      "tree": "43d32030c1f2cd8775f5a5f6076b870027f8659e",
+      "message": "commit d351b96\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T04:41:01Z"
+    },
+    {
+      "oid": "e9d48ed1bd4a7e9cda6ffe732071f1b63c2757ce",
+      "parents": [
+        "d351b9628ab6971dbc223d71b04360b97b058d26"
+      ],
+      "tree": "fb781987539c75789f66844d0c692a4a95feff21",
+      "message": "commit e9d48ed\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T04:48:02Z"
+    },
+    {
+      "oid": "59859e0d980dd7b4eb4cbd4566c87bab7db9a36a",
+      "parents": [
+        "e9d48ed1bd4a7e9cda6ffe732071f1b63c2757ce"
+      ],
+      "tree": "bb61c6ce1ed3f2783366e06a9ddeb8afc53be5c3",
+      "message": "commit 59859e0\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T04:55:20Z"
+    },
+    {
+      "oid": "47d87355b4b9aec2856eb858156e77dac97f7def",
+      "parents": [
+        "59859e0d980dd7b4eb4cbd4566c87bab7db9a36a"
+      ],
+      "tree": "17940e86c6175a0ed8ed1c44e4ee1c71305ab941",
+      "message": "commit 47d8735\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T04:58:58Z"
+    },
+    {
+      "oid": "b340aed525b3bef58db38650c8ae0a65d1d5fdfb",
+      "parents": [
+        "47d87355b4b9aec2856eb858156e77dac97f7def"
+      ],
+      "tree": "8f0db78c92c7a78981c06996ec3cdc652a5c18c9",
+      "message": "commit b340aed\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T05:37:25Z"
+    },
+    {
+      "oid": "92c60c23bcc8f7e6e23a029001ad0aa5310715c4",
+      "parents": [
+        "28e73080ee8561226639f16444da10db9aac6173",
+        "c25a1852b6b1c5015ecc6185b8dd97d9cda8f3cc"
+      ],
+      "tree": "73da0f94eb3d668272a19271331e336c1a9bf8b6",
+      "message": "commit 92c60c2\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T05:38:43Z"
+    },
+    {
+      "oid": "6c267f8a9d3ba0c714e1dc9593eb7c97046e7c9b",
+      "parents": [
+        "b340aed525b3bef58db38650c8ae0a65d1d5fdfb"
+      ],
+      "tree": "dde1fe3ff45f2bf5d181402e8cb42ff022e05723",
+      "message": "commit 6c267f8\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T06:05:44Z"
+    },
+    {
+      "oid": "86bca9813d706901b8a7bd2775514dfabed11d2f",
+      "parents": [
+        "6c267f8a9d3ba0c714e1dc9593eb7c97046e7c9b"
+      ],
+      "tree": "1594f9bf9e8a4ead6d2ee9de1bd6e3686275abc8",
+      "message": "commit 86bca98\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T06:07:48Z"
+    },
+    {
+      "oid": "65e28713c1900c4d0e5ec876ca792c6dc76bc361",
+      "parents": [
+        "86bca9813d706901b8a7bd2775514dfabed11d2f"
+      ],
+      "tree": "0ad105a2df419886db9c9b6dae474b1cdb6b75b2",
+      "message": "commit 65e2871\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T06:42:06Z"
+    },
+    {
+      "oid": "ea521865086ae512d97c4b8787bcabb577c9ea0d",
+      "parents": [
+        "65e28713c1900c4d0e5ec876ca792c6dc76bc361"
+      ],
+      "tree": "886c33be7ef5ae2ca7dc3e006080cddce3ce0401",
+      "message": "commit ea52186\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T06:46:52Z"
+    },
+    {
+      "oid": "09d881ccee62231f6511a82423527a2d54e7564c",
+      "parents": [
+        "ea521865086ae512d97c4b8787bcabb577c9ea0d",
+        "92c60c23bcc8f7e6e23a029001ad0aa5310715c4"
+      ],
+      "tree": "f9502c328450c4ad082605865503f0c9aead66d1",
+      "message": "commit 09d881c\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T06:52:50Z"
+    },
+    {
+      "oid": "73f0a30254b837663d8464b090a4db1408df685f",
+      "parents": [
+        "09d881ccee62231f6511a82423527a2d54e7564c"
+      ],
+      "tree": "ad117a0995f992d3008207af55c6bac1d8ed4671",
+      "message": "commit 73f0a30\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T06:56:49Z"
+    },
+    {
+      "oid": "18b54645288f2bf431ea476b96399dd365b845e6",
+      "parents": [
+        "73f0a30254b837663d8464b090a4db1408df685f"
+      ],
+      "tree": "625cb99b1fb124610e5a4c12821f7ff1ece56430",
+      "message": "commit 18b5464\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T07:12:19Z"
+    },
+    {
+      "oid": "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+      "parents": [
+        "18b54645288f2bf431ea476b96399dd365b845e6"
+      ],
+      "tree": "1d862550c50d263008882b2c88c33938fd9035e8",
+      "message": "commit d88f75a\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T08:01:13Z"
+    },
+    {
+      "oid": "0683010d8dba2985fbf2c2cdc1576b33a75a02d3",
+      "parents": [
+        "d88f75a421f59fa76d3c805038ca4ad74e10c7e9",
+        "76b5efcd7db95c7be14ec6b8cd5bf90f7bfa5eb5"
+      ],
+      "tree": "e8148eff3204dd1e8d6592737815e2dfeaf6ed9d",
+      "message": "commit 0683010\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T17:50:57Z"
+    },
+    {
+      "oid": "3d130f97000c6a810013b2261919fa0a99011dcd",
+      "parents": [
+        "0683010d8dba2985fbf2c2cdc1576b33a75a02d3"
+      ],
+      "tree": "93fa3e11123cf4b577b66eb4ef1d295bf1144d5b",
+      "message": "commit 3d130f9\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T18:24:50Z"
+    },
+    {
+      "oid": "e7081c33307d355f264252d8e4121bc2d17b4644",
+      "parents": [
+        "3d130f97000c6a810013b2261919fa0a99011dcd",
+        "6d583dd497a283a98d68e226d3af925a75f17097"
+      ],
+      "tree": "8bb41f3c10a9806029644dfc76596f2bec110ffa",
+      "message": "commit e7081c3\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T19:42:51Z"
+    },
+    {
+      "oid": "75d818a907b45c8e36acdc161ba36e2cbb37fee5",
+      "parents": [
+        "e7081c33307d355f264252d8e4121bc2d17b4644"
+      ],
+      "tree": "4508711881cf70488b20abdc8da4875cc2916661",
+      "message": "commit 75d818a\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T19:44:35Z"
+    },
+    {
+      "oid": "4c9f31e25fb92c60c58ee67ab182450ab8280e23",
+      "parents": [
+        "75d818a907b45c8e36acdc161ba36e2cbb37fee5"
+      ],
+      "tree": "4508711881cf70488b20abdc8da4875cc2916661",
+      "message": "commit 4c9f31e\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-17T20:06:55Z"
+    },
+    {
+      "oid": "cc5f48473a25a6af7821d8b73099f22c09303e8a",
+      "parents": [
+        "4c9f31e25fb92c60c58ee67ab182450ab8280e23",
+        "bfc3528bd7e011893d783e805a17a592ffca9b42"
+      ],
+      "tree": "7715a6349c85750b6f47388e56abc4bf64482156",
+      "message": "commit cc5f484\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T03:35:20Z"
+    },
+    {
+      "oid": "08e0982800833573b97288c10fc8e1a8ff9307b1",
+      "parents": [
+        "cc5f48473a25a6af7821d8b73099f22c09303e8a",
+        "30615a25ca503a42211eb26ef0a7d9f558ef8ac9"
+      ],
+      "tree": "b28ce8c8463b2c9a8ddd8e94a2a82733ae3598b1",
+      "message": "commit 08e0982\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T03:46:54Z"
+    },
+    {
+      "oid": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+      "parents": [
+        "08e0982800833573b97288c10fc8e1a8ff9307b1"
+      ],
+      "tree": "ff5b34b70760518878fdded67947400c3216bede",
+      "message": "commit 287ec83\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T05:22:37Z"
+    }
+  ],
+  "commitsTruncated": false,
+  "queueEntry": null,
+  "lastQueueRemoval": {
+    "at": "2026-11-18T14:13:17Z",
+    "reason": "manual",
+    "beforeCommit": null,
+    "afterLastPush": true
+  },
+  "linkedIssues": [
+    {
+      "number": 609,
+      "state": "OPEN",
+      "body": "",
+      "via": "body"
+    }
+  ],
+  "parentPr": null,
+  "rules": {
+    "requiredChecks": [
+      {
+        "name": "Required verdict",
+        "appId": null,
+        "source": "ruleset"
+      },
+      {
+        "name": "Required",
+        "appId": null,
+        "source": "ruleset"
+      }
+    ],
+    "strictUpToDate": false,
+    "mergeQueue": true,
+    "queueLength": 25,
+    "requiredApprovingReviewCount": 0,
+    "requireCodeOwnerReview": false,
+    "dismissStaleReviewsOnPush": true,
+    "threadResolutionRequired": true,
+    "allowedMergeMethods": [
+      "squash"
+    ],
+    "known": true
+  },
+  "bodyTemplate": null,
+  "git": {
+    "available": true,
+    "unavailableBecause": null,
+    "reviewEquivalentHeads": [
+      {
+        "sha": "287ec833e58bc3f2bfada9ce44e367e286912cd3",
+        "via": "head"
+      }
+    ],
+    "carryStoppedBecause": "commit 287ec83 changes files; no carry-over across a code change"
+  },
+  "problems": []
+}

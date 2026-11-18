@@ -18,7 +18,14 @@ function compile(pattern: string, flags: string): RegExp | null {
   }
 }
 
-function counted(review: ReviewObservation, policy: Policy): boolean {
+function isAuthor(login: string, snapshot: PrSnapshot): boolean {
+  return sameLogin(login, snapshot.author);
+}
+
+function counted(review: ReviewObservation, snapshot: PrSnapshot, policy: Policy): boolean {
+  if (!policy.review.count_author && isAuthor(review.author, snapshot)) {
+    return false;
+  }
   const reviewers = policy.review.reviewers;
   return reviewers.length > 0
     ? reviewers.some((login) => sameLogin(login, review.author))
@@ -31,9 +38,11 @@ interface Verdict {
   readonly blocking: boolean;
 }
 
-function githubApproval(snapshot: PrSnapshot): readonly Finding[] {
+function githubApproval(snapshot: PrSnapshot, policy: Policy): readonly Finding[] {
   const out: Finding[] = [];
-  const asking = snapshot.latestOpinionatedReviews.filter((r) => r.state === "CHANGES_REQUESTED");
+  const asking = snapshot.latestOpinionatedReviews.filter(
+    (r) => r.state === "CHANGES_REQUESTED" && (policy.review.count_author || !isAuthor(r.author, snapshot)),
+  );
   if (asking.length > 0) {
     out.push(
       finding(
@@ -76,7 +85,7 @@ function commentVerdict(snapshot: PrSnapshot, policy: Policy): readonly Finding[
   }
 
   const reviews = snapshot.reviews
-    .filter((r) => counted(r, policy) && r.state !== "DISMISSED" && r.state !== "PENDING")
+    .filter((r) => counted(r, snapshot, policy) && r.state !== "DISMISSED" && r.state !== "PENDING")
     .sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
 
   const latest = new Map<string, Verdict>();
@@ -165,5 +174,5 @@ function commentVerdict(snapshot: PrSnapshot, policy: Policy): readonly Finding[
 }
 
 export function reviewFindings(snapshot: PrSnapshot, policy: Policy): readonly Finding[] {
-  return policy.review.source === "github-approval" ? githubApproval(snapshot) : commentVerdict(snapshot, policy);
+  return policy.review.source === "github-approval" ? githubApproval(snapshot, policy) : commentVerdict(snapshot, policy);
 }

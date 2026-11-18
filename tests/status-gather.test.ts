@@ -113,7 +113,7 @@ describe("gatherPr", () => {
     const result = await gather(fake);
     if (!result.ok) throw new Error(result.error);
     expect(result.snapshot.threadsTruncated).toBe(true);
-    expect(fake.calls.filter((c) => c.some((a) => a.startsWith("after="))).length).toBe(10);
+    expect(fake.calls.filter((c) => c.some((a) => a.startsWith("after="))).length).toBe(9);
   });
 
   test("follows check pages and marks them truncated when they never end", async () => {
@@ -129,18 +129,54 @@ describe("gatherPr", () => {
     expect(endless.snapshot.checksTruncated).toBe(true);
   });
 
-  test("marks commits and reviews truncated when the total exceeds the page", async () => {
-    const pr = prResponse({ commits: { totalCount: 150, nodes: [commitNode(HEAD, [OLD])] }, reviews: { totalCount: 120, nodes: [] } });
-    const result = await gather(gh(pr));
+  const reviewNode = (n: number) => ({ author: { login: `dev-${n}` }, authorAssociation: "MEMBER", state: "COMMENTED", body: `r${n}`, submittedAt: "2026-01-01T00:00:00Z", commit: { oid: HEAD } });
+  const sha40 = (n: number) => n.toString(16).padStart(40, "0");
+
+  test("follows review and commit pages backward past 100", async () => {
+    const last = Array.from({ length: 100 }, (_, i) => reviewNode(150 + i));
+    const earlier = Array.from({ length: 50 }, (_, i) => reviewNode(100 + i));
+    const lastCommits = Array.from({ length: 100 }, (_, i) => commitNode(sha40(1000 + i), [OLD]));
+    const earlierCommits = Array.from({ length: 20 }, (_, i) => commitNode(sha40(900 + i), [OLD]));
+    const pr = prResponse({
+      reviews: { totalCount: 150, pageInfo: { hasPreviousPage: true, startCursor: "r1" }, nodes: last },
+      commits: { totalCount: 120, pageInfo: { hasPreviousPage: true, startCursor: "c1" }, nodes: lastCommits },
+    });
+    const fake = gh(pr, baseResponse(), {
+      reviews: (v) => ({ data: { node: { reviews: { pageInfo: { hasPreviousPage: false, startCursor: null }, nodes: v["before"] === "r1" ? earlier : [] } } } }),
+      commits: (v) => ({ data: { node: { commits: { pageInfo: { hasPreviousPage: false, startCursor: null }, nodes: v["before"] === "c1" ? earlierCommits : [] } } } }),
+    });
+    const result = await gather(fake);
     if (!result.ok) throw new Error(result.error);
-    expect(result.snapshot.commitsTruncated).toBe(true);
+    expect(result.snapshot.reviews.length).toBe(150);
+    expect(result.snapshot.reviews[0]?.author).toBe("dev-100");
+    expect(result.snapshot.reviews.at(-1)?.author).toBe("dev-249");
+    expect(result.snapshot.commits.length).toBe(120);
+    expect<string | undefined>(result.snapshot.commits[0]?.oid).toBe(sha40(900));
+    expect(result.snapshot.reviewsTruncated).toBe(false);
+    expect(result.snapshot.commitsTruncated).toBe(false);
+  });
+
+  test("marks reviews and commits truncated only when the hard cap is hit", async () => {
+    const page = (n: number) => Array.from({ length: 100 }, (_, i) => reviewNode(n + i));
+    const pr = prResponse({
+      reviews: { totalCount: 5000, pageInfo: { hasPreviousPage: true, startCursor: "r" }, nodes: page(0) },
+      commits: { totalCount: 5000, pageInfo: { hasPreviousPage: true, startCursor: "c" }, nodes: [commitNode(HEAD, [OLD])] },
+    });
+    const fake = gh(pr, baseResponse(), {
+      reviews: () => ({ data: { node: { reviews: { pageInfo: { hasPreviousPage: true, startCursor: "r" }, nodes: page(0) } } } }),
+      commits: () => ({ data: { node: { commits: { pageInfo: { hasPreviousPage: true, startCursor: "c" }, nodes: [commitNode(HEAD, [OLD])] } } } }),
+    });
+    const result = await gather(fake);
+    if (!result.ok) throw new Error(result.error);
     expect(result.snapshot.reviewsTruncated).toBe(true);
+    expect(result.snapshot.commitsTruncated).toBe(true);
+    expect(result.snapshot.reviews.length).toBe(1000);
   });
 
   test("reads reviews with author association and the writers-only list", async () => {
     const review = (login: string, assoc: string, state: string, body: string) => ({ author: { login }, authorAssociation: assoc, state, body, submittedAt: "2026-01-01T00:00:00Z", commit: { oid: HEAD } });
     const pr = prResponse({
-      reviews: { totalCount: 2, nodes: [review("dev-b", "MEMBER", "COMMENTED", "Verdict: approve"), { ...review("x", "NONE", "COMMENTED", ""), author: null }] },
+      reviews: { totalCount: 2, pageInfo: { hasPreviousPage: false, startCursor: null }, nodes: [review("dev-b", "MEMBER", "COMMENTED", "Verdict: approve"), { ...review("x", "NONE", "COMMENTED", ""), author: null }] },
       latestOpinionatedReviews: { totalCount: 1, nodes: [{ author: { login: "dev-b" }, authorAssociation: "MEMBER", state: "APPROVED", commit: { oid: HEAD } }] },
       reviewDecision: "APPROVED",
     });

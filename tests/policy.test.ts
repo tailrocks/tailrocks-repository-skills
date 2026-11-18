@@ -76,7 +76,7 @@ describe("loadPolicy", () => {
     expect(policy.checks.required).toEqual(["Required", "Required verdict"]);
     expect(policy.threads.bots).toContain("chatgpt-codex-connector");
     expect(policy.dco.bot_authors).toEqual(["renovate[bot]", "dependabot[bot]"]);
-    expect(policy.labels).toEqual({ pr_ci: "label", run_once: "ci:run", run_always: "ci:auto" });
+    expect(policy.labels).toEqual({ pr_ci: "always", run_once: "ci:run", run_always: "ci:auto" });
     expect(policy.ci).toEqual({ congestion_queue_length: 5, max_refreshes: 2, max_refreshes_congested: 0 });
     expect(policy.prepush.map((s) => s.name)).toEqual(["fmt", "clippy"]);
     const approve = new RegExp(policy.review.approve_pattern, policy.review.flags);

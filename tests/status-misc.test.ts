@@ -262,6 +262,21 @@ describe("fixtures and policy", () => {
     expect(snapshot.mergeable).toBe("CONFLICTING");
   });
 
+  test("a PR with more than 100 reviews reads in full and is not unknown_state", () => {
+    const snapshot = parseSnapshot(readFileSync(join(root, "tests", "fixtures", "status", "many-reviews.json"), "utf8"));
+    expect(snapshot.reviews.length).toBeGreaterThan(100);
+    expect(snapshot.reviewsTruncated).toBe(false);
+    expect(evaluate(snapshot, examplePolicy()).findings.map((f) => f.code)).not.toContain("unknown_state");
+  });
+
+  test("an UNSTABLE PR with no required failure is READY and says why GitHub is unstable", () => {
+    const snapshot = parseSnapshot(readFileSync(join(root, "tests", "fixtures", "status", "unstable-non-required.json"), "utf8"));
+    expect(snapshot.mergeStateStatus).toBe("UNSTABLE");
+    const verdict = evaluate(snapshot, examplePolicy());
+    expect(verdict.state).toBe("READY");
+    expect(verdict.findings.map((f) => f.code)).toContain("non_required_failing");
+  });
+
   test("a fixture with a wrong shape fails to load", () => {
     expect(() => parseSnapshot('{"schema":1}')).toThrow();
     expect(() => parseSnapshot("nope")).toThrow();

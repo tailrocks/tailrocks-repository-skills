@@ -21,12 +21,17 @@ cancellation_is_load = true
 
 [review]
 source = "comment-verdict"
-# Counted reviewers. An empty list counts every writer, the PR author included.
+# Counted reviewers. An empty list counts every writer.
 reviewers = []
-approve_pattern = '^\s*Verdict:\s*approve\b'
-changes_pattern = '^\s*Verdict:\s*changes needed\b'
-# An approval that also lists a blocking P1 finding is not an approval.
-blocking_pattern = '^\s*(?:[-*]\s*)?\[?P1\]?\b'
+# The PR author's own reviews count only when this is true. It fits a process
+# in which agent reviews are posted under the owner's account. The default is
+# false: an author never approves their own PR.
+count_author = true
+# Verdict lines, matched case-insensitively on any line. Bold markup is allowed.
+approve_pattern = 'verdict[^a-z]{0,6}(\*\*)?approve'
+changes_pattern = 'verdict[^a-z]{0,6}(\*\*)?changes needed'
+# An approval that also holds a blocking P1 finding is not an approval.
+blocking_pattern = '\bP1[ =:]+[1-9]|\[P1\]|P1 Badge|\*\*\[?P1\b|^#+ *P1\b|^\s*[-*]?\s*P1\s*[—:-]'
 flags = "im"
 carry_over = "clean-base-merge"
 max_carry_merges = 3
@@ -55,7 +60,9 @@ create_as_draft = true
 ready_when = "checks-and-review"
 
 [labels]
-pr_ci = "label"
+# Label mode is opt-in: set pr_ci = "label" and full CI runs on a PR only
+# while it holds one of the two labels below. This process runs CI always.
+pr_ci = "always"
 run_once = "ci:run"
 run_always = "ci:auto"
 
