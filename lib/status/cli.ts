@@ -102,7 +102,7 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
   return { ok: true, args: { target, repo, json, gitDir, policyPath, wait } };
 }
 
-async function resolveRepo(explicit: string | null, run: GhRun): Promise<Parsed<RepoSlug>> {
+export async function resolveRepo(explicit: string | null, run: GhRun): Promise<Parsed<RepoSlug>> {
   if (explicit !== null) {
     return parseRepoSlug(explicit);
   }
@@ -136,7 +136,7 @@ export async function listOpenPrs(run: GhRun, repo: RepoSlug): Promise<readonly 
   throw new ReadError("more than 5000 open pull requests");
 }
 
-async function loadLocalPolicy(file: string): Promise<{ policy: Policy } | string> {
+export async function loadLocalPolicy(file: string): Promise<{ policy: Policy } | string> {
   let source: string;
   try {
     source = await readFile(file, "utf8");
