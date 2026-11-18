@@ -9,8 +9,10 @@ const policy = policyFromText(POLICY_TOML);
 const classifyContext = { policy, prAuthor: PR_AUTHOR, agent: AGENT };
 const context = { policy, repo: REPO };
 
+let counter = 0;
 function c(author: string, body: string, bot = false): CommentView {
-  return { author, body, isBotAccount: bot, url: null };
+  counter += 1;
+  return { id: `c${counter}`, author, body, isBotAccount: bot, url: null };
 }
 
 function classified(id: string, resolved: boolean, ...comments: CommentView[]): ClassifiedThread {
@@ -30,11 +32,22 @@ const praise = classified("T-praise", false, c("reviewer-1", "Nice cleanup."));
 const threads = [fixBot, deferBot, question, other, praise];
 
 function d(id: string, action: Decision["action"], reply = "", fixCommit: Decision["fixCommit"] = null, confirmedNoOpenQuestion = false): Decision {
-  return { id, action, reply, fixCommit, confirmedNoOpenQuestion };
+  return { id, action, reply, fixCommit, confirmedNoOpenQuestion, lastCommentId: null };
+}
+
+/** Fill lastCommentId of each resolving decision with the last comment of its thread, as plan prints it. */
+function fill(all: readonly ClassifiedThread[], file: DecisionFile): DecisionFile {
+  return {
+    ...file,
+    decisions: file.decisions.map((x) => {
+      const t = all.find((y) => y.detail.id === x.id);
+      return x.lastCommentId === null && x.action !== "reply-only" && t !== undefined ? { ...x, lastCommentId: t.detail.comments.at(-1)?.id ?? null } : x;
+    }),
+  };
 }
 
 function plan(...decisions: Decision[]) {
-  return planWrites({ expectHead: null, decisions }, threads, context);
+  return planWrites(fill(threads, { expectHead: null, decisions }), threads, context);
 }
 
 function refusal(...decisions: Decision[]): string {
@@ -56,7 +69,7 @@ describe("parseDecisions", () => {
 
   test("a missing reply, fixCommit, and confirmation read as empty, null, and false", () => {
     const r = parseDecisions(JSON.stringify({ schema: 1, decisions: [{ id: "T1", action: "defer" }] }));
-    expect(r.ok && r.value.decisions[0]).toEqual({ id: "T1", action: "defer", reply: "", fixCommit: null, confirmedNoOpenQuestion: false });
+    expect(r.ok && r.value.decisions[0]).toEqual({ id: "T1", action: "defer", reply: "", fixCommit: null, confirmedNoOpenQuestion: false, lastCommentId: null });
   });
 
   test("reads the reply-resolve action", () => {
@@ -152,9 +165,9 @@ describe("planWrites", () => {
   test("a bot thread that a person answered needs the confirmation too", () => {
     const answered = classified("T-b", false, c("review-bot", "P3: nit"), c("reviewer-1", "Agreed, please fix."));
     const file: DecisionFile = { expectHead: null, decisions: [d("T-b", "defer", "Later.")] };
-    expect(planWrites(file, [answered], context).ok).toBe(false);
+    expect(planWrites(fill([answered], file), [answered], context).ok).toBe(false);
     const ok: DecisionFile = { expectHead: null, decisions: [d("T-b", "defer", "Later.", null, true)] };
-    expect(planWrites(ok, [answered], context).ok).toBe(true);
+    expect(planWrites(fill([answered], ok), [answered], context).ok).toBe(true);
   });
 
   test("reply-resolve is for human-other threads only", () => {
@@ -197,19 +210,74 @@ describe("planWrites", () => {
   test("an empty policy defer_reply is a validation error before any write", () => {
     const noDefer = { ...context, policy: { ...policy, threads: { ...policy.threads, defer_reply: "" } } };
     const file: DecisionFile = { expectHead: null, decisions: [d("T-fix", "fix", "", FIX_COMMIT), d("T-defer", "defer")] };
-    const r = planWrites(file, threads, noDefer);
+    const r = planWrites(fill(threads, file), threads, noDefer);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.refusals.join(" ")).toContain("defer_reply is empty");
     const withText: DecisionFile = { expectHead: null, decisions: [d("T-defer", "defer", "Later.")] };
-    expect(planWrites(withText, threads, noDefer).ok).toBe(true);
+    expect(planWrites(fill(threads, withText), threads, noDefer).ok).toBe(true);
   });
 
   test("a reply that is too long is refused before any write", () => {
     const big = { ...context, policy: { ...policy, threads: { ...policy.threads, defer_reply: "y".repeat(10_000) } } };
     const file: DecisionFile = { expectHead: null, decisions: [d("T-defer", "defer", "x".repeat(59_000))] };
-    const r = planWrites(file, threads, big);
+    const r = planWrites(fill(threads, file), threads, big);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.refusals.join(" ")).toContain("too long");
+  });
+});
+
+describe("lastCommentId", () => {
+  const mk = (...extra: CommentView[]): ClassifiedThread => classified("T-l", false, c("reviewer-1", "Please add a doc line."), c(AGENT, "Looking."), ...extra);
+  const t = mk();
+  const lastId = t.detail.comments.at(-1)?.id ?? "";
+  const resolving = (lastCommentId: string | null): DecisionFile => ({
+    expectHead: null,
+    decisions: [{ ...d("T-l", "reply-resolve", "Thanks.", null, true), lastCommentId }],
+  });
+
+  test("every resolving action needs it", () => {
+    for (const action of ["fix", "defer", "reply-resolve"] as const) {
+      const bare: DecisionFile = { expectHead: null, decisions: [{ ...d("T-l", action, "x", action === "fix" ? FIX_COMMIT : null, true), lastCommentId: null }] };
+      const r = planWrites(bare, [t], context);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.refusals.join(" ")).toContain("lastCommentId");
+    }
+    expect(planWrites(resolving(lastId), [t], context).ok).toBe(true);
+  });
+
+  test("reply-only does not need it", () => {
+    const f: DecisionFile = { expectHead: null, decisions: [d("T-l", "reply-only", "Later.")] };
+    expect(planWrites(f, [t], context).ok).toBe(true);
+  });
+
+  test("the id must be a comment of the thread", () => {
+    const r = planWrites(resolving("nope"), [t], context);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.refusals.join(" ")).toContain("not a comment of this thread");
+  });
+
+  test("a newer comment of a person or a bot refuses the resolve", () => {
+    for (const extra of [c("reviewer-2", "No, this is not done."), c("review-bot", "Thanks!", true)]) {
+      const newer = mk(extra);
+      const r = planWrites(resolving(lastId), [{ ...newer, detail: { ...newer.detail, comments: [...t.detail.comments, extra] } }], context);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.refusals.join(" ")).toContain("new comment since plan; run plan again");
+    }
+  });
+
+  test("our own reply after lastCommentId is not a new comment", () => {
+    const before = planWrites(resolving(lastId), [t], context);
+    const body = before.ok ? (before.writes[0]?.body ?? "") : "";
+    expect(body).not.toBe("");
+    const own = { ...t, detail: { ...t.detail, comments: [...t.detail.comments, c(AGENT, body)] } };
+    expect(planWrites(resolving(lastId), [own], context).ok).toBe(true);
+  });
+
+  test("parseDecisions reads it and refuses an empty or a non-string one", () => {
+    const ok = parseDecisions(JSON.stringify({ schema: 1, decisions: [{ id: "T1", action: "defer", lastCommentId: "C1" }] }));
+    expect(ok.ok && ok.value.decisions[0]?.lastCommentId).toBe("C1");
+    expect(parseDecisions(JSON.stringify({ schema: 1, decisions: [{ id: "T1", action: "defer", lastCommentId: "" }] })).ok).toBe(false);
+    expect(parseDecisions(JSON.stringify({ schema: 1, decisions: [{ id: "T1", action: "defer", lastCommentId: 5 }] })).ok).toBe(false);
   });
 });
 
@@ -218,7 +286,8 @@ describe("re-run dedupe", () => {
   const file: DecisionFile = { expectHead: null, decisions: [d("T-p", "defer", "Later.", null, true)] };
 
   test("every reply ends with a hidden marker line", () => {
-    const r = planWrites(file, [classified("T-p", false, c("review-bot", "P3: nit"))], context);
+    const t = classified("T-p", false, c("review-bot", "P3: nit"));
+    const r = planWrites(fill([t], file), [t], context);
     expect(r.ok && r.writes[0]?.body).toBe(`${visible}\n\n${replyMarker("T-p", visible)}`);
     expect(replyMarker("T-p", visible)).toMatch(/^<!-- pr-threads:[0-9a-f]{16} -->$/);
   });
@@ -232,26 +301,31 @@ describe("re-run dedupe", () => {
     const posted = c("some-account", `${visible}\n\n${replyMarker("T-p", visible)}`);
     const t = classified("T-p", false, c("review-bot", "P3: nit"), posted, c("review-bot", "Thanks!", true));
     expect(hasReply(t, visible)).toBe(true);
-    const r = planWrites(file, [t], context);
+    const r = planWrites(fill([t], file), [t], context);
     expect(r.ok && r.writes[0]).toMatchObject({ post: false, resolve: true });
   });
 
-  test("the exact reply text from any author also counts", () => {
-    const t = classified("T-p", false, c("review-bot", "P3: nit"), c("unknown-login", visible), c("review-bot", "Thanks!", true));
-    const r = planWrites(file, [t], context);
-    expect(r.ok && r.writes[0]).toMatchObject({ post: false });
+  test("the same text without our marker does not count: a reviewer's \"Thanks.\" never suppresses ours", () => {
+    const thanks = classified("T-t", false, c("reviewer-3", "Nice cleanup."), c("reviewer-3", "Thanks."));
+    const f: DecisionFile = { expectHead: null, decisions: [d("T-t", "reply-resolve", "Thanks.", null, true)] };
+    const r = planWrites(fill([thanks], f), [thanks], context);
+    expect(r.ok && r.writes[0]).toMatchObject({ post: true, resolve: true });
+    expect(hasReply(thanks, "Thanks.")).toBe(false);
+    const other = classified("T-p", false, c("review-bot", "P3: nit"), c("unknown-login", visible), c("review-bot", "Thanks!", true));
+    const g = planWrites(fill([other], file), [other], context);
+    expect(g.ok && g.writes[0]).toMatchObject({ post: true });
   });
 
   test("a different reply text is posted", () => {
     const t = classified("T-p", false, c("review-bot", "P3: nit"), c(AGENT, "Something else."));
-    const r = planWrites(file, [t], context);
+    const r = planWrites(fill([t], file), [t], context);
     expect(r.ok && r.writes[0]).toMatchObject({ post: true });
   });
 
   test("a resolved thread with our reply anywhere in it is done; without it, it is refused", () => {
     const done = classified("T-p", true, c("review-bot", "P3: nit"), c(AGENT, `${visible}\n\n${replyMarker("T-p", visible)}`), c("review-bot", "Thanks!", true));
-    const r = planWrites(file, [done], context);
+    const r = planWrites(fill([done], file), [done], context);
     expect(r.ok && r.writes[0]).toMatchObject({ post: false, resolve: false });
-    expect(planWrites(file, [classified("T-p", true, c("review-bot", "P3: nit"))], context).ok).toBe(false);
+    expect(planWrites(fill([classified("T-p", true, c("review-bot", "P3: nit"))], file), [classified("T-p", true, c("review-bot", "P3: nit"))], context).ok).toBe(false);
   });
 });

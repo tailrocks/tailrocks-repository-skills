@@ -7,7 +7,8 @@
 //     { "id": "<thread id>", "action": "fix" | "defer" | "reply-only" | "reply-resolve",
 //       "reply": "<text>",                  optional for fix and defer on a bot thread
 //       "fixCommit": "<40-hex sha>",        fix: required. reply-only: optional.
-//       "confirmedNoOpenQuestion": true }   needed to resolve a thread that a person wrote in
+//       "confirmedNoOpenQuestion": true,    needed to resolve a thread that a person wrote in
+//       "lastCommentId": "<id>" }           the last comment id that plan printed; needed to resolve
 //   ]
 // }
 
@@ -15,14 +16,14 @@ import { createHash } from "node:crypto";
 import { arr, isObj, member, ReadError, str } from "../github/read.ts";
 import type { Policy } from "../policy/types.ts";
 import { parseSha, type Parsed, type RepoSlug, type Sha } from "../types.ts";
-import type { Action, ClassifiedThread, Decision, DecisionFile } from "./types.ts";
+import type { Action, ClassifiedThread, CommentView, Decision, DecisionFile } from "./types.ts";
 
 const ACTIONS: readonly Action[] = ["fix", "defer", "reply-only", "reply-resolve"];
 const MAX_REPLY = 60_000;
 /** The limit of a comment body in lib/safety-gh.ts. */
 const MAX_COMMENT_BODY = 65_000;
 const TOP_KEYS: ReadonlySet<string> = new Set(["schema", "expectHead", "decisions"]);
-const DECISION_KEYS: ReadonlySet<string> = new Set(["id", "action", "reply", "fixCommit", "confirmedNoOpenQuestion"]);
+const DECISION_KEYS: ReadonlySet<string> = new Set(["id", "action", "reply", "fixCommit", "confirmedNoOpenQuestion", "lastCommentId"]);
 
 function unknownKeys(value: Readonly<Record<string, unknown>>, allowed: ReadonlySet<string>, where: string): void {
   for (const key of Object.keys(value)) {
@@ -64,7 +65,12 @@ function decision(value: unknown, index: number): Decision {
   if (rawConfirm !== undefined && typeof rawConfirm !== "boolean") {
     throw new ReadError(`${where}.confirmedNoOpenQuestion: expected true or false`);
   }
-  return { id, action, reply, fixCommit, confirmedNoOpenQuestion: rawConfirm === true };
+  const rawLast = member(value, "lastCommentId");
+  const lastCommentId = rawLast === undefined || rawLast === null ? null : str(rawLast, `${where}.lastCommentId`);
+  if (lastCommentId === "") {
+    throw new ReadError(`${where}.lastCommentId: empty`);
+  }
+  return { id, action, reply, fixCommit, confirmedNoOpenQuestion: rawConfirm === true, lastCommentId };
 }
 
 /** Parse the decisions text. Any unknown key or bad value is an error: a typo fails closed. */
@@ -128,11 +134,22 @@ export function replyMarker(threadId: string, visible: string): string {
   return `<!-- pr-threads:${digest} -->`;
 }
 
-/** True when the thread already holds this reply, from any author: the marker, or the exact text. */
+/** True when the thread already holds this reply. Only the hidden marker counts: a person's "Thanks." never does. */
 export function hasReply(thread: ClassifiedThread, visible: string): boolean {
   const marker = replyMarker(thread.detail.id, visible);
-  return thread.detail.comments.some((c) => c.body.includes(marker) || c.body.trim() === visible.trim());
+  return thread.detail.comments.some((c) => c.body.includes(marker));
 }
+
+/**
+ * The comments that are newer than `lastCommentId`, except our own reply of this write.
+ * Null when the id is not a comment of the thread.
+ */
+export function commentsSince(comments: readonly CommentView[], lastCommentId: string, ownBody: string): readonly CommentView[] | null {
+  const index = comments.findIndex((c) => c.id === lastCommentId);
+  return index < 0 ? null : comments.slice(index + 1).filter((c) => c.body.trim() !== ownBody.trim());
+}
+
+export const STALE_COMMENT = "new comment since plan; run plan again";
 
 /** The visible reply text for a decision. Null when the text would be empty. */
 export function composeReply(d: Decision, thread: ClassifiedThread, context: WriteContext): string | null {
@@ -203,6 +220,10 @@ export function planWrites(file: DecisionFile, threads: readonly ClassifiedThrea
       );
       continue;
     }
+    if (RESOLVING.has(d.action) && d.lastCommentId === null) {
+      refuse("a resolving decision needs lastCommentId: the last comment id that plan printed for this thread");
+      continue;
+    }
     if ((d.action === "reply-only" || d.action === "reply-resolve" || thread.involvesPerson) && d.reply === "") {
       refuse("a reply text is required for this thread");
       continue;
@@ -219,6 +240,17 @@ export function planWrites(file: DecisionFile, threads: readonly ClassifiedThrea
     }
     const posted = hasReply(thread, visible);
     const resolve = RESOLVING.has(d.action);
+    if (resolve && !thread.detail.isResolved && d.lastCommentId !== null) {
+      const newer = commentsSince(thread.detail.comments, d.lastCommentId, body);
+      if (newer === null) {
+        refuse("lastCommentId is not a comment of this thread; run plan again");
+        continue;
+      }
+      if (newer.length > 0) {
+        refuse(`${STALE_COMMENT} (${newer.length} newer comment${newer.length === 1 ? "" : "s"}, the first by ${newer[0]?.author ?? "someone"})`);
+        continue;
+      }
+    }
     if (thread.detail.isResolved && !posted) {
       refuse("the thread is already resolved");
       continue;

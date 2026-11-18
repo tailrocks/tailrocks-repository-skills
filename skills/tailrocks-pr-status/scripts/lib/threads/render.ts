@@ -52,6 +52,7 @@ export function threadObject(t: ClassifiedThread) {
     class: t.class,
     awaiting: t.awaiting,
     isBot: t.isBot,
+    lastCommentId: last.id,
     involvesPerson: t.involvesPerson,
     author: t.detail.first.author,
     path: t.detail.path,
@@ -83,6 +84,7 @@ export function renderPlanText(view: PlanView): string {
       `  ${t.detail.id} [${t.class}] ${t.isBot ? "bot" : "person"} ${t.detail.first.author} ${place(t)}${t.detail.isOutdated ? " (outdated)" : ""}`,
       `      first: ${excerpt(t.detail.first.body, 160)}`,
       `      last (${last.author}): ${excerpt(last.body, 160)}`,
+      `      lastCommentId: ${last.id}`,
       `      ${t.reason}; waiting for: ${t.awaiting}${t.involvesPerson ? "; a person wrote here" : ""}`,
     );
   }

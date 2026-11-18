@@ -32,7 +32,7 @@ function config(w: World, patch: Partial<ApplyConfig> = {}): ApplyConfig {
 }
 
 function d(id: string, action: Decision["action"], reply = "", fixCommit: Decision["fixCommit"] = null, confirmedNoOpenQuestion = false): Decision {
-  return { id, action, reply, fixCommit, confirmedNoOpenQuestion };
+  return { id, action, reply, fixCommit, confirmedNoOpenQuestion, lastCommentId: null };
 }
 
 function file(...decisions: Decision[]): DecisionFile {
@@ -46,6 +46,18 @@ const ALL = file(
   d("T-other", "fix", "Added the line.", FIX_COMMIT, true),
   d("T-praise", "reply-resolve", "Thanks.", null, true),
 );
+
+/** Fill lastCommentId of each resolving decision from the world as plan sees it now. */
+function fill(w: World, f: DecisionFile): DecisionFile {
+  return {
+    ...f,
+    decisions: f.decisions.map((x) => (x.lastCommentId === null && x.action !== "reply-only" ? { ...x, lastCommentId: w.lastCommentId(x.id) } : x)),
+  };
+}
+
+function apply(w: World, f: DecisionFile, patch: Partial<ApplyConfig> = {}): Promise<ApplyResult> {
+  return applyDecisions(REPO, 7, fill(w, f), config(w, patch));
+}
 
 function written(result: ApplyResult) {
   if (result.kind !== "written") {
@@ -72,7 +84,7 @@ function lastBody(w: World, id: string): string | undefined {
 describe("applyDecisions", () => {
   test("replies, then resolves, in order; leaves a person's question open", async () => {
     const w = world();
-    const result = written(await applyDecisions(REPO, 7, ALL, config(w)));
+    const result = written(await apply(w, ALL));
     expect(result.aborted).toBeNull();
     expect(opNames(w)).toEqual([
       "addPullRequestReviewThreadReply:T-fix",
@@ -96,7 +108,7 @@ describe("applyDecisions", () => {
 
   test("posts the exact reply texts, each with its hidden marker", async () => {
     const w = world();
-    await applyDecisions(REPO, 7, ALL, config(w));
+    await apply(w, ALL);
     const fix = `Guarded the write.\n\nFixed in ${commitUrl(REPO, FIX_COMMIT)}`;
     expect(lastBody(w, "T-fix")).toBe(`${fix}\n\n${replyMarker("T-fix", fix)}`);
     const deferText = "Deferred under the repository's review policy: not blocking for this change.";
@@ -107,14 +119,14 @@ describe("applyDecisions", () => {
 
   test("reports what remains: the person's question waits for the person", async () => {
     const w = world();
-    const result = written(await applyDecisions(REPO, 7, ALL, config(w)));
+    const result = written(await apply(w, ALL));
     expect(result.remaining?.map((t) => [t.detail.id, t.class, t.awaiting])).toEqual([["T-question", "human-question", "human"]]);
     expect(exitForApply(result)).toBe(10);
   });
 
   test("uses only the reply and resolve mutations, and every one builds a fixed argv", async () => {
     const w = world();
-    await applyDecisions(REPO, 7, ALL, config(w));
+    await apply(w, ALL);
     expect(w.ops.length).toBeGreaterThan(0);
     for (const op of w.ops) {
       expect(["addPullRequestReviewThreadReply", "resolveReviewThread"]).toContain(op.kind);
@@ -126,7 +138,7 @@ describe("applyDecisions", () => {
 
   test("reply-only on a human-other thread replies and never resolves", async () => {
     const w = world();
-    const result = written(await applyDecisions(REPO, 7, file(d("T-other", "reply-only", "Will do in a follow-up.")), config(w)));
+    const result = written(await apply(w, file(d("T-other", "reply-only", "Will do in a follow-up."))));
     expect(opNames(w)).toEqual(["addPullRequestReviewThreadReply:T-other"]);
     expect(w.threads.find((t) => t.id === "T-other")?.resolved).toBe(false);
     expect(result.outcomes[0]?.note).toContain("left open");
@@ -134,20 +146,20 @@ describe("applyDecisions", () => {
 
   test("reply-resolve ends the deadlock of a thread that asks nothing", async () => {
     const w = world();
-    written(await applyDecisions(REPO, 7, file(d("T-praise", "reply-resolve", "Thanks.", null, true)), config(w)));
+    written(await apply(w, file(d("T-praise", "reply-resolve", "Thanks.", null, true))));
     expect(w.threads.find((t) => t.id === "T-praise")?.resolved).toBe(true);
   });
 
   test("refuses to resolve a person's thread without the confirmation, and writes nothing", async () => {
     const w = world();
-    const result = await applyDecisions(REPO, 7, file(d("T-fix", "fix", "", FIX_COMMIT), d("T-other", "fix", "Done.", FIX_COMMIT)), config(w));
+    const result = await apply(w, file(d("T-fix", "fix", "", FIX_COMMIT), d("T-other", "fix", "Done.", FIX_COMMIT)));
     expect(refused(result)).toContain("confirmedNoOpenQuestion");
     expect(w.ops).toEqual([]);
   });
 
   test("a refused decision writes nothing at all", async () => {
     const w = world();
-    const result = await applyDecisions(REPO, 7, file(d("T-defer", "defer"), d("T-fix", "defer")), config(w));
+    const result = await apply(w, file(d("T-defer", "defer"), d("T-fix", "defer")));
     expect(result.kind).toBe("refused");
     expect(w.ops).toEqual([]);
     if (result.kind === "policy") throw new Error("policy");
@@ -156,7 +168,7 @@ describe("applyDecisions", () => {
 
   test("refuses to resolve a person's open question", async () => {
     const w = world();
-    const result = await applyDecisions(REPO, 7, file(d("T-question", "defer", "Later.", null, true)), config(w));
+    const result = await apply(w, file(d("T-question", "defer", "Later.", null, true)));
     expect(refused(result)).toContain("open question");
     expect(w.ops).toEqual([]);
     expect(w.threads.find((t) => t.id === "T-question")?.resolved).toBe(false);
@@ -164,14 +176,14 @@ describe("applyDecisions", () => {
 
   test("refuses a fix commit that the PR does not hold", async () => {
     const w = world();
-    const result = await applyDecisions(REPO, 7, file(d("T-fix", "fix", "", sha("7"))), config(w));
+    const result = await apply(w, file(d("T-fix", "fix", "", sha("7"))));
     expect(refused(result)).toContain("not a commit of this PR");
     expect(w.ops).toEqual([]);
   });
 
   test("refuses when the head is not the one the decisions expect", async () => {
     const w = world();
-    const result = await applyDecisions(REPO, 7, { expectHead: sha("9"), decisions: ALL.decisions }, config(w));
+    const result = await apply(w, { expectHead: sha("9"), decisions: ALL.decisions });
     expect(refused(result)).toContain("expect");
     expect(w.ops).toEqual([]);
   });
@@ -179,21 +191,21 @@ describe("applyDecisions", () => {
   test("refuses on a closed PR", async () => {
     const w = world();
     w.state = "CLOSED";
-    expect(refused(await applyDecisions(REPO, 7, ALL, config(w)))).toContain("not open");
+    expect(refused(await apply(w, ALL))).toContain("not open");
     expect(w.ops).toEqual([]);
   });
 
   test("an invalid policy on the base branch stops the run", async () => {
     const w = world();
     w.policy = "schema = 1\n[threads]\nbogus = 1\n";
-    expect((await applyDecisions(REPO, 7, ALL, config(w))).kind).toBe("policy");
+    expect((await apply(w, ALL)).kind).toBe("policy");
     expect(w.ops).toEqual([]);
   });
 
   test("the policy is read from the base branch only", async () => {
     const w = world();
     const fake = w.gh();
-    await applyDecisions(REPO, 7, ALL, config(w, { runGh: fake.run }));
+    await apply(w, ALL, { runGh: fake.run });
     const policyCalls = fake.calls.filter((a) => a.some((x) => x.includes(".config/pr-policy.toml")));
     expect(policyCalls.length).toBeGreaterThan(0);
     for (const call of policyCalls) {
@@ -211,7 +223,7 @@ describe("two reads of the open threads", () => {
         data: { node: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [...w.threads.map((t) => w.detail(t)), w.detail(extra)] } } },
       }),
     });
-    const result = await applyDecisions(REPO, 7, file(d("T-defer", "defer")), config(w, { runGh: fake.run }));
+    const result = await apply(w, file(d("T-defer", "defer")), { runGh: fake.run });
     expect(refused(result)).toContain("changed while they were read");
     expect(w.ops).toEqual([]);
   });
@@ -222,7 +234,7 @@ describe("a person's question that GitHub holds", () => {
     const filler = Array.from({ length: 24 }, (_, i) => ({ author: i % 2 === 0 ? AGENT : "review-bot", body: `note ${i}` }));
     const w = world([{ id: "T-long", comments: [{ author: "review-bot", body: "P3: nit" }, ...filler, { author: "reviewer-1", body: "Why is this safe?" }] }]);
     w.commentPageSize = 10;
-    const result = await applyDecisions(REPO, 7, file(d("T-long", "defer", "Later.", null, true)), config(w));
+    const result = await apply(w, file(d("T-long", "defer", "Later.", null, true)));
     expect(refused(result)).toContain("open question");
     expect(w.ops).toEqual([]);
   });
@@ -231,7 +243,7 @@ describe("a person's question that GitHub holds", () => {
     const filler = Array.from({ length: 40 }, (_, i) => ({ author: i % 2 === 0 ? AGENT : "review-bot", body: `note ${i}` }));
     const w = world([{ id: "T-long", comments: [{ author: "reviewer-1", body: "Why is this safe?" }, ...filler] }]);
     w.commentPageSize = 7;
-    expect(refused(await applyDecisions(REPO, 7, file(d("T-long", "reply-resolve", "Thanks.", null, true)), config(w)))).toContain("open question");
+    expect(refused(await apply(w, file(d("T-long", "reply-resolve", "Thanks.", null, true))))).toContain("open question");
     expect(w.ops).toEqual([]);
   });
 
@@ -245,7 +257,7 @@ describe("a person's question that GitHub holds", () => {
 
   test("an account that GitHub types as a bot is not a person", async () => {
     const w = world([{ id: "T-app", comments: [{ author: "some-app", body: "P3: nit", bot: true }] }]);
-    const result = written(await applyDecisions(REPO, 7, file(d("T-app", "defer")), config(w)));
+    const result = written(await apply(w, file(d("T-app", "defer"))));
     expect(result.aborted).toBeNull();
     expect(w.threads[0]?.resolved).toBe(true);
   });
@@ -253,12 +265,70 @@ describe("a person's question that GitHub holds", () => {
   test("a thread that stays cut off is a problem that refuses the write", async () => {
     const w = world();
     const fake = w.gh({
-      thread: () => ({ data: { node: { id: "T-defer", isResolved: false, isOutdated: false, path: "a", line: 1, comments: { totalCount: 500, pageInfo: { hasNextPage: true, endCursor: "1" }, nodes: [{ author: { login: "review-bot", __typename: "Bot" }, body: "P3", url: null }] } } } }),
+      thread: () => ({ data: { node: { id: "T-defer", isResolved: false, isOutdated: false, path: "a", line: 1, comments: { totalCount: 500, pageInfo: { hasNextPage: true, endCursor: "1" }, nodes: [{ id: "x", author: { login: "review-bot", __typename: "Bot" }, body: "P3", url: null }] } } } }),
     });
     w.commentPageSize = 1;
     w.threads = w.threads.map((t) => ({ ...t, comments: [...t.comments, ...t.comments] }));
     const read = await readThreads(fake.run, "PR_node_1");
     expect(read.problems.join(" ")).toContain("comments were read");
+  });
+
+  test("a person who writes \"No, this is not done\" mid-run stops the resolve, although plan saw no question", async () => {
+    const w = world();
+    w.afterMutation = (self, op) => {
+      if (op.kind === "addPullRequestReviewThreadReply") {
+        self.threads.find((t) => t.id === op.threadId)?.comments.push({ author: "reviewer-3", body: "No, this is not done. The doc line is wrong." });
+      }
+    };
+    const result = written(await apply(w, file(d("T-praise", "reply-resolve", "Thanks.", null, true))));
+    expect(result.aborted).toContain("new comment since plan; run plan again");
+    expect(opNames(w)).toEqual(["addPullRequestReviewThreadReply:T-praise"]);
+    expect(w.threads.find((t) => t.id === "T-praise")?.resolved).toBe(false);
+    expect(exitForApply(result)).toBe(20);
+  });
+
+  test("a decision that was made against an older thread state is refused before any write", async () => {
+    const w = world();
+    const stale = fill(w, file(d("T-praise", "reply-resolve", "Thanks.", null, true)));
+    w.threads.find((t) => t.id === "T-praise")?.comments.push({ author: "reviewer-3", body: "Actually, one more thing." });
+    const result = await applyDecisions(REPO, 7, stale, config(w));
+    expect(refused(result)).toContain("new comment since plan; run plan again");
+    expect(w.ops).toEqual([]);
+  });
+
+  test("a resolving decision without lastCommentId is refused before any write", async () => {
+    const w = world();
+    const result = await applyDecisions(REPO, 7, file(d("T-defer", "defer")), config(w));
+    expect(refused(result)).toContain("lastCommentId");
+    expect(w.ops).toEqual([]);
+  });
+
+  test("a reviewer's own \"Thanks.\" does not suppress our reply", async () => {
+    const w = world([{ id: "T-t", comments: [{ author: "reviewer-3", body: "Nice cleanup." }, { author: "reviewer-3", body: "Thanks." }] }]);
+    const result = written(await apply(w, file(d("T-t", "reply-resolve", "Thanks.", null, true))));
+    expect(result.outcomes[0]?.note).toBe("replied, resolved");
+    expect(opNames(w)).toEqual(["addPullRequestReviewThreadReply:T-t", "resolveReviewThread:T-t"]);
+  });
+
+  test("the thread read before a write comes back cut off: the write stops", async () => {
+    const w = world();
+    const cut = {
+      data: { node: { id: "T-defer", isResolved: false, isOutdated: false, path: "a", line: 1, comments: { totalCount: 500, pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: "T-defer-c0", author: { login: "review-bot", __typename: "Bot" }, body: "P3: naming", url: null }] } } },
+    };
+    const fake = w.gh({ thread: () => cut });
+    const result = written(await apply(w, file(d("T-defer", "defer")), { runGh: fake.run }));
+    expect(result.aborted).toContain("unsafe to write");
+    expect(w.ops).toEqual([]);
+  });
+
+  test("the comment that lastCommentId names is gone at write time: the write stops", async () => {
+    const w = world();
+    const gone = {
+      data: { node: { id: "T-defer", isResolved: false, isOutdated: false, path: "a", line: 1, comments: { totalCount: 1, pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: "other", author: { login: "review-bot", __typename: "Bot" }, body: "P3: naming", url: null }] } } },
+    };
+    const result = written(await apply(w, file(d("T-defer", "defer")), { runGh: w.gh({ thread: () => gone }).run }));
+    expect(result.aborted).toContain("no longer a comment of the thread");
+    expect(w.ops).toEqual([]);
   });
 
   test("a question that arrives after the checks stops the resolve of the next thread, before its reply", async () => {
@@ -268,8 +338,8 @@ describe("a person's question that GitHub holds", () => {
         self.threads.find((t) => t.id === "T-defer")?.comments.push({ author: "reviewer-1", body: "Wait, why defer this?" });
       }
     };
-    const result = written(await applyDecisions(REPO, 7, file(d("T-fix", "fix", "", FIX_COMMIT), d("T-defer", "defer")), config(w)));
-    expect(result.aborted).toContain("asked a question");
+    const result = written(await apply(w, file(d("T-fix", "fix", "", FIX_COMMIT), d("T-defer", "defer"))));
+    expect(result.aborted).toContain("new comment since plan");
     expect(opNames(w)).toEqual(["addPullRequestReviewThreadReply:T-fix", "resolveReviewThread:T-fix"]);
     expect(w.threads.find((t) => t.id === "T-defer")?.resolved).toBe(false);
     expect(result.notAttempted).toEqual([]);
@@ -283,8 +353,8 @@ describe("a person's question that GitHub holds", () => {
         self.threads.find((t) => t.id === op.threadId)?.comments.push({ author: "reviewer-1", body: "Wait, why defer this?" });
       }
     };
-    const result = written(await applyDecisions(REPO, 7, file(d("T-defer", "defer")), config(w)));
-    expect(result.aborted).toContain("asked a question");
+    const result = written(await apply(w, file(d("T-defer", "defer"))));
+    expect(result.aborted).toContain("new comment since plan");
     expect(opNames(w)).toEqual(["addPullRequestReviewThreadReply:T-defer"]);
     expect(w.threads.find((t) => t.id === "T-defer")?.resolved).toBe(false);
     expect(result.outcomes[0]?.note).toBe("replied, not resolved");
@@ -296,7 +366,7 @@ describe("a person's question that GitHub holds", () => {
     w.afterMutation = (self) => {
       self.threads.find((t) => t.id === "T-other")?.comments.push({ author: "reviewer-2", body: "Why?" });
     };
-    const result = written(await applyDecisions(REPO, 7, file(d("T-other", "reply-only", "Later.")), config(w)));
+    const result = written(await apply(w, file(d("T-other", "reply-only", "Later."))));
     expect(result.aborted).toBeNull();
   });
 });
@@ -307,7 +377,7 @@ describe("write failures", () => {
     w.afterMutation = (self) => {
       self.head = sha("f");
     };
-    const result = written(await applyDecisions(REPO, 7, ALL, config(w)));
+    const result = written(await apply(w, ALL));
     expect(w.ops).toHaveLength(1);
     expect(result.aborted).toContain("the PR changed");
     expect(result.outcomes).toHaveLength(1);
@@ -320,7 +390,7 @@ describe("write failures", () => {
     w.afterMutation = (self) => {
       self.state = "CLOSED";
     };
-    const result = written(await applyDecisions(REPO, 7, ALL, config(w)));
+    const result = written(await apply(w, ALL));
     expect(w.ops).toHaveLength(1);
     expect(result.aborted).toContain("the PR changed");
   });
@@ -332,14 +402,14 @@ describe("write failures", () => {
         self.head = sha("f");
       }
     };
-    const result = written(await applyDecisions(REPO, 7, file(d("T-defer", "defer")), config(w)));
+    const result = written(await apply(w, file(d("T-defer", "defer"))));
     expect(result.aborted).toContain("head changed during the run");
   });
 
   test("stops at the first failed write and reports what was and was not written", async () => {
     const w = world();
     w.failMutation = { at: 3, stderr: "gh: server error" };
-    const result = written(await applyDecisions(REPO, 7, ALL, config(w)));
+    const result = written(await apply(w, ALL));
     expect(result.aborted).toContain("reply failed");
     expect(result.mutations).toBe(2);
     expect(result.outcomes.map((o) => [o.id, o.ok])).toEqual([["T-fix", true], ["T-defer", false]]);
@@ -354,7 +424,7 @@ describe("write failures", () => {
   test("a failure of the first write is exit 3: nothing was written", async () => {
     const w = world();
     w.failMutation = { at: 1, stderr: "gh: server error" };
-    const result = written(await applyDecisions(REPO, 7, ALL, config(w)));
+    const result = written(await apply(w, ALL));
     expect(result.mutations).toBe(0);
     expect(exitForApply(result)).toBe(3);
     expect(renderApplyText(result, "r#7")).toContain("written 0 of 5 decisions");
@@ -370,7 +440,7 @@ describe("write failures", () => {
       }
       return w.mutate(op);
     };
-    const result = written(await applyDecisions(REPO, 7, ALL, config(w, { mutate })));
+    const result = written(await apply(w, ALL, { mutate }));
     expect(result.aborted).toContain("comment body must have");
     expect(result.outcomes.map((o) => [o.id, o.ok])).toEqual([["T-fix", true], ["T-defer", false]]);
     expect(result.remaining).not.toBeNull();
@@ -379,7 +449,7 @@ describe("write failures", () => {
   test("an empty policy defer_reply refuses the file before any write", async () => {
     const w = world();
     w.policy = 'schema = 1\n[threads]\nbots = ["review-bot"]\ndefer_reply = ""\n';
-    const result = await applyDecisions(REPO, 7, file(d("T-fix", "fix", "", FIX_COMMIT), d("T-defer", "defer")), config(w));
+    const result = await apply(w, file(d("T-fix", "fix", "", FIX_COMMIT), d("T-defer", "defer")));
     expect(refused(result)).toContain("defer_reply is empty");
     expect(w.ops).toEqual([]);
   });
@@ -390,7 +460,7 @@ describe("write failures", () => {
       const r = await w.mutate(op);
       return op.kind === "resolveReviewThread" ? { ...r, stdout: JSON.stringify({ data: { resolveReviewThread: { thread: { id: op.threadId, isResolved: false } } } }) } : r;
     };
-    const result = written(await applyDecisions(REPO, 7, file(d("T-defer", "defer")), config(w, { mutate })));
+    const result = written(await apply(w, file(d("T-defer", "defer")), { mutate }));
     expect(result.aborted).toContain("did not confirm");
   });
 
@@ -400,7 +470,7 @@ describe("write failures", () => {
       const r = await w.mutate(op);
       return op.kind === "addPullRequestReviewThreadReply" ? { ...r, stdout: JSON.stringify({ data: { addPullRequestReviewThreadReply: { comment: {} } } }) } : r;
     };
-    const result = written(await applyDecisions(REPO, 7, file(d("T-defer", "defer")), config(w, { mutate })));
+    const result = written(await apply(w, file(d("T-defer", "defer")), { mutate }));
     expect(result.aborted).toContain("did not confirm");
     expect(w.threads.find((t) => t.id === "T-defer")?.resolved).toBe(false);
   });
@@ -411,7 +481,7 @@ describe("write failures", () => {
       const r = await w.mutate(op);
       return { ...r, stdout: JSON.stringify({ ...JSON.parse(r.stdout), errors: [{ message: "nope" }] }) };
     };
-    const result = written(await applyDecisions(REPO, 7, file(d("T-defer", "defer")), config(w, { mutate })));
+    const result = written(await apply(w, file(d("T-defer", "defer")), { mutate }));
     expect(result.aborted).toContain("GitHub reported an error");
   });
 });
@@ -419,17 +489,29 @@ describe("write failures", () => {
 describe("re-run", () => {
   test("after a failed resolve a bot auto-reply does not cause a second post", async () => {
     const w = world();
-    w.failMutation = { at: 2, stderr: "gh: server error" };
     w.afterMutation = (self, op) => {
       if (op.kind === "addPullRequestReviewThreadReply") {
         self.threads.find((t) => t.id === op.threadId)?.comments.push({ author: "review-bot", body: "Thanks!", bot: true });
       }
     };
-    const first = written(await applyDecisions(REPO, 7, file(d("T-fix", "fix", "", FIX_COMMIT)), config(w)));
+    const first = written(await apply(w, file(d("T-fix", "fix", "", FIX_COMMIT))));
+    expect(first.aborted).toContain("new comment since plan");
+    const before = w.threads.find((t) => t.id === "T-fix")?.comments.length;
+    w.failMutation = null;
+    const second = written(await apply(w, file(d("T-fix", "fix", "", FIX_COMMIT))));
+    expect(second.aborted).toBeNull();
+    expect(w.threads.find((t) => t.id === "T-fix")?.comments.length).toBe(before);
+    expect(w.threads.find((t) => t.id === "T-fix")?.resolved).toBe(true);
+  });
+
+  test("a failed resolve is reported, and the re-run does not post again", async () => {
+    const w = world();
+    w.failMutation = { at: 2, stderr: "gh: server error" };
+    const first = written(await apply(w, file(d("T-fix", "fix", "", FIX_COMMIT))));
     expect(first.aborted).toContain("resolve failed");
     const before = w.threads.find((t) => t.id === "T-fix")?.comments.length;
     w.failMutation = null;
-    const second = written(await applyDecisions(REPO, 7, file(d("T-fix", "fix", "", FIX_COMMIT)), config(w)));
+    const second = written(await apply(w, file(d("T-fix", "fix", "", FIX_COMMIT))));
     expect(second.aborted).toBeNull();
     expect(w.threads.find((t) => t.id === "T-fix")?.comments.length).toBe(before);
     expect(w.threads.find((t) => t.id === "T-fix")?.resolved).toBe(true);
@@ -440,10 +522,10 @@ describe("re-run", () => {
     w.userKnown = false;
     const decision = file(d("T-defer", "defer", "Later.", null, true));
     w.failMutation = { at: 2, stderr: "gh: server error" };
-    written(await applyDecisions(REPO, 7, decision, config(w)));
+    written(await apply(w, decision));
     const before = w.threads.find((t) => t.id === "T-defer")?.comments.length;
     w.failMutation = null;
-    const second = written(await applyDecisions(REPO, 7, decision, config(w)));
+    const second = written(await apply(w, decision));
     expect(second.aborted).toBeNull();
     expect(w.threads.find((t) => t.id === "T-defer")?.comments.length).toBe(before);
     expect(w.threads.find((t) => t.id === "T-defer")?.resolved).toBe(true);
@@ -456,18 +538,18 @@ describe("re-run", () => {
         self.threads.find((t) => t.id === op.threadId)?.comments.push({ author: "review-bot", body: "Thanks!", bot: true });
       }
     };
-    await applyDecisions(REPO, 7, ALL, config(w));
+    await apply(w, ALL);
     const count = w.ops.length;
-    const again = written(await applyDecisions(REPO, 7, ALL, config(w)));
+    const again = written(await apply(w, ALL));
     expect(again.aborted).toBeNull();
     expect(w.ops).toHaveLength(count);
   });
 
   test("a second run after success writes nothing", async () => {
     const w = world();
-    await applyDecisions(REPO, 7, ALL, config(w));
+    await apply(w, ALL);
     const count = w.ops.length;
-    const again = written(await applyDecisions(REPO, 7, ALL, config(w)));
+    const again = written(await apply(w, ALL));
     expect(again.aborted).toBeNull();
     expect(w.ops).toHaveLength(count);
   });

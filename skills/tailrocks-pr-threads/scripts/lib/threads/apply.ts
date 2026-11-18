@@ -2,7 +2,6 @@
 // time (reply, then resolve). Before each write the script reads the head and the
 // thread again. A change stops the run.
 
-import { classifyThread } from "./classify.ts";
 import { defaultGit, type GitRun } from "../github/git-facts.ts";
 import { isObj, member, parseJson, path, ReadError } from "../github/read.ts";
 import type { PolicyError } from "../policy/types.ts";
@@ -10,7 +9,7 @@ import type { RunResult } from "../proc.ts";
 import type { GhMutation } from "../safety.ts";
 import type { RepoSlug } from "../types.ts";
 import { verifyFixCommits } from "./commits.ts";
-import { planWrites, type PlannedWrite } from "./decisions.ts";
+import { commentsSince, planWrites, STALE_COMMENT, type PlannedWrite } from "./decisions.ts";
 import { readHead, readThread } from "./read.ts";
 import { readThreadState, unresolved, type ThreadsConfig, type ThreadState } from "./state.ts";
 import type { Action, ClassifiedThread, DecisionFile } from "./types.ts";
@@ -73,7 +72,7 @@ function mutationError(result: RunResult, check: (data: unknown) => boolean): st
   }
 }
 
-/** Null when the PR is open, the head is the validated one, and no person asked since. Otherwise the reason to stop. */
+/** Null when the PR is open, the head is the validated one, and the thread has no comment of anyone else since plan. Otherwise the reason to stop. */
 type BeforeWrite = (w: PlannedWrite) => Promise<string | null>;
 
 function guard(config: ApplyConfig, state: ThreadState): BeforeWrite {
@@ -88,9 +87,14 @@ function guard(config: ApplyConfig, state: ThreadState): BeforeWrite {
       if (problems.length > 0) {
         return `unsafe to write: ${problems.join("; ")}`;
       }
-      const now = classifyThread(thread, state.context);
-      if (w.resolve && now.class === "human-question") {
-        return `a person asked a question in the thread since the decisions were checked (${now.reason}); the thread was not resolved`;
+      if (w.resolve && w.decision.lastCommentId !== null) {
+        const newer = commentsSince(thread.comments, w.decision.lastCommentId, w.body);
+        if (newer === null) {
+          return `lastCommentId is no longer a comment of the thread; run plan again`;
+        }
+        if (newer.length > 0) {
+          return `${STALE_COMMENT} (the first by ${newer[0]?.author ?? "someone"}); the thread was not resolved`;
+        }
       }
       return null;
     } catch (error) {

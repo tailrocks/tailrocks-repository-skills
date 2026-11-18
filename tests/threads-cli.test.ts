@@ -31,9 +31,11 @@ async function run(argv: readonly string[], w: World): Promise<{ code: number; o
   return { code, out: out.join("\n"), err: err.join("\n") };
 }
 
-function decisionsFile(decisions: readonly unknown[]): string {
+/** Write a decisions file. A resolving decision gets the lastCommentId that plan prints now. */
+function decisionsFile(w: World, decisions: readonly { readonly id: string; readonly action: string; readonly [key: string]: unknown }[]): string {
   const path = join(tmp, `d-${Math.random().toString(36).slice(2)}.json`);
-  writeFileSync(path, JSON.stringify({ schema: 1, decisions }));
+  const filled = decisions.map((x) => (x.action === "reply-only" ? x : { ...x, lastCommentId: w.lastCommentId(x.id) }));
+  writeFileSync(path, JSON.stringify({ schema: 1, decisions: filled }));
   return path;
 }
 
@@ -148,7 +150,7 @@ describe("apply", () => {
   test("applies a decisions file; exit 10 when only a person's question remains", async () => {
     const w = new World(SPECS);
     w.commits = [FIX_COMMIT];
-    const path = decisionsFile([
+    const path = decisionsFile(w, [
       { id: "T-fix", action: "fix", reply: "Done.", fixCommit: FIX_COMMIT },
       { id: "T-defer", action: "defer" },
       { id: "T-question", action: "reply-only", reply: "Because X." },
@@ -162,7 +164,7 @@ describe("apply", () => {
 
   test("exit 0 when nothing remains", async () => {
     const w = new World([SPECS[1] as ThreadSpec]);
-    const path = decisionsFile([{ id: "T-defer", action: "defer" }]);
+    const path = decisionsFile(w, [{ id: "T-defer", action: "defer" }]);
     const r = await run([...base, "apply", "--decisions", path, "--json"], w);
     expect(r.code).toBe(0);
     expect(JSON.parse(r.out)).toMatchObject({ refused: false, aborted: null, remaining: [], exit: 0 });
@@ -170,7 +172,7 @@ describe("apply", () => {
 
   test("exit 3 and no write when a decision is refused", async () => {
     const w = new World(SPECS);
-    const path = decisionsFile([{ id: "T-fix", action: "defer" }]);
+    const path = decisionsFile(w, [{ id: "T-fix", action: "defer" }]);
     const r = await run([...base, "apply", "--decisions", path], w);
     expect(r.code).toBe(3);
     expect(r.out).toContain("REFUSED");
@@ -180,9 +182,9 @@ describe("apply", () => {
   test("exit 20 when part of the decisions was written", async () => {
     const w = new World(SPECS);
     w.failMutation = { at: 3, stderr: "gh: server error" };
-    const path = decisionsFile([{ id: "T-defer", action: "defer" }, { id: "T-fix", action: "defer" }]);
+    const path = decisionsFile(w, [{ id: "T-defer", action: "defer" }, { id: "T-fix", action: "defer" }]);
     expect((await run([...base, "apply", "--decisions", path], w)).code).toBe(3);
-    const ok = decisionsFile([{ id: "T-defer", action: "defer" }, { id: "T-fix", action: "fix", fixCommit: FIX_COMMIT }]);
+    const ok = decisionsFile(w, [{ id: "T-defer", action: "defer" }, { id: "T-fix", action: "fix", fixCommit: FIX_COMMIT }]);
     w.commits = [FIX_COMMIT];
     const r = await run([...base, "apply", "--decisions", ok, "--json"], w);
     expect(r.code).toBe(20);

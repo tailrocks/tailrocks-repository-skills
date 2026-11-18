@@ -1,7 +1,7 @@
 // Read queries of the thread triage. Library constants: a query never takes caller text.
 // None of them holds a mutation. The mutations live in lib/safety-gh.ts.
 
-const COMMENT_FIELDS = "author { login __typename } body url";
+const COMMENT_FIELDS = "id author { login __typename } body url";
 const COMMENTS = `comments(first: 100) { totalCount pageInfo { hasNextPage endCursor } nodes { ${COMMENT_FIELDS} } }`;
 const THREAD_FIELDS = `id isResolved isOutdated path line ${COMMENTS}`;
 

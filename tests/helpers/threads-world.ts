@@ -41,8 +41,9 @@ const RULES = [
   { type: "deletion" },
 ];
 
-function commentNode(c: CommentSpec, n: number): Record<string, unknown> {
+function commentNode(c: CommentSpec, n: number, threadId: string): Record<string, unknown> {
   return {
+    id: `${threadId}-c${n}`,
     author: { login: c.author, __typename: c.bot === true ? "Bot" : "User" },
     body: c.body,
     url: `https://example.invalid/c/${n}`,
@@ -103,7 +104,7 @@ export class World {
     return {
       totalCount: t.comments.length,
       pageInfo: p.pageInfo,
-      nodes: p.nodes.map((c, i) => commentNode(c, i)),
+      nodes: p.nodes.map((c, i) => commentNode(c, (after === undefined ? 0 : Number(after)) + i, t.id)),
     };
   }
 
@@ -151,6 +152,12 @@ export class World {
         ...(this.userKnown ? { user: { login: AGENT } } : {}),
       },
     );
+  }
+
+  /** The id of the last comment of a thread, as plan prints it. */
+  lastCommentId(threadId: string): string {
+    const t = this.threads.find((x) => x.id === threadId);
+    return `${threadId}-c${(t?.comments.length ?? 1) - 1}`;
   }
 
   /** The fake mutation runner. It changes the world like GitHub would. */

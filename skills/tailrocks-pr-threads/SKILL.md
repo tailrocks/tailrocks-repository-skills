@@ -58,6 +58,11 @@ the decisions file.
 - Resolve a thread of a person only after you read the whole thread and no one
   waits for an answer. Then set `confirmedNoOpenQuestion` to `true` in the
   decision. The script refuses a resolving decision without it.
+- Every resolving decision (`fix`, `defer`, `reply-resolve`) also carries
+  `lastCommentId`: the id that the latest plan printed for the thread. It binds
+  your decision to the thread as you read it. If anyone else comments after that
+  comment, the script does not resolve the thread. It says "new comment since
+  plan; run plan again". Then run the plan again and read the new comment.
 - A thread of a person that asks nothing (for example "Nice cleanup.") would
   stay open for ever with `reply-only`. Close it with `reply-resolve`.
 - For a bot thread, use `fix` or `defer`. A bot never closes a thread, so
@@ -111,17 +116,18 @@ the decisions file.
    The head and the threads may have changed. Rebuild your decisions from this
    plan. Do not reuse an older plan.
 9. Write the decisions file. One decision per thread. Use only these keys.
-   Set `expectHead` to the head from the plan in step 8.
+   Set `expectHead` to the head from the plan in step 8. Copy `lastCommentId`
+   of each thread from the same plan.
 
    ```json
    {
      "schema": 1,
      "expectHead": "<full head commit id>",
      "decisions": [
-       { "id": "<thread id>", "action": "fix", "reply": "What changed.", "fixCommit": "<full commit id>" },
-       { "id": "<thread id>", "action": "defer" },
+       { "id": "<thread id>", "action": "fix", "reply": "What changed.", "fixCommit": "<full commit id>", "lastCommentId": "<id from plan>" },
+       { "id": "<thread id>", "action": "defer", "lastCommentId": "<id from plan>" },
        { "id": "<thread id>", "action": "reply-only", "reply": "The answer." },
-       { "id": "<thread id>", "action": "reply-resolve", "reply": "Thanks.", "confirmedNoOpenQuestion": true }
+       { "id": "<thread id>", "action": "reply-resolve", "reply": "Thanks.", "confirmedNoOpenQuestion": true, "lastCommentId": "<id from plan>" }
      ]
    }
    ```
@@ -135,8 +141,9 @@ the decisions file.
 11. Read the result with the exit code table. A refusal writes nothing: report
     it. If the refusal names a mistake in your own file, you may correct that
     mistake, run the plan again, and apply once more. A stopped run lists what
-    was written, what failed, and what was not tried. If the head changed, run
-    the plan again and rebuild the decisions. Otherwise run apply again with
+    was written, what failed, and what was not tried. If the head changed, or
+    the output says "new comment since plan", run the plan again and rebuild
+    the decisions. Otherwise run apply again with
     the same file: the script does not post a reply twice.
 12. When threads remain that wait for you, go to step 3. When none remain, run
     `tailrocks-pr-status`. Report the result.
@@ -151,9 +158,10 @@ the decisions file.
 | `defer` of a thread that the policy says must be fixed | Refused. |
 | `fix`, `defer`, or `reply-resolve` on a question of a person | Refused. Use `reply-only`. |
 | A resolving decision on a thread that a person wrote in, without `confirmedNoOpenQuestion` | Refused. |
+| A resolving decision without `lastCommentId`, or a newer comment from anyone but our own reply | Refused, or the run stops before the resolve. Run plan again. |
 | A reply that is empty or too long, or an empty policy `defer_reply` | Refused before any write. |
-| The head changed, the PR closed, or a person asked a question since the checks | The run stops before the next write. |
-| The reply is already in the thread | Not posted again. |
+| The head changed, the PR closed, or a new comment arrived since the checks | The run stops before the next write. |
+| The reply is already in the thread (found by its hidden marker only) | Not posted again. |
 
 ## References
 

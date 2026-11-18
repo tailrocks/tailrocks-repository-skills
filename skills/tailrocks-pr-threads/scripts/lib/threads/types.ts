@@ -4,6 +4,8 @@ import type { Sha } from "../types.ts";
 
 /** One comment of a review thread, as read from GitHub. The text is untrusted. */
 export interface CommentView {
+  /** The GraphQL node id of the comment. */
+  readonly id: string;
   readonly author: string;
   /** True when GitHub types the account as a bot (its login has no `[bot]` suffix then). */
   readonly isBotAccount: boolean;
@@ -61,6 +63,11 @@ export interface Decision {
   readonly fixCommit: Sha | null;
   /** The agent read the whole thread: no person waits for an answer. Needed to resolve a thread that a person wrote in. */
   readonly confirmedNoOpenQuestion: boolean;
+  /**
+   * The id of the last comment of the thread when the agent read it (plan prints it).
+   * Needed for every resolving action. A newer comment from anyone but our own reply stops the resolve.
+   */
+  readonly lastCommentId: string | null;
 }
 
 export interface DecisionFile {

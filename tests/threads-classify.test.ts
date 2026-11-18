@@ -7,8 +7,10 @@ import { policyFromText } from "./helpers/status.ts";
 const policy = policyFromText(POLICY_TOML);
 const context = { policy, prAuthor: PR_AUTHOR, agent: AGENT };
 
+let counter = 0;
 function c(author: string, body: string, bot = false): CommentView {
-  return { author, body, isBotAccount: bot, url: null };
+  counter += 1;
+  return { id: `c${counter}`, author, body, isBotAccount: bot, url: null };
 }
 
 function thread(...comments: CommentView[]): ThreadDetail {
@@ -60,7 +62,7 @@ describe("looksLikeClosing", () => {
     }
   });
   test("a closing word with a new request or a question does not close", () => {
-    for (const body of ["ok, but rename m to mutex", "Thanks. Also nit: rename it", "ok?", "Also nit: rename `m` to `mutex`.", "thanks, why not a map"]) {
+    for (const body of ["ok, but rename m to mutex", "Thanks. Also nit: rename it", "ok?", "Also nit: rename `m` to `mutex`.", "thanks, why not a map", "Thanks for that. What about the other call site", "ok, which one is it", "Thanks. Where is it used"]) {
       expect([body, looksLikeClosing(body)]).toEqual([body, false]);
     }
   });

@@ -19,7 +19,7 @@ const ASKS =
 
 /** A short reply that closes a question: "thanks", "ok", "lgtm", "resolved". It must not add a new request. */
 const CLOSING = /^\W*(?:ok(?:ay)?|thanks?(?: you)?|thx|lgtm|resolved|done|sounds good|got it|makes sense|looks good|ack(?:nowledged)?|\+1|no worries|all good)\b/i;
-const NOT_CLOSING = /\b(?:but|however|also|nit|still|instead|please|should|need|rename|change|remove|add|why|how)\b/i;
+const NOT_CLOSING = /\b(?:but|however|also|nit|still|instead|please|should|need|rename|change|remove|add|why|how|what|which|where|when|whether)\b/i;
 const MAX_CLOSING_LENGTH = 80;
 
 /** Text that a person writes, without code, quotes, or links. */

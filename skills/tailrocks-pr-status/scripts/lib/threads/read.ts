@@ -13,6 +13,7 @@ function comment(value: unknown, where: string): CommentView {
   const o = obj(value, where);
   const author = member(o, "author");
   return {
+    id: str(member(o, "id"), `${where}.id`),
     author: isObj(author) ? str(member(author, "login"), `${where}.author.login`) : "ghost",
     isBotAccount: isObj(author) && member(author, "__typename") === "Bot",
     body: str(member(o, "body"), `${where}.body`),

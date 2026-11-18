@@ -31,8 +31,6 @@ export interface ThreadState {
   readonly threads: readonly ClassifiedThread[];
   /** Problems that make a write unsafe. */
   readonly problems: readonly string[];
-  /** The context that classified the threads. Apply uses it to classify a thread again before a write. */
-  readonly context: ClassifyContext;
 }
 
 export type StateResult =
@@ -87,7 +85,6 @@ export async function readThreadState(repo: RepoSlug, number: number, config: Th
       agent,
       threads: classifyAll(read.threads, context),
       problems,
-      context,
     },
   };
 }

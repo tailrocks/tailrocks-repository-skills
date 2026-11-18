@@ -31,8 +31,8 @@ A question stays open until the same person writes a short closing reply
 such as a nit, does not close it. A reply of someone else does not close it.
 When a person asked a question, the thread waits for that person.
 
-The script reads the thread again before each write. If a person asked a question
-since the checks, it stops before it resolves the thread.
+The script reads the thread again before each resolve and stops when any new
+comment arrived (see `lastCommentId`).
 
 ## Waiting
 
@@ -55,8 +55,8 @@ A thread of a bot always waits for the agent, because a bot never closes a threa
 A thread of a person always needs a reply text. A reply has at most 60000
 characters. The script checks every reply before it writes the first one. An
 empty reply is an error. Each reply ends with a hidden marker line
-(`<!-- pr-threads:... -->`). A second run finds its reply by the marker or by the
-exact text, from any author, and does not post it again.
+(`<!-- pr-threads:... -->`). A second run finds its reply by the marker only, and does not post it again. The
+same words from someone else ("Thanks.") never count.
 
 ## confirmedNoOpenQuestion
 
@@ -65,10 +65,19 @@ A decision that resolves a thread (`fix`, `defer`, `reply-resolve`) must carry
 after you read the whole thread and no one waits for an answer. When in doubt,
 use `reply-only`.
 
+## lastCommentId
+
+Plan prints `lastCommentId` for each thread. A decision that resolves a thread
+(`fix`, `defer`, `reply-resolve`) must carry it. The id binds the decision, and
+its `confirmedNoOpenQuestion`, to the thread as you read it. The script reads the
+thread again before each resolve. A comment after `lastCommentId` from anyone but
+our own reply (a person, a bot, anyone) stops the resolve: "new comment since
+plan; run plan again". `reply-only` needs no `lastCommentId`.
+
 ## Decisions file
 
 The file is strict JSON. An unknown key is an error. Keys:
 
 - `schema`: the number 1.
 - `expectHead`: optional. The full head commit id. The run is refused when the head differs.
-- `decisions`: a list. Each item has `id`, `action`, and optionally `reply`, `fixCommit`, and `confirmedNoOpenQuestion`.
+- `decisions`: a list. Each item has `id`, `action`, and optionally `reply`, `fixCommit`, `confirmedNoOpenQuestion`, and `lastCommentId` (needed to resolve).
