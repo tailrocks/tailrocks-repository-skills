@@ -32,7 +32,7 @@ client. A model must not select `tailrocks-repository-recover` or
 | --- | --- |
 | Find and preserve local work | `tailrocks-repository-recover` |
 | Integrate sources into one exact target | `tailrocks-repository-merge` |
-| Open one pull request | `tailrocks-create-pr` |
+| Open one pull request | `tailrocks-pr-create` |
 | Reconcile a pull request title and body | `tailrocks-refresh-pr` |
 | Review one pull request | `tailrocks-review-pr` |
 | Land one pull request | `tailrocks-merge-pr` |
@@ -120,6 +120,21 @@ that force-pushes. It adds missing sign-off trailers and nothing else.
 `metadata` reconciles the title and body with the diff and pushes
 nothing. The reference `outcome-codes.md` in the skill lists every
 blocked outcome.
+
+## Example: open a pull request under the repository policy
+
+Invoke the create owner on a branch that holds committed work:
+
+```text
+/tailrocks-repository-skills:tailrocks-pr-create
+```
+
+The skill runs one script in two steps. `plan` checks the branch name, the
+sign-off of each commit, the inventories, and the pre-push steps. It also
+picks the base branch and prints a body skeleton. `open` pushes the exact
+commit and creates one pull request, as a draft or ready by the policy. It
+reuses an open pull request for the branch. The skill never force-pushes and
+never creates a second pull request.
 
 ## Example: land a pull request
 

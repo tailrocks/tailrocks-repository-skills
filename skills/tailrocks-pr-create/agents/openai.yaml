@@ -1,0 +1,6 @@
+interface:
+  display_name: "PR: Create"
+  short_description: "Open a PR under the repo policy: draft, sign-off, link"
+  default_prompt: "Use $tailrocks-pr-create to open a pull request for the current branch. Run the plan, fix each blocker, write the body from the skeleton, then open with the head that the plan printed. Never push or create the PR by hand."
+policy:
+  allow_implicit_invocation: true
