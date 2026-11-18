@@ -17,10 +17,11 @@ export interface ThreadDetail {
   readonly isOutdated: boolean;
   readonly path: string | null;
   readonly line: number | null;
+  /** The number of comments that GitHub reports. */
   readonly commentCount: number;
   readonly first: CommentView;
-  /** The latest comments, oldest first. The last entry is the last comment of the thread. */
-  readonly recent: readonly CommentView[];
+  /** Every comment of the thread, oldest first. The last entry is the last comment. */
+  readonly comments: readonly CommentView[];
 }
 
 /**
@@ -39,17 +40,27 @@ export interface ClassifiedThread {
   readonly class: ThreadClass;
   readonly awaiting: Awaiting;
   readonly isBot: boolean;
+  /** True when a person (not a bot, not the PR author, not the agent) wrote a comment in the thread. */
+  readonly involvesPerson: boolean;
   /** One short reason for the class. */
   readonly reason: string;
 }
 
-export type Action = "fix" | "defer" | "reply-only";
+/**
+ * - `fix`: reply with the fix commit, then resolve.
+ * - `defer`: reply with the policy text, then resolve.
+ * - `reply-only`: reply. The thread stays open.
+ * - `reply-resolve`: reply, then resolve. For a `human-other` thread only.
+ */
+export type Action = "fix" | "defer" | "reply-only" | "reply-resolve";
 
 export interface Decision {
   readonly id: string;
   readonly action: Action;
   readonly reply: string;
   readonly fixCommit: Sha | null;
+  /** The agent read the whole thread: no person waits for an answer. Needed to resolve a thread that a person wrote in. */
+  readonly confirmedNoOpenQuestion: boolean;
 }
 
 export interface DecisionFile {

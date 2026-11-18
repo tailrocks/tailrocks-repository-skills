@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { main, parseArgs } from "../lib/threads/cli.ts";
+import { HELP, main, parseArgs } from "../lib/threads/cli.ts";
 import { AGENT, FIX_COMMIT, REPO, World, type ThreadSpec } from "./helpers/threads-world.ts";
 
 const noSleep = async (): Promise<void> => undefined;
@@ -93,7 +93,7 @@ describe("plan", () => {
     expect(r.out).toContain("red");
   });
 
-  test("a policy error is exit 2; a failed read is exit 20", async () => {
+  test("a policy error is exit 2; a failed read is exit 3", async () => {
     const bad = new World(SPECS);
     bad.policy = "schema = 1\n[nope]\n";
     expect((await run([...base, "plan"], bad)).code).toBe(2);
@@ -106,8 +106,41 @@ describe("plan", () => {
       out: (l) => out.push(l),
       err: (l) => out.push(l),
     });
-    expect(code).toBe(20);
+    expect(code).toBe(3);
     expect(w.ops).toEqual([]);
+  });
+
+  test("a problem in the read is exit 3, so the agent does not decide threads", async () => {
+    const w = new World(SPECS);
+    w.state = "OPEN";
+    const long = new World([{ id: "T-l", comments: [{ author: "review-bot", body: "P3" }, { author: "review-bot", body: "P3 again" }] }]);
+    long.commentPageSize = 1;
+    const out: string[] = [];
+    const code = await main([...base, "plan"], {
+      cwd: "/",
+      runGh: long.gh({ thread: () => ({ data: { node: { id: "T-l", isResolved: false, isOutdated: false, path: "a", line: 1, comments: { totalCount: 9, pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] } } } }) }).run,
+      sleep: noSleep,
+      out: (l) => out.push(l),
+      err: (l) => out.push(l),
+    });
+    expect(code).toBe(3);
+    expect(out.join("\n")).toContain("comments were read");
+  });
+});
+
+describe("help", () => {
+  for (const flag of ["--help", "-h"]) {
+    test(`${flag} prints the usage and the exit codes, and exits 0`, async () => {
+      const r = await run([flag], new World(SPECS));
+      expect(r.code).toBe(0);
+      expect(r.out).toBe(HELP);
+      for (const word of ["plan", "apply", "--decisions", "10", "20", "3 ", "2 "]) {
+        expect(r.out).toContain(word);
+      }
+    });
+  }
+  test("--help works next to other arguments", async () => {
+    expect((await run(["7", "apply", "--help"], new World(SPECS))).code).toBe(0);
   });
 });
 
@@ -122,7 +155,7 @@ describe("apply", () => {
     ]);
     const r = await run([...base, "apply", "--decisions", path], w);
     expect(r.code).toBe(10);
-    expect(r.out).toContain("applied 3 decisions");
+    expect(r.out).toContain("written 3 of 3 decisions");
     expect(r.out).toContain("remaining unresolved: 1");
     expect(w.threads.map((t) => t.resolved)).toEqual([true, true, false]);
   });
@@ -135,13 +168,25 @@ describe("apply", () => {
     expect(JSON.parse(r.out)).toMatchObject({ refused: false, aborted: null, remaining: [], exit: 0 });
   });
 
-  test("exit 20 and no write when a decision is refused", async () => {
+  test("exit 3 and no write when a decision is refused", async () => {
     const w = new World(SPECS);
     const path = decisionsFile([{ id: "T-fix", action: "defer" }]);
     const r = await run([...base, "apply", "--decisions", path], w);
-    expect(r.code).toBe(20);
+    expect(r.code).toBe(3);
     expect(r.out).toContain("REFUSED");
     expect(w.ops).toEqual([]);
+  });
+
+  test("exit 20 when part of the decisions was written", async () => {
+    const w = new World(SPECS);
+    w.failMutation = { at: 3, stderr: "gh: server error" };
+    const path = decisionsFile([{ id: "T-defer", action: "defer" }, { id: "T-fix", action: "defer" }]);
+    expect((await run([...base, "apply", "--decisions", path], w)).code).toBe(3);
+    const ok = decisionsFile([{ id: "T-defer", action: "defer" }, { id: "T-fix", action: "fix", fixCommit: FIX_COMMIT }]);
+    w.commits = [FIX_COMMIT];
+    const r = await run([...base, "apply", "--decisions", ok, "--json"], w);
+    expect(r.code).toBe(20);
+    expect(JSON.parse(r.out)).toMatchObject({ mutations: 2, notAttempted: [] });
   });
 
   test("exit 2 for an unreadable or invalid decisions file", async () => {

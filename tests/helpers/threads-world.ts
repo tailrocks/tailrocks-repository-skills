@@ -61,7 +61,11 @@ export class World {
   afterMutation: ((world: World, op: GhMutation) => void) | null = null;
   /** Make the n-th mutation (1-based) fail with this stderr. */
   failMutation: { readonly at: number; readonly stderr: string } | null = null;
-  /** Hide a thread from the first read only (a race between the two reads). */
+  /** The page size of the fake paged reads. */
+  threadPageSize = 100;
+  commentPageSize = 100;
+  /** When false, `gh api user` fails, as with a GitHub App token. */
+  userKnown = true;
   private mutations = 0;
 
   constructor(specs: readonly ThreadSpec[]) {
@@ -88,16 +92,23 @@ export class World {
     };
   }
 
-  private detail(t: World["threads"][number]): Record<string, unknown> {
+  private page<T>(items: readonly T[], after: string | undefined, size: number): { readonly nodes: readonly T[]; readonly pageInfo: { readonly hasNextPage: boolean; readonly endCursor: string | null } } {
+    const start = after === undefined ? 0 : Number(after);
+    const end = Math.min(start + size, items.length);
+    return { nodes: items.slice(start, end), pageInfo: { hasNextPage: end < items.length, endCursor: end < items.length ? String(end) : null } };
+  }
+
+  private comments(t: World["threads"][number], after: string | undefined): Record<string, unknown> {
+    const p = this.page(t.comments, after, this.commentPageSize);
     return {
-      id: t.id,
-      isResolved: t.resolved,
-      isOutdated: false,
-      path: t.path,
-      line: t.line,
-      first: { totalCount: t.comments.length, nodes: t.comments.slice(0, 1).map((c, i) => commentNode(c, i)) },
-      recent: { nodes: t.comments.map((c, i) => commentNode(c, i)) },
+      totalCount: t.comments.length,
+      pageInfo: p.pageInfo,
+      nodes: p.nodes.map((c, i) => commentNode(c, i)),
     };
+  }
+
+  detail(t: World["threads"][number]): Record<string, unknown> {
+    return { id: t.id, isResolved: t.resolved, isOutdated: false, path: t.path, line: t.line, comments: this.comments(t, undefined) };
   }
 
   gh(overrides: Record<string, (vars: Record<string, string>) => Reply> = {}): FakeGh {
@@ -120,9 +131,16 @@ export class World {
           }),
         base: () => baseResponse(),
         issue: () => ({ data: { repository: { issueOrPullRequest: null } } }),
-        threadDetails: () => ({
-          data: { node: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: this.threads.map((t) => this.detail(t)) } } },
-        }),
+        threadDetails: (vars) => {
+          const p = this.page(this.threads, vars["after"], this.threadPageSize);
+          return { data: { node: { reviewThreads: { pageInfo: p.pageInfo, nodes: p.nodes.map((t) => this.detail(t)) } } } };
+        },
+        thread: (vars) => {
+          const t = this.threads.find((x) => x.id === vars["id"]);
+          return {
+            data: { node: t === undefined ? null : { id: t.id, isResolved: t.resolved, isOutdated: false, path: t.path, line: t.line, comments: this.comments(t, vars["after"]) } },
+          };
+        },
         prHead: () => ({ data: { node: { state: this.state, headRefOid: this.head } } }),
         ...overrides,
       },
@@ -130,7 +148,7 @@ export class World {
         "repos/example-org/example-repo/rules/branches/main": RULES,
         "repos/example-org/example-repo/branches/main": { protected: true, protection: { enabled: false } },
         ...(this.policy === null ? {} : { "repos/example-org/example-repo/contents/.config/pr-policy.toml": this.policy }),
-        user: { login: AGENT },
+        ...(this.userKnown ? { user: { login: AGENT } } : {}),
       },
     );
   }

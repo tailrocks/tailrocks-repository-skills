@@ -4,10 +4,7 @@
 //   threads.ts <pr-number> apply --decisions <file.json> [--repo owner/name] [--json] [--git-dir path]
 //
 // plan writes nothing. apply posts replies and resolves threads through the
-// library's constant GraphQL mutations only.
-//
-// Exit codes: 0 no open thread, 10 only people can act next, 20 the agent must
-// act or a write was refused or stopped, 2 usage or policy error.
+// library's constant GraphQL mutations only. See exit.ts for the exit codes.
 
 import { readFile } from "node:fs/promises";
 import { ghMutate } from "../gh.ts";
@@ -17,19 +14,26 @@ import { parseRepoSlug, type Parsed, type RepoSlug } from "../types.ts";
 import { assertBun } from "../version.ts";
 import { applyDecisions, type ApplyConfig, type MutateRun } from "./apply.ts";
 import { parseDecisions } from "./decisions.ts";
-import {
-  applyObject,
-  EXIT_BLOCKED,
-  exitForOpen,
-  planObject,
-  renderApplyText,
-  renderPlanText,
-} from "./render.ts";
+import { EXIT, EXIT_TABLE } from "./exit.ts";
+import { applyObject, exitForApply, exitForOpen, planObject, renderApplyText, renderPlanText } from "./render.ts";
 import { readThreadState, unresolved, type ThreadsConfig } from "./state.ts";
 
-const USAGE_EXIT = 2;
-
 export const USAGE = `usage: threads.ts <pr-number> plan|apply [--decisions file.json] [--repo owner/name] [--json] [--git-dir path]`;
+
+export const HELP = `${USAGE}
+
+modes:
+  plan    List the unresolved review threads with a class. Writes nothing.
+  apply   Check the decisions file, then reply to and resolve threads. This is the only write.
+
+options:
+  --decisions <file>  The decisions file (apply only).
+  --repo owner/name   The repository. Default: the repository of the current directory.
+  --git-dir <path>    A local clone. It proves that a fix commit is an ancestor of the head.
+  --json              Print JSON, schema 1.
+  -h, --help          Print this text and exit 0.
+
+${EXIT_TABLE}`;
 
 export interface Args {
   readonly number: number;
@@ -106,16 +110,20 @@ export interface MainOptions {
 export async function main(argv: readonly string[], options: MainOptions = {}): Promise<number> {
   const out = options.out ?? ((line: string) => console.log(line));
   const err = options.err ?? ((line: string) => console.error(line));
+  if (argv.includes("--help") || argv.includes("-h")) {
+    out(HELP);
+    return EXIT.done;
+  }
   try {
     assertBun();
   } catch (error) {
     err(error instanceof Error ? error.message : "Bun is too old");
-    return USAGE_EXIT;
+    return EXIT.usage;
   }
   const parsed = parseArgs(argv);
   if (!parsed.ok) {
     err(`${parsed.message}\n${USAGE}`);
-    return USAGE_EXIT;
+    return EXIT.usage;
   }
   const { args } = parsed;
   const cwd = options.cwd ?? process.cwd();
@@ -123,7 +131,7 @@ export async function main(argv: readonly string[], options: MainOptions = {}): 
   const slug = await resolveRepo(args.repo, runGh);
   if (!slug.ok) {
     err(slug.error);
-    return USAGE_EXIT;
+    return EXIT.usage;
   }
   const config: ThreadsConfig = {
     cwd,
@@ -136,11 +144,11 @@ export async function main(argv: readonly string[], options: MainOptions = {}): 
     const result = await readThreadState(slug.value, args.number, config);
     if (!result.ok) {
       err(result.kind === "policy" ? `invalid policy:\n${formatPolicyErrors(result.errors)}` : result.error);
-      return result.kind === "policy" ? USAGE_EXIT : EXIT_BLOCKED;
+      return result.kind === "policy" ? EXIT.usage : EXIT.refused;
     }
     const open = unresolved(result.state);
     const view = { snapshot: result.state.snapshot, agent: result.state.agent, open, problems: result.state.problems };
-    const exit = result.state.problems.length > 0 ? EXIT_BLOCKED : exitForOpen(open);
+    const exit = result.state.problems.length > 0 ? EXIT.refused : exitForOpen(open);
     out(args.json ? JSON.stringify(planObject(view, exit), null, 2) : renderPlanText(view));
     return exit;
   }
@@ -150,24 +158,21 @@ export async function main(argv: readonly string[], options: MainOptions = {}): 
     text = await readFile(args.decisions ?? "", "utf8");
   } catch {
     err(`cannot read the decisions file ${args.decisions ?? ""}`);
-    return USAGE_EXIT;
+    return EXIT.usage;
   }
   const file = parseDecisions(text);
   if (!file.ok) {
     err(`invalid decisions file: ${file.error}`);
-    return USAGE_EXIT;
+    return EXIT.usage;
   }
   const applyConfig: ApplyConfig = { ...config, mutate: options.mutate ?? ((op) => ghMutate(op, { cwd })) };
   const result = await applyDecisions(slug.value, args.number, file.value, applyConfig);
   if (result.kind === "policy") {
     err(`invalid policy:\n${formatPolicyErrors(result.errors)}`);
-    return USAGE_EXIT;
+    return EXIT.usage;
   }
   const label = `${slug.value}#${args.number}`;
-  const exit =
-    result.kind === "refused" || result.aborted !== null || result.remaining === null || result.finalError !== null
-      ? EXIT_BLOCKED
-      : exitForOpen(result.remaining);
+  const exit = exitForApply(result);
   out(args.json ? JSON.stringify(applyObject(result, label, exit), null, 2) : renderApplyText(result, label));
   return exit;
 }

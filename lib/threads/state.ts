@@ -6,10 +6,9 @@ import type { GitRun } from "../github/git-facts.ts";
 import type { GhRun } from "../github/graphql.ts";
 import { fetchBasePolicy } from "../policy/fetch.ts";
 import type { Policy, PolicyError } from "../policy/types.ts";
-import { sameLogin } from "../status/text.ts";
 import type { PrSnapshot } from "../status/types.ts";
 import type { RepoSlug } from "../types.ts";
-import { classifyAll } from "./classify.ts";
+import { classifyAll, type ClassifyContext } from "./classify.ts";
 import { readAgentLogin, readThreads } from "./read.ts";
 import type { ClassifiedThread } from "./types.ts";
 
@@ -32,7 +31,8 @@ export interface ThreadState {
   readonly threads: readonly ClassifiedThread[];
   /** Problems that make a write unsafe. */
   readonly problems: readonly string[];
-  readonly isSelf: (login: string) => boolean;
+  /** The context that classified the threads. Apply uses it to classify a thread again before a write. */
+  readonly context: ClassifyContext;
 }
 
 export type StateResult =
@@ -78,16 +78,16 @@ export async function readThreadState(repo: RepoSlug, number: number, config: Th
     problems.push("the open review threads changed while they were read; run the script again");
   }
   const agent = await readAgentLogin(config.runGh);
-  const isSelf = (login: string): boolean => sameLogin(login, snapshot.author) || (agent !== null && sameLogin(login, agent));
+  const context: ClassifyContext = { policy, prAuthor: snapshot.author, agent };
   return {
     ok: true,
     state: {
       snapshot,
       policy,
       agent,
-      threads: classifyAll(read.threads, { policy, prAuthor: snapshot.author, agent }),
+      threads: classifyAll(read.threads, context),
       problems,
-      isSelf,
+      context,
     },
   };
 }

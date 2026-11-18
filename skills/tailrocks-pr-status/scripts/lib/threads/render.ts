@@ -3,11 +3,8 @@
 
 import type { PrSnapshot } from "../status/types.ts";
 import type { ApplyResult } from "./apply.ts";
+import { EXIT } from "./exit.ts";
 import type { ClassifiedThread } from "./types.ts";
-
-export const EXIT_DONE = 0;
-export const EXIT_WAITING = 10;
-export const EXIT_BLOCKED = 20;
 
 export function excerpt(text: string, max: number): string {
   const flat = text.replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ").replace(/\s+/g, " ").trim();
@@ -17,9 +14,20 @@ export function excerpt(text: string, max: number): string {
 /** 0 when nothing is open. 10 when only people can act. 20 when the agent must act. */
 export function exitForOpen(open: readonly ClassifiedThread[]): number {
   if (open.length === 0) {
-    return EXIT_DONE;
+    return EXIT.done;
   }
-  return open.every((t) => t.awaiting === "human") ? EXIT_WAITING : EXIT_BLOCKED;
+  return open.every((t) => t.awaiting === "human") ? EXIT.waiting : EXIT.act;
+}
+
+/** The exit code of an apply result. 3 when nothing was written, 20 when part was written. */
+export function exitForApply(result: Exclude<ApplyResult, { readonly kind: "policy" }>): number {
+  if (result.kind === "refused") {
+    return EXIT.refused;
+  }
+  if (result.aborted !== null || result.finalError !== null || result.remaining === null) {
+    return result.mutations === 0 ? EXIT.refused : EXIT.act;
+  }
+  return exitForOpen(result.remaining);
 }
 
 function place(t: ClassifiedThread): string {
@@ -38,12 +46,13 @@ export function nextAction(open: readonly ClassifiedThread[]): string {
 }
 
 export function threadObject(t: ClassifiedThread) {
-  const last = t.detail.recent[t.detail.recent.length - 1] ?? t.detail.first;
+  const last = t.detail.comments[t.detail.comments.length - 1] ?? t.detail.first;
   return {
     id: t.detail.id,
     class: t.class,
     awaiting: t.awaiting,
     isBot: t.isBot,
+    involvesPerson: t.involvesPerson,
     author: t.detail.first.author,
     path: t.detail.path,
     line: t.detail.line,
@@ -69,12 +78,12 @@ export function renderPlanText(view: PlanView): string {
     lines.push(`  problem: ${p}`);
   }
   for (const t of open) {
-    const last = t.detail.recent[t.detail.recent.length - 1] ?? t.detail.first;
+    const last = t.detail.comments[t.detail.comments.length - 1] ?? t.detail.first;
     lines.push(
       `  ${t.detail.id} [${t.class}] ${t.isBot ? "bot" : "person"} ${t.detail.first.author} ${place(t)}${t.detail.isOutdated ? " (outdated)" : ""}`,
       `      first: ${excerpt(t.detail.first.body, 160)}`,
       `      last (${last.author}): ${excerpt(last.body, 160)}`,
-      `      ${t.reason}; waiting for: ${t.awaiting}`,
+      `      ${t.reason}; waiting for: ${t.awaiting}${t.involvesPerson ? "; a person wrote here" : ""}`,
     );
   }
   lines.push(`next: ${nextAction(open)}`);
@@ -100,12 +109,22 @@ export function renderApplyText(result: Exclude<ApplyResult, { readonly kind: "p
   if (result.kind === "refused") {
     return [`${repoLabel}: REFUSED, nothing was written`, ...result.reasons.map((r) => `  ${r}`)].join("\n");
   }
-  const lines = [`${repoLabel}: applied ${result.outcomes.length} decision${result.outcomes.length === 1 ? "" : "s"} (head ${result.headSha.slice(0, 7)})`];
+  const done = result.outcomes.filter((o) => o.ok).length;
+  const total = result.outcomes.length + result.notAttempted.length;
+  const lines = [`${repoLabel}: written ${done} of ${total} decision${total === 1 ? "" : "s"} (head ${result.headSha.slice(0, 7)})`];
   for (const o of result.outcomes) {
-    lines.push(`  ${o.id} ${o.action}: ${o.note}`);
+    lines.push(`  ${o.id} ${o.action}: ${o.ok ? "" : "FAILED: "}${o.note}`);
+  }
+  for (const id of result.notAttempted) {
+    lines.push(`  ${id}: not attempted`);
   }
   if (result.aborted !== null) {
-    lines.push(`ABORTED: ${result.aborted}`);
+    lines.push(`STOPPED: ${result.aborted}`);
+    lines.push(
+      result.mutations === 0
+        ? "Nothing was written."
+        : "Part was written. Run plan again, then decide what is left. A reply that is already posted is not posted again.",
+    );
   }
   if (result.finalError !== null) {
     lines.push(`cannot read the threads again: ${result.finalError}`);
@@ -133,7 +152,9 @@ export function applyObject(result: Exclude<ApplyResult, { readonly kind: "polic
     aborted: result.aborted,
     finalError: result.finalError,
     exit,
+    mutations: result.mutations,
     outcomes: result.outcomes,
+    notAttempted: result.notAttempted,
     remaining: result.remaining === null ? null : result.remaining.map(threadObject),
     next: result.remaining === null ? "Run plan again." : nextAction(result.remaining),
   };

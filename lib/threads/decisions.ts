@@ -4,20 +4,25 @@
 //   "schema": 1,
 //   "expectHead": "<40-hex sha>",          optional
 //   "decisions": [
-//     { "id": "<thread id>", "action": "fix" | "defer" | "reply-only",
-//       "reply": "<text>", "fixCommit": "<40-hex sha>" }   fixCommit: optional
+//     { "id": "<thread id>", "action": "fix" | "defer" | "reply-only" | "reply-resolve",
+//       "reply": "<text>",                  optional for fix and defer on a bot thread
+//       "fixCommit": "<40-hex sha>",        fix: required. reply-only: optional.
+//       "confirmedNoOpenQuestion": true }   needed to resolve a thread that a person wrote in
 //   ]
 // }
 
+import { createHash } from "node:crypto";
 import { arr, isObj, member, ReadError, str } from "../github/read.ts";
 import type { Policy } from "../policy/types.ts";
 import { parseSha, type Parsed, type RepoSlug, type Sha } from "../types.ts";
 import type { Action, ClassifiedThread, Decision, DecisionFile } from "./types.ts";
 
-const ACTIONS: readonly Action[] = ["fix", "defer", "reply-only"];
+const ACTIONS: readonly Action[] = ["fix", "defer", "reply-only", "reply-resolve"];
 const MAX_REPLY = 60_000;
+/** The limit of a comment body in lib/safety-gh.ts. */
+const MAX_COMMENT_BODY = 65_000;
 const TOP_KEYS: ReadonlySet<string> = new Set(["schema", "expectHead", "decisions"]);
-const DECISION_KEYS: ReadonlySet<string> = new Set(["id", "action", "reply", "fixCommit"]);
+const DECISION_KEYS: ReadonlySet<string> = new Set(["id", "action", "reply", "fixCommit", "confirmedNoOpenQuestion"]);
 
 function unknownKeys(value: Readonly<Record<string, unknown>>, allowed: ReadonlySet<string>, where: string): void {
   for (const key of Object.keys(value)) {
@@ -55,7 +60,11 @@ function decision(value: unknown, index: number): Decision {
     }
     fixCommit = parsed.value;
   }
-  return { id, action, reply, fixCommit };
+  const rawConfirm = member(value, "confirmedNoOpenQuestion");
+  if (rawConfirm !== undefined && typeof rawConfirm !== "boolean") {
+    throw new ReadError(`${where}.confirmedNoOpenQuestion: expected true or false`);
+  }
+  return { id, action, reply, fixCommit, confirmedNoOpenQuestion: rawConfirm === true };
 }
 
 /** Parse the decisions text. Any unknown key or bad value is an error: a typo fails closed. */
@@ -94,51 +103,60 @@ export function parseDecisions(text: string): Parsed<DecisionFile> {
 export interface PlannedWrite {
   readonly thread: ClassifiedThread;
   readonly decision: Decision;
-  /** The exact reply text. */
+  /** The reply that a reader sees. */
+  readonly visible: string;
+  /** The exact comment body: the reply and a hidden marker line. */
   readonly body: string;
-  /** False when this reply is already the last comment of the thread (an earlier run posted it). */
+  /** False when this reply is already in the thread (an earlier run posted it). */
   readonly post: boolean;
-  /** True for fix and defer on a thread that is not a person's open question. */
+  /** True when apply resolves the thread. */
   readonly resolve: boolean;
 }
 
 export interface WriteContext {
   readonly policy: Policy;
   readonly repo: RepoSlug;
-  /** True when the login is the PR author or the current gh user. */
-  readonly isSelf: (login: string) => boolean;
 }
 
 export function commitUrl(repo: RepoSlug, sha: Sha): string {
   return `https://github.com/${repo}/commit/${sha}`;
 }
 
-/** The exact reply text for a decision. Null when a rule needs a reply that is missing. */
+/** The hidden line that ends each reply. A re-run finds its own reply by it, whoever wrote after. */
+export function replyMarker(threadId: string, visible: string): string {
+  const digest = createHash("sha256").update(threadId).update("\0").update(visible).digest("hex").slice(0, 16);
+  return `<!-- pr-threads:${digest} -->`;
+}
+
+/** True when the thread already holds this reply, from any author: the marker, or the exact text. */
+export function hasReply(thread: ClassifiedThread, visible: string): boolean {
+  const marker = replyMarker(thread.detail.id, visible);
+  return thread.detail.comments.some((c) => c.body.includes(marker) || c.body.trim() === visible.trim());
+}
+
+/** The visible reply text for a decision. Null when the text would be empty. */
 export function composeReply(d: Decision, thread: ClassifiedThread, context: WriteContext): string | null {
-  const personThread = !thread.isBot;
   const link = d.fixCommit === null ? "" : `Fixed in ${commitUrl(context.repo, d.fixCommit)}`;
-  if (d.action === "defer") {
-    if (personThread && d.reply === "") {
-      return null;
-    }
-    return [context.policy.threads.defer_reply, d.reply].filter((p) => p !== "").join("\n\n");
-  }
-  if (d.action === "fix") {
-    if (personThread && d.reply === "") {
-      return null;
-    }
-    return [d.reply === "" ? "Fixed." : d.reply, link].filter((p) => p !== "").join("\n\n");
-  }
-  return d.reply === "" ? null : [d.reply, link].filter((p) => p !== "").join("\n\n");
+  const parts =
+    d.action === "defer"
+      ? [context.policy.threads.defer_reply, d.reply]
+      : d.action === "fix"
+        ? [d.reply === "" && !thread.involvesPerson ? "Fixed." : d.reply, link]
+        : [d.reply, link];
+  const text = parts.map((p) => p.trim()).filter((p) => p !== "").join("\n\n");
+  return text === "" ? null : text;
 }
 
 export type WritePlan =
   | { readonly ok: true; readonly writes: readonly PlannedWrite[] }
   | { readonly ok: false; readonly refusals: readonly string[] };
 
+const RESOLVING: ReadonlySet<Action> = new Set(["fix", "defer", "reply-resolve"]);
+
 /**
  * Check every decision against the threads that GitHub holds now. One refusal
- * refuses the whole file: nothing is written.
+ * refuses the whole file: nothing is written. Every reply body is checked here,
+ * before any write.
  */
 export function planWrites(file: DecisionFile, threads: readonly ClassifiedThread[], context: WriteContext): WritePlan {
   const byId = new Map(threads.map((t) => [t.detail.id, t] as const));
@@ -159,8 +177,8 @@ export function planWrites(file: DecisionFile, threads: readonly ClassifiedThrea
       continue;
     }
     seen.add(d.id);
-    if (d.action === "defer" && d.fixCommit !== null) {
-      refuse("a defer decision cannot name a fix commit");
+    if (d.fixCommit !== null && d.action !== "fix" && d.action !== "reply-only") {
+      refuse(`a ${d.action} decision cannot name a fix commit`);
       continue;
     }
     if (d.action === "fix" && d.fixCommit === null) {
@@ -175,19 +193,37 @@ export function planWrites(file: DecisionFile, threads: readonly ClassifiedThrea
       refuse("the policy requires a fix for this thread; it cannot be deferred");
       continue;
     }
-    const body = composeReply(d, thread, context);
-    if (body === null) {
-      refuse(d.action === "reply-only" ? "a reply is required" : "a thread of a person needs a reply with the reason");
+    if (d.action === "reply-resolve" && thread.class !== "human-other") {
+      refuse(`reply-resolve is for a human-other thread only (this thread is ${thread.class})`);
       continue;
     }
-    const last = thread.detail.recent[thread.detail.recent.length - 1];
-    const alreadyPosted = last !== undefined && context.isSelf(last.author) && last.body.trim() === body.trim();
-    const resolve = d.action !== "reply-only" && thread.class !== "human-question";
-    if (thread.detail.isResolved && !alreadyPosted) {
+    if (RESOLVING.has(d.action) && thread.involvesPerson && !d.confirmedNoOpenQuestion) {
+      refuse(
+        "a person wrote in this thread. Read the whole thread. Set confirmedNoOpenQuestion to true only when no person waits for an answer; otherwise use reply-only",
+      );
+      continue;
+    }
+    if ((d.action === "reply-only" || d.action === "reply-resolve" || thread.involvesPerson) && d.reply === "") {
+      refuse("a reply text is required for this thread");
+      continue;
+    }
+    const visible = composeReply(d, thread, context);
+    if (visible === null) {
+      refuse(d.action === "defer" ? "the reply would be empty: threads.defer_reply is empty, so give a reply text" : "the reply would be empty");
+      continue;
+    }
+    const body = `${visible}\n\n${replyMarker(d.id, visible)}`;
+    if (body.length > MAX_COMMENT_BODY) {
+      refuse(`the reply is too long (${body.length} characters; the limit is ${MAX_COMMENT_BODY})`);
+      continue;
+    }
+    const posted = hasReply(thread, visible);
+    const resolve = RESOLVING.has(d.action);
+    if (thread.detail.isResolved && !posted) {
       refuse("the thread is already resolved");
       continue;
     }
-    writes.push({ thread, decision: d, body, post: !alreadyPosted, resolve: resolve && !thread.detail.isResolved });
+    writes.push({ thread, decision: d, visible, body, post: !posted, resolve: resolve && !thread.detail.isResolved });
   }
   return refusals.length > 0 ? { ok: false, refusals } : { ok: true, writes };
 }

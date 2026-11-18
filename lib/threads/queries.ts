@@ -2,19 +2,26 @@
 // None of them holds a mutation. The mutations live in lib/safety-gh.ts.
 
 const COMMENT_FIELDS = "author { login __typename } body url";
+const COMMENTS = `comments(first: 100) { totalCount pageInfo { hasNextPage endCursor } nodes { ${COMMENT_FIELDS} } }`;
+const THREAD_FIELDS = `id isResolved isOutdated path line ${COMMENTS}`;
 
-/** Every review thread of a PR with its first comment and its latest comments. */
+/** Every review thread of a PR with its first 100 comments. A longer thread is read on with THREAD_QUERY. */
 export const THREAD_DETAILS_QUERY = `
 query($id: ID!, $after: String) {
   node(id: $id) { ... on PullRequest {
-    reviewThreads(first: 50, after: $after) {
+    reviewThreads(first: 30, after: $after) {
       pageInfo { hasNextPage endCursor }
-      nodes {
-        id isResolved isOutdated path line
-        first: comments(first: 1) { totalCount nodes { ${COMMENT_FIELDS} } }
-        recent: comments(last: 30) { nodes { ${COMMENT_FIELDS} } }
-      }
+      nodes { ${THREAD_FIELDS} }
     }
+  } }
+}`;
+
+/** One review thread, with a page of its comments. Read before each write and for long threads. */
+export const THREAD_QUERY = `
+query($id: ID!, $after: String) {
+  node(id: $id) { ... on PullRequestReviewThread {
+    id isResolved isOutdated path line
+    comments(first: 100, after: $after) { totalCount pageInfo { hasNextPage endCursor } nodes { ${COMMENT_FIELDS} } }
   } }
 }`;
 
