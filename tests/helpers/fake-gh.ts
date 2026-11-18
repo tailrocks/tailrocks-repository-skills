@@ -51,6 +51,8 @@ function isFail(value: unknown): value is { readonly __exit: number; readonly st
 export function fakeGh(
   graphql: Readonly<Record<string, (vars: Vars) => Reply>>,
   rest: Readonly<Record<string, Reply>> = {},
+  /** Answers the commands that are not `gh api`, such as `pr list`. Return undefined for an unknown command. */
+  commands?: (args: readonly string[]) => Reply | undefined,
 ): FakeGh {
   const calls: string[][] = [];
   const run = async (args: readonly string[]): Promise<RunResult> => {
@@ -60,7 +62,13 @@ export function fakeGh(
       throw new Error(`fake gh: the guard refused ${args.slice(0, 3).join(" ")}: ${guard.reason}`);
     }
     let reply: Reply;
-    if (args[1] === "graphql") {
+    if (commands !== undefined && args[0] !== "api") {
+      const answer = commands(args);
+      if (answer === undefined) {
+        throw new Error(`fake gh: no handler for gh ${args.slice(0, 2).join(" ")}`);
+      }
+      reply = answer;
+    } else if (args[1] === "graphql") {
       const queryArg = args.find((a) => a.startsWith("query=")) ?? "";
       const name = QUERIES.find(([, text]) => `query=${text}` === queryArg)?.[0];
       const handler = name === undefined ? undefined : graphql[name];
@@ -81,7 +89,9 @@ export function fakeGh(
       if (key === undefined) {
         return { code: 1, stdout: "", stderr: `gh: Not Found (HTTP 404) for ${endpoint}` };
       }
-      reply = rest[key];
+      const entry = rest[key];
+      // A function answers with the state at the time of the call.
+      reply = typeof entry === "function" ? (entry as () => Reply)() : entry;
     }
     if (isFail(reply)) {
       return { code: reply.__exit, stdout: "", stderr: reply.stderr };

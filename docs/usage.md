@@ -103,6 +103,21 @@ and the skill that owns it. The skill is read-only. A READY verdict is
 not a merge. The agent never decides READY itself. The reference
 `finding-codes.md` in the skill lists every finding code.
 
+## Example: open a pull request under the repository policy
+
+Invoke the create owner on a branch that holds committed work:
+
+```text
+/tailrocks-repository-skills:tailrocks-pr-create
+```
+
+The skill runs one script in two steps. `plan` checks the branch name, the
+sign-off of each commit, the inventories, and the pre-push steps. It also
+picks the base branch and prints a body skeleton. `open` pushes the exact
+commit and creates one pull request, as a draft or ready by the policy. It
+reuses an open pull request for the branch. The skill never force-pushes and
+never creates a second pull request.
+
 ## Lifecycle boundary
 
 Local-work recovery belongs to `tailrocks-repository-recover`.
