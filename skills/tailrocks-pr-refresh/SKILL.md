@@ -41,8 +41,7 @@ A request about the title or body is always `metadata`, whatever the verb
 of the modes, ask the user. Do not guess.
 
 When one request needs two modes, run `sync` or `dco-fix` first and `metadata`
-last. `metadata write` checks the head that `metadata show` read, so a push
-after `show` makes `write` stop with `drift`.
+last. A push after `metadata show` makes `write` stop with `drift`.
 
 ## Steps
 
@@ -86,7 +85,9 @@ detail lines, and `next` as printed. Do not guess what the code means.
 ## Mode: sync
 
 The script works in a temporary worktree. It never changes your checkout. It
-removes the worktree when it ends, also on failure. It turns off the hooks of
+removes the worktree when it ends, also on failure. The one exception is
+`--keep-worktree` when the merge stops on a conflict: then the worktree stays
+until `continue` or `abort`. It turns off the hooks of
 the repository in that worktree, because the policy pre-push steps replace them.
 It keeps the rest of your git configuration, so commit signing stays as you set it.
 
@@ -113,8 +114,7 @@ It keeps the rest of your git configuration, so commit signing stays as you set 
 
 If a pre-push step or an inventory check fails, nothing was pushed. Fix the
 cause in your own checkout with a signed commit (`git commit -s`), push it
-normally, then run `sync` again. The script reads the remote head, so it sees
-your fix.
+normally, then run `sync` again.
 
 ## Resolve a conflict
 
@@ -124,11 +124,13 @@ Use this flow only for a conflict that the script reports as `conflict`.
    progress in its worktree, and prints the exact path.
 2. In that path, edit only the files that the output lists as `conflict:`. Keep
    both sides. Edit files only. Never run `git` there. Never edit a `generated:`
-   output: the script regenerates it.
+   output: the script regenerates it. If both sides cannot be kept, or you cannot
+   tell what is right, run `abort` and report the conflict to the user. Do not
+   guess.
 3. Run `continue <pr> --worktree <path>`. The script checks that the path is its
    worktree for this PR and that the head is unchanged. It refuses leftover
-   conflict markers and edits outside the conflicted files. It stages exactly the
-   conflicted paths, commits the merge with sign-off, regenerates, checks, pushes
+   conflict markers and any change outside the conflicted files, staged or not,
+   untracked files included. It stages exactly the conflicted paths, commits the merge with sign-off, regenerates, checks, pushes
    once, asks for a new review, and removes the worktree.
 4. To give up, run `abort <pr> --worktree <path>`.
 5. If `continue` stops for a problem that you can fix (markers, edits outside the

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, setDefaultTimeout } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main } from "../lib/refresh/cli.ts";
@@ -171,8 +171,8 @@ describe("continue", () => {
     writeFileSync(join(path, "README.md"), "# fixed\n");
     writeFileSync(join(path, "gen", "inputs.txt"), "sneaky\n");
     const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
-    expect(run.json.code).toBe("continue_dirty");
-    expect(run.json.details).toContain("edited: gen/inputs.txt");
+    expect(run.json.code).toBe("continue_outside_edit");
+    expect(run.json.details).toContain("outside: gen/inputs.txt");
     expect(pushes(run.gitCalls)).toBe(0);
     expect(existsSync(path)).toBe(true);
   });
@@ -187,6 +187,8 @@ describe("continue", () => {
     Bun.spawnSync(["git", "-c", "core.hooksPath=/dev/null", "commit", "-q", "-s", "--no-edit"], { cwd: path });
     const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
     expect(run.json.code).toBe("merge_not_in_progress");
+    expect(run.json.next).toContain("abort 7");
+    expect(run.json.next).not.toContain("continue 7");
     expect(pushes(run.gitCalls)).toBe(0);
   });
 
@@ -274,19 +276,78 @@ describe("abort", () => {
     expect(sb.remoteRev("refs/heads/feat/topic")).toBe(oldHead as never);
   });
 
-  test("a marker that points outside the repository admin directory deletes nothing", async () => {
+  function stateFile(sb: Sandbox): string {
+    const dir = join(sb.root, "state");
+    const names = readdirSync(dir).filter((n) => n.endsWith(".json"));
+    expect(names).toHaveLength(1);
+    return join(dir, names[0] ?? "");
+  }
+
+  test("a state file that names a directory outside the repository deletes nothing", async () => {
     const sb = box();
     conflictSetup(sb);
     const { gh, path } = await keep(sb);
     const victim = mkdtempSync(join(tmpdir(), "refresh-victim-"));
     extra.push(victim);
     mkdirSync(join(victim, "worktrees", "precious"), { recursive: true });
-    const marker = join(path, "..", "pr-refresh.json");
-    const text = JSON.parse(readFileSync(marker, "utf8")) as Record<string, unknown>;
-    writeFileSync(marker, JSON.stringify({ ...text, adminDir: join(victim, "worktrees", "precious") }));
+    const file = stateFile(sb);
+    const text = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+    writeFileSync(file, JSON.stringify({ ...text, adminDir: join(victim, "worktrees", "precious") }), { mode: 0o600 });
     const run = await cli(sb, gh, ["abort", "7", "--worktree", path]);
     expect(run.json.code).toBe("worktree_invalid");
     expect(existsSync(join(victim, "worktrees", "precious"))).toBe(true);
+    expect(existsSync(path)).toBe(true);
+  });
+
+  test("a state file that names another worktree's admin directory deletes nothing", async () => {
+    const sb = box();
+    conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    const other = otherWorktree(sb);
+    const file = stateFile(sb);
+    const text = JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+    writeFileSync(file, JSON.stringify({ ...text, adminDir: other.admin }), { mode: 0o600 });
+    const run = await cli(sb, gh, ["abort", "7", "--worktree", path]);
+    expect(run.json.code).toBe("worktree_invalid");
+    expect(existsSync(join(other.admin, "index"))).toBe(true);
+    expect(existsSync(join(other.path, "wip.txt"))).toBe(true);
+  });
+
+  test("a state file that is a link, or open to other users, is ignored", async () => {
+    const sb = box();
+    conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    const file = stateFile(sb);
+    chmodSync(file, 0o644);
+    const open = await cli(sb, gh, ["abort", "7", "--worktree", path]);
+    expect(open.json.code).toBe("worktree_invalid");
+    chmodSync(file, 0o600);
+    const copy = join(sb.root, "state-copy.json");
+    renameSync(file, copy);
+    symlinkSync(copy, file);
+    const link = await cli(sb, gh, ["abort", "7", "--worktree", path]);
+    expect(link.json.code).toBe("worktree_invalid");
+    expect(existsSync(path)).toBe(true);
+  });
+
+  test("the state directory is private and holds one random id per run", async () => {
+    const sb = box();
+    conflictSetup(sb);
+    const { run } = await keep(sb);
+    expect(statSync(join(sb.root, "state")).mode & 0o777).toBe(0o700);
+    expect(statSync(stateFile(sb)).mode & 0o777).toBe(0o600);
+    expect(String(run.json.data["id"])).toMatch(/^[0-9a-f]{32}$/);
+    expect(stateFile(sb)).toContain(String(run.json.data["id"]));
+    expect(run.json.details.join("\n")).toContain(`state id: ${String(run.json.data["id"])}`);
+  });
+
+  test("continue and abort remove the state file with the worktree", async () => {
+    const sb = box();
+    conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    expect(readdirSync(join(sb.root, "state"))).toHaveLength(1);
+    await cli(sb, gh, ["abort", "7", "--worktree", path]);
+    expect(readdirSync(join(sb.root, "state"))).toHaveLength(0);
   });
 });
 
@@ -356,7 +417,7 @@ describe("a policy step cannot make cleanup delete another path", () => {
     const { guardedGit } = await import("../lib/refresh/gitx.ts");
     const notes: string[] = [];
     await withWorktree(
-      { cwd: sb.clone, root: sb.worktreeRoot, runner: guardedGit, onProblem: (n) => notes.push(n) },
+      { cwd: sb.clone, root: sb.worktreeRoot, runner: guardedGit, stateRoot: join(sb.root, "state"), onProblem: (n) => notes.push(n) },
       sb.git(["rev-parse", "HEAD"]).trim(),
       async (w) => {
         rmSync(w.path, { recursive: true, force: true });
@@ -365,5 +426,117 @@ describe("a policy step cannot make cleanup delete another path", () => {
     );
     expect(existsSync(join(victim, "keep.txt"))).toBe(true);
     expect(notes.join("\n")).toContain("cleanup note");
+  });
+});
+
+/**
+ * What an agent can do: write a marker next to the kept worktree. The script
+ * must not read it. (An older design read this file, so the tests keep it.)
+ */
+function forgeMarker(sb: Sandbox, path: string, patch: Record<string, unknown>): void {
+  const adminDir = sb.git(["rev-parse", "--absolute-git-dir"], path).trim();
+  const forged = {
+    schema: 1,
+    repo: REPO,
+    number: 7,
+    remote: "origin",
+    headRef: "feat/topic",
+    headSha: sb.remoteRev("refs/heads/feat/topic"),
+    baseRef: "main",
+    baseSha: sb.remoteRev("refs/heads/main"),
+    conflicts: ["README.md", "out/generated.txt"],
+    adminDir,
+    commonDir: realpathSync(join(sb.clone, ".git")),
+    ...patch,
+  };
+  writeFileSync(join(path, "..", "pr-refresh.json"), JSON.stringify(forged));
+}
+
+function otherWorktree(sb: Sandbox): { readonly path: string; readonly admin: string } {
+  const path = join(sb.root, "my-other-worktree");
+  sb.git(["worktree", "add", "--detach", path, "HEAD"]);
+  writeFileSync(join(path, "wip.txt"), "work in progress\n");
+  sb.git(["add", "wip.txt"], path);
+  return { path, admin: sb.git(["rev-parse", "--absolute-git-dir"], path).trim() };
+}
+
+describe("a kept worktree trusts only library-owned state", () => {
+  test("a forged marker cannot make abort delete another worktree's data", async () => {
+    const sb = box();
+    conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    const other = otherWorktree(sb);
+    forgeMarker(sb, path, { adminDir: other.admin });
+    const run = await cli(sb, gh, ["abort", "7", "--worktree", path]);
+    expect(existsSync(join(other.admin, "index"))).toBe(true);
+    expect(existsSync(join(other.path, "wip.txt"))).toBe(true);
+    expect(sb.git(["status", "--porcelain"], other.path)).toContain("wip.txt");
+    expect(run.code).toBe(0);
+    expect(existsSync(path)).toBe(false);
+  });
+
+  test("a staged edit outside the conflict set is refused", async () => {
+    const sb = box();
+    const { oldHead } = conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    writeFileSync(join(path, "README.md"), "# fixed\n");
+    writeFileSync(join(path, "gen", "inputs.txt"), "sneaky\n");
+    sb.git(["add", "gen/inputs.txt"], path);
+    const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
+    expect(run.code).toBe(20);
+    expect(run.json.code).toBe("continue_outside_edit");
+    expect(run.json.details).toContain("outside: gen/inputs.txt");
+    expect(pushes(run.gitCalls)).toBe(0);
+    expect(sb.remoteRev("refs/heads/feat/topic")).toBe(oldHead as never);
+  });
+
+  test("a removal outside the conflict set is refused", async () => {
+    const sb = box();
+    sb.commit({ "keep.txt": "x\n" }, "feat: keep file");
+    const { oldHead } = conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    writeFileSync(join(path, "README.md"), "# fixed\n");
+    sb.git(["rm", "-q", "keep.txt"], path);
+    const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
+    expect(run.json.code).toBe("continue_outside_edit");
+    expect(run.json.details).toContain("outside: keep.txt");
+    expect(sb.remoteRev("refs/heads/feat/topic")).toBe(oldHead as never);
+  });
+
+  test("an unstaged edit outside the conflict set is refused", async () => {
+    const sb = box();
+    conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    writeFileSync(join(path, "README.md"), "# fixed\n");
+    writeFileSync(join(path, "gen", "inputs.txt"), "sneaky\n");
+    const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
+    expect(run.json.code).toBe("continue_outside_edit");
+    expect(pushes(run.gitCalls)).toBe(0);
+  });
+
+  test("an untracked file outside the conflict set is refused", async () => {
+    const sb = box();
+    conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    writeFileSync(join(path, "README.md"), "# fixed\n");
+    writeFileSync(join(path, "extra.txt"), "new\n");
+    const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
+    expect(run.json.code).toBe("continue_outside_edit");
+    expect(run.json.details).toContain("outside: extra.txt");
+    expect(pushes(run.gitCalls)).toBe(0);
+  });
+
+  test("a widened conflict list in a forged marker is ignored", async () => {
+    const sb = box();
+    const { oldHead } = conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    forgeMarker(sb, path, { conflicts: ["README.md", "out/generated.txt", "gen/inputs.txt"] });
+    writeFileSync(join(path, "README.md"), "# fixed\n");
+    writeFileSync(join(path, "gen", "inputs.txt"), "widened\n");
+    const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
+    expect(run.code).toBe(20);
+    expect(run.json.code).toBe("continue_outside_edit");
+    expect(pushes(run.gitCalls)).toBe(0);
+    expect(sb.remoteRev("refs/heads/feat/topic")).toBe(oldHead as never);
   });
 });

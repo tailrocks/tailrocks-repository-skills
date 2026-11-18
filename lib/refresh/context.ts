@@ -19,6 +19,8 @@ export interface RefreshDeps {
   readonly cwd: string;
   readonly remote: string;
   readonly worktreeRoot: string;
+  /** Private directory for the state of kept worktrees. */
+  readonly stateRoot: string;
   readonly runGh: GhRun;
   readonly mutate: (op: GhMutation) => Promise<RunResult>;
   readonly git: GitRunner;

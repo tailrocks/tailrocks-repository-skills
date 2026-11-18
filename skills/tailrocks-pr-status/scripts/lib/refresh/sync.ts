@@ -114,7 +114,7 @@ async function resolveConflicts(
   if (strays.length > 0) {
     const listing = unmerged.map((p) => `${strays.includes(p) ? "conflict" : "generated"}: ${p}`);
     if (options.keepWorktree) {
-      handle.keep({
+      const kept = handle.keep({
         repo: ctx.repo,
         number: ctx.number,
         remote: deps.remote,
@@ -130,8 +130,8 @@ async function resolveConflicts(
           "conflict",
           `the merge of the base conflicts in ${strays.length} file(s) that are not regenerable outputs; the merge is in progress in ${handle.path}`,
           `edit only the "conflict:" files in ${handle.path}, keeping both sides, never the generated outputs and never run git commit; then run: refresh.ts continue ${ctx.number} --worktree ${handle.path} (or abort ${ctx.number} --worktree ${handle.path} to give up)`,
-          listing,
-          { conflicts: unmerged, resolveByHand: strays, regenerable: unmerged.filter((p) => !strays.includes(p)), worktree: handle.path },
+          [...listing, `state id: ${kept.id}`],
+          { conflicts: unmerged, resolveByHand: strays, regenerable: unmerged.filter((p) => !strays.includes(p)), worktree: handle.path, id: kept.id },
         ),
       };
     }
@@ -425,7 +425,7 @@ async function sync(deps: RefreshDeps, ctx: PrContext, options: SyncOptions): Pr
 
   const notes: string[] = [];
   const outcome = await withWorktree(
-    { cwd: deps.cwd, root: deps.worktreeRoot, runner: deps.git, onProblem: (note) => notes.push(note) },
+    { cwd: deps.cwd, root: deps.worktreeRoot, runner: deps.git, stateRoot: deps.stateRoot, onProblem: (note) => notes.push(note) },
     snapshot.headSha,
     async (handle) => {
       const { repo } = handle;

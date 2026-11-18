@@ -339,6 +339,7 @@ export function testDeps(sb: Sandbox, gh: FakeGithub, extra: Partial<RefreshDeps
     cwd: sb.clone,
     remote: "origin",
     worktreeRoot: sb.worktreeRoot,
+    stateRoot: join(sb.root, "state"),
     runGh: gh.runGh,
     mutate: async (op) => {
       gh.mutations.push(op);

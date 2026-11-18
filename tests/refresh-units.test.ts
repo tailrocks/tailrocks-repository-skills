@@ -290,7 +290,7 @@ describe("withWorktree", () => {
     const head = sb.git(["rev-parse", "HEAD"]).trim() as Sha;
     let path = "";
     await expect(
-      withWorktree({ cwd: sb.clone, root: sb.worktreeRoot, runner: guardedGit }, head, async (w) => {
+      withWorktree({ cwd: sb.clone, root: sb.worktreeRoot, runner: guardedGit, stateRoot: join(sb.root, "state") }, head, async (w) => {
         path = w.path;
         expect(existsSync(join(w.path, "a.txt"))).toBe(true);
         writeFileSync(join(w.path, "untracked.txt"), "x\n");
@@ -311,7 +311,7 @@ describe("withWorktree", () => {
     const head = sb.git(["rev-parse", "HEAD"]).trim() as Sha;
     const seen: string[][] = [];
     await withWorktree(
-      { cwd: sb.clone, root: sb.worktreeRoot, runner: (args, options) => (seen.push([...args]), guardedGit(args, options)) },
+      { cwd: sb.clone, root: sb.worktreeRoot, runner: (args, options) => (seen.push([...args]), guardedGit(args, options)), stateRoot: join(sb.root, "state") },
       head,
       async (w) => {
         expect(await repoAt(w.path, guardedGit).run(["rev-parse", "HEAD"])).toMatchObject({ code: 0 });
@@ -328,7 +328,7 @@ describe("withWorktree", () => {
     const root = mkdtempSync(join(tmpdir(), "refresh-root-"));
     try {
       let seen = "";
-      await withWorktree({ cwd: sb.clone, root, runner: guardedGit }, head, async (w) => {
+      await withWorktree({ cwd: sb.clone, root, runner: guardedGit, stateRoot: join(sb.root, "state") }, head, async (w) => {
         seen = w.path;
       });
       expect(seen.startsWith(`${realpathSync(root)}/pr-refresh-`)).toBe(true);

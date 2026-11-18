@@ -26,17 +26,17 @@ If a code is not in this file, report the first line, the detail lines, and
 | `protected_branch` | sync, continue, dco-fix | The head branch is the default branch or matches `branches.protected`. | None. The script never pushes there. |
 | `not_owner` | sync, continue, dco-fix | The PR author is not the gh user and not in `dco.bot_authors`. | Ask the author, or run as the author. |
 | `queued` | sync, continue, dco-fix | The PR is in the merge queue. A push removes it. | Dequeue first, then run again. For `dco-fix`, the policy `dco.dequeue_for_fix` lets the script dequeue. |
-| `head_moved` | sync, continue, dco-fix | The PR head changed during the run. Nothing was written. | Run the mode again. |
+| `head_moved` | sync, continue, dco-fix | The PR head changed during the run. Nothing was written. For `continue`, the kept merge is out of date and was removed. | For `sync` and `dco-fix`, run the mode again. For `continue`, run `sync --keep-worktree` again. |
 | `remote_moved` | dco-fix | The remote branch moved. Nothing was pushed. | Run the mode again. |
 | `push_rejected` | sync, continue, dco-fix | The remote refused the push, because it moved. | Run the mode again. |
 | `fetch_failed` | sync, dco-fix | The script could not fetch from the remote. | Check the remote and the network, then run again. |
 | `base_missing` | sync, dco-fix | The base commit is not in the local clone after the fetch. | Run `tailrocks-pr-status`, then try again. |
 | `merge_failed` | sync | The merge of the base failed without a content conflict. | Report the detail line. |
-| `conflict` | sync, continue | The merge conflicts in files that the policy cannot regenerate. | Run `sync` again with `--keep-worktree`, resolve in the kept worktree, then run `continue`. |
+| `conflict` | sync, continue | The merge conflicts in files that the policy cannot regenerate. | Run `sync` again with `--keep-worktree`, resolve in the kept worktree, then run `continue`. If both sides cannot be kept, or you cannot tell, run `abort` and report to the user. |
 | `conflict_markers` | continue | A resolved file still holds conflict markers. The worktree is kept. | Remove the markers, keeping both sides. Run `continue` again. |
-| `continue_dirty` | continue | A file outside the conflict set was edited. The worktree is kept. | Undo those edits. Run `continue` again. |
-| `merge_not_in_progress` | continue | The merge in the kept worktree was committed or aborted by hand. | Run `abort`, then run `sync --keep-worktree` again. |
-| `worktree_invalid` | continue, abort | The path is not a worktree that this script kept for this PR. Nothing was deleted. | Use the exact path that `sync --keep-worktree` printed. |
+| `continue_outside_edit` | continue | The staged tree, the work tree, or an untracked file differs from the plain merge in a path outside the conflict set. Nothing was committed. The worktree is kept. | Undo those edits and run `continue` again. If an edit was staged, run `abort`, then `sync --keep-worktree` again. |
+| `merge_not_in_progress` | continue | The merge in the kept worktree was committed or aborted by hand. | Run `abort`, then run `sync --keep-worktree` again. Do not run `continue` again. |
+| `worktree_invalid` | continue, abort | The path is not a worktree that this script kept for this PR, or its recorded state is missing, open to other users, or does not match git. Nothing was deleted. | Use the exact path that `sync --keep-worktree` printed. |
 | `worktree_tampered` | sync, continue | A policy step changed the git data of the worktree or the head. Nothing was pushed. | Check the policy steps on the base branch. |
 | `regenerate_failed` | sync, continue | A policy regenerate command failed, left a conflict marker, or did not write an output. | Fix the generator or its inputs. Never edit a generated file by hand. |
 | `inventory_miss` | sync, continue | A policy inventory does not name an added file. A moved file counts as added. | Add the files to the inventory with a signed commit and a normal push, then run `sync` again. |

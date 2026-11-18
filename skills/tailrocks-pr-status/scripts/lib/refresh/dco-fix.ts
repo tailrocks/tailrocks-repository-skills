@@ -48,7 +48,7 @@ async function dcoFix(deps: RefreshDeps, ctx: PrContext, notes: string[]): Promi
     return blocked("base_missing", "the base commit is not in the local clone after the fetch", "run pr-status, then try again");
   }
 
-  const result = await withWorktree({ cwd: deps.cwd, root: deps.worktreeRoot, runner: deps.git, onProblem: (note) => notes.push(note) }, snapshot.headSha, ({ repo }) =>
+  const result = await withWorktree({ cwd: deps.cwd, root: deps.worktreeRoot, runner: deps.git, stateRoot: deps.stateRoot, onProblem: (note) => notes.push(note) }, snapshot.headSha, ({ repo }) =>
     executeDcoFix({
       snapshot,
       policy,
@@ -109,11 +109,12 @@ async function dcoFix(deps: RefreshDeps, ctx: PrContext, notes: string[]): Promi
         trailersAdded: result.trailersAdded,
         reviewCarried: carry,
       };
+      const comment = dcoComment(result.trailersAdded, result.oldHead, result.newHead);
       const posted = await deps.mutate({
         kind: "issue-comment",
         repo: ctx.repo,
         number: ctx.number,
-        body: dcoComment(result.trailersAdded, result.oldHead, result.newHead),
+        body: comment,
       });
       if (posted.code !== 0) {
         return blocked(
@@ -124,6 +125,7 @@ async function dcoFix(deps: RefreshDeps, ctx: PrContext, notes: string[]): Promi
           data,
         );
       }
+      details.push(`posted the PR comment: "${comment}"`);
       const lag = await confirmHead(deps, ctx, result.newHead);
       if (lag !== null) {
         details.push(lag);

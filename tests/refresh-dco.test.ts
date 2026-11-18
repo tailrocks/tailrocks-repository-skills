@@ -49,7 +49,7 @@ async function run(sb: Sandbox, options: FakeOptions, extra: Parameters<typeof t
   const code = await main(["dco-fix", "7", "--repo", REPO, "--json"], { cwd: sb.clone, deps, out: (l) => lines.push(l), err: (l) => lines.push(l) });
   const text = lines.join("\n");
   if (process.env["DBG"] !== undefined) console.log(text);
-  return { gh, gitCalls, code, text, json: (): { code: string; state: string; data: Record<string, unknown>; headline: string } => JSON.parse(text) };
+  return { gh, gitCalls, code, text, json: (): { code: string; state: string; data: Record<string, unknown>; headline: string; details: string[] } => JSON.parse(text) };
 }
 
 function log(sb: Sandbox, ref: string, format: string, cwd = sb.remote): string[] {
@@ -97,6 +97,7 @@ describe("dco-fix rewrite", () => {
     for (const row of after) {
       expect(sb.git(["cat-file", "commit", row.split("\x1f")[0] ?? ""], sb.remote)).not.toContain("gpgsig");
     }
+    expect(result.json().details.join("\n")).toContain('posted the PR comment: "Added missing DCO sign-off to 2 commits');
     // The comment has the exact text.
     expect(result.gh.mutations).toEqual([
       { kind: "issue-comment", repo: REPO, number: 7, body: `Added missing DCO sign-off to 2 commits; trees unchanged (old \`${t.c4}\` → new \`${newHead}\`)` },

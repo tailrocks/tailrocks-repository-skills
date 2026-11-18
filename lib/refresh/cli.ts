@@ -20,6 +20,7 @@ import { assertBun } from "../version.ts";
 import { loadContext, resolveRepo, type RefreshDeps } from "./context.ts";
 import { runAbort, runContinue } from "./continue.ts";
 import { runDcoFix } from "./dco-fix.ts";
+import { defaultStateRoot } from "./state.ts";
 import { metadataShow, metadataWrite } from "./metadata.ts";
 import { outcomeObject, renderOutcome, usage, type Outcome } from "./outcome.ts";
 import { runSync } from "./sync.ts";
@@ -236,6 +237,7 @@ export async function main(argv: readonly string[], options: MainOptions = {}): 
     cwd,
     remote: args.remote,
     worktreeRoot: args.worktreeRoot ?? tmpdir(),
+    stateRoot: defaultStateRoot(),
     runGh: defaultGh(cwd),
     mutate: (op) => ghMutate(op, { cwd }),
     git,
