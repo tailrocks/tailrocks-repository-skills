@@ -45,6 +45,11 @@ class Reader {
     return typeof value === "number" && Number.isInteger(value) ? value : this.#fail(key, "an integer");
   }
 
+  /** An integer that the schema gives no default: null when the key is absent. */
+  integerOrNull(key: string): number | null {
+    return this.#object[key] === undefined ? null : this.integer(key);
+  }
+
   strings(key: string): readonly string[] {
     const value = this.#object[key];
     if (!Array.isArray(value)) {
@@ -212,6 +217,11 @@ export function buildPolicy(value: JsonValue): Policy {
       kind: gate.choice("kind", ["label-absent", "label-present", "check-pass"]),
       value: gate.string("value"),
     })),
-    fleet: { freeze: fleet.boolean("freeze"), hold: fleet.integers("hold") },
+    fleet: {
+      freeze: fleet.boolean("freeze"),
+      hold: fleet.integers("hold"),
+      max_merges_per_pass: fleet.integerOrNull("max_merges_per_pass"),
+      max_merges_per_pass_congested: fleet.integer("max_merges_per_pass_congested"),
+    },
   };
 }
