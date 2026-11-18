@@ -17,6 +17,14 @@ const THREAD_FIELDS = `
   lastComment: comments(last: 1) { nodes { author { login } } }
 `;
 
+const REVIEW_FIELDS = `author { login } authorAssociation state body submittedAt commit { oid }`;
+
+const COMMIT_FIELDS = `commit {
+  oid message committedDate tree { oid }
+  parents(first: 3) { nodes { oid } }
+  author { email user { login } }
+}`;
+
 /** Everything about one pull request that one request can carry. */
 export const PR_QUERY = `
 query($owner: String!, $name: String!, $number: Int!) {
@@ -35,17 +43,14 @@ query($owner: String!, $name: String!, $number: Int!) {
       closingIssuesReferences(first: 20) { nodes { number repository { nameWithOwner } } }
       commits(last: 100) {
         totalCount
-        nodes { commit {
-          oid message committedDate tree { oid }
-          parents(first: 3) { nodes { oid } }
-          author { email user { login } }
-        } }
+        pageInfo { hasPreviousPage startCursor }
+        nodes { ${COMMIT_FIELDS} }
       }
       latestCommit: commits(last: 1) { nodes { commit {
         id oid
         statusCheckRollup { contexts(first: 100) { totalCount pageInfo { hasNextPage endCursor } nodes { ${CONTEXT_FIELDS} } } }
       } } }
-      reviews(last: 100) { totalCount nodes { author { login } authorAssociation state body submittedAt commit { oid } } }
+      reviews(last: 100) { totalCount pageInfo { hasPreviousPage startCursor } nodes { ${REVIEW_FIELDS} } }
       latestOpinionatedReviews(writersOnly: true, first: 100) { totalCount nodes { author { login } authorAssociation state commit { oid } } }
       reviewThreads(first: 100) { totalCount pageInfo { hasNextPage endCursor } nodes { ${THREAD_FIELDS} } }
       timelineItems(last: 20, itemTypes: [REMOVED_FROM_MERGE_QUEUE_EVENT]) { nodes {
@@ -61,6 +66,20 @@ export const THREADS_PAGE_QUERY = `
 query($id: ID!, $after: String) {
   node(id: $id) { ... on PullRequest {
     reviewThreads(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { ${THREAD_FIELDS} } }
+  } }
+}`;
+
+export const REVIEWS_PAGE_QUERY = `
+query($id: ID!, $before: String) {
+  node(id: $id) { ... on PullRequest {
+    reviews(last: 100, before: $before) { pageInfo { hasPreviousPage startCursor } nodes { ${REVIEW_FIELDS} } }
+  } }
+}`;
+
+export const COMMITS_PAGE_QUERY = `
+query($id: ID!, $before: String) {
+  node(id: $id) { ... on PullRequest {
+    commits(last: 100, before: $before) { pageInfo { hasPreviousPage startCursor } nodes { ${COMMIT_FIELDS} } }
   } }
 }`;
 

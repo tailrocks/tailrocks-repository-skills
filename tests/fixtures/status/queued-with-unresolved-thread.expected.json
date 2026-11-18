@@ -3,6 +3,7 @@
   "codes": [
     "behind_base",
     "mergeability_pending",
+    "non_required_failing",
     "queued",
     "threads_unresolved"
   ]

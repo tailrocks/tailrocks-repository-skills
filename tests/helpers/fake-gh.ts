@@ -10,6 +10,8 @@ import {
   MERGEABILITY_QUERY,
   OPEN_PRS_QUERY,
   PR_QUERY,
+  REVIEWS_PAGE_QUERY,
+  COMMITS_PAGE_QUERY,
   THREADS_PAGE_QUERY,
 } from "../../lib/github/queries.ts";
 import { PR_HEAD_QUERY, THREAD_DETAILS_QUERY } from "../../lib/threads/queries.ts";
@@ -26,6 +28,8 @@ export interface FakeGh {
 const QUERIES: readonly (readonly [string, string])[] = [
   ["pr", PR_QUERY],
   ["threads", THREADS_PAGE_QUERY],
+  ["reviews", REVIEWS_PAGE_QUERY],
+  ["commits", COMMITS_PAGE_QUERY],
   ["contexts", CONTEXTS_PAGE_QUERY],
   ["base", BASE_QUERY],
   ["issue", ISSUE_QUERY],
@@ -163,7 +167,7 @@ export function prResponse(patch: Record<string, unknown> = {}, repoPatch: Recor
           labels: { totalCount: 1, nodes: [{ name: "ci:auto" }] },
           mergeQueueEntry: null,
           closingIssuesReferences: { nodes: [] },
-          commits: { totalCount: 1, nodes: [commitNode(HEAD, ["d".repeat(40)])] },
+          commits: { totalCount: 1, pageInfo: { hasPreviousPage: false, startCursor: null }, nodes: [commitNode(HEAD, ["d".repeat(40)])] },
           latestCommit: {
             nodes: [
               {
@@ -181,7 +185,7 @@ export function prResponse(patch: Record<string, unknown> = {}, repoPatch: Recor
               },
             ],
           },
-          reviews: { totalCount: 0, nodes: [] },
+          reviews: { totalCount: 0, pageInfo: { hasPreviousPage: false, startCursor: null }, nodes: [] },
           latestOpinionatedReviews: { totalCount: 0, nodes: [] },
           reviewThreads: { totalCount: 0, pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
           timelineItems: { nodes: [] },

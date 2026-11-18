@@ -8,6 +8,7 @@ import { parseJson, obj, member, str, arr } from "../lib/github/read.ts";
 import { BASE, builtinPolicy, check, examplePolicy, green, HEAD, OLD, policyFromText, root, sha, verdictReview } from "./helpers/status.ts";
 
 const example = examplePolicy();
+const labelMode = { ...example, labels: { ...example.labels, pr_ci: "label" as const } };
 
 function run(snapshot: PrSnapshot, policy = example): Verdict {
   return evaluate(snapshot, policy, "local");
@@ -67,7 +68,7 @@ describe("baseline", () => {
 
   test("every finding code has an owner and a place in the table", () => {
     expect(new Set(FINDING_CODES).size).toBe(FINDING_CODES.length);
-    expect(FINDING_CODES.length).toBe(32);
+    expect(FINDING_CODES.length).toBe(33);
   });
 
   test("blockers sort before waits before info", () => {
@@ -177,7 +178,9 @@ describe("checks", () => {
   test("check_stale_base when a base-sensitive check fails while behind", () => {
     const snapshot = withChecks(required({ conclusion: "failure" }), { behindBy: 3 });
     expect(codes(run(snapshot))).toEqual(["behind_base", "check_stale_base"]);
-    expect(find(run(snapshot), "check_stale_base").owner).toBe("pr-refresh");
+    const stale = find(run(snapshot), "check_stale_base");
+    expect(stale.owner).toBe("pr-refresh");
+    expect(stale.next).toBe("pr-refresh sync (merge the base, no code change); if this check fails again after the merge, it is a real failure (check_failed)");
     expect(codes(run(withChecks(required({ conclusion: "failure" }), { behindBy: 0 })))).toEqual(["check_failed"]);
   });
   test("check_missing when a required check has no run", () => {
@@ -224,7 +227,7 @@ describe("checks", () => {
   });
   test("ci_label_needed when label mode is on and no run label is present", () => {
     const snapshot = green({ labels: [], checks: [] });
-    const verdict = run(snapshot);
+    const verdict = run(snapshot, labelMode);
     expect(codes(verdict)).toEqual(["ci_label_needed"]);
     expect(find(verdict, "ci_label_needed").next).toContain("ci:run");
   });
@@ -255,8 +258,35 @@ describe("reviews: comment-verdict", () => {
     expect(codes(run(green(), policy))).toEqual(["review_missing"]);
     expect(run(green({ reviews: [approve(HEAD, "2026-01-01T12:00:00Z", "user-z")] }), policy).state).toBe("READY");
   });
-  test("the PR author may be the reviewer", () => {
+  test("the PR author counts only when review.count_author is true", () => {
+    expect(example.review.count_author).toBe(true);
     expect(run(green({ author: "user-b" })).state).toBe("READY");
+    const strict = { ...example, review: { ...example.review, count_author: false } };
+    expect(codes(run(green({ author: "user-b" }), strict))).toEqual(["review_missing"]);
+    const listed = { ...strict, review: { ...strict.review, reviewers: ["user-b"] } };
+    expect(codes(run(green({ author: "user-b" }), listed))).toEqual(["review_missing"]);
+    expect(run(green({ author: "user-a" }), strict).state).toBe("READY");
+  });
+  test("the example patterns follow the original gate", () => {
+    const { approve_pattern: a, changes_pattern: c, blocking_pattern: b, flags } = example.review;
+    expect(flags).toBe("im");
+    for (const text of ["Verdict: approve", "**Verdict:** **approve**", "VERDICT - Approve", "verdict: **approve"]) {
+      expect(new RegExp(a, flags).test(text)).toBe(true);
+    }
+    expect(new RegExp(a, flags).test("Verdict: changes needed")).toBe(false);
+    for (const text of ["Verdict: changes needed", "**Verdict: changes needed**"]) {
+      expect(new RegExp(c, flags).test(text)).toBe(true);
+    }
+    for (const text of ["P1 = 1", "see [P1] here", "P1 Badge", "**P1", "**[P1] x", "## P1 issue", "- P1 — broken", "* P1: broken", "P1: 2"]) {
+      expect(new RegExp(b, flags).test(text)).toBe(true);
+    }
+    for (const text of ["P10 items", "nothing here", "a P1 mention mid-line"]) {
+      expect(new RegExp(b, flags).test(text)).toBe(false);
+    }
+  });
+  test("a changes-needed verdict with bold markup blocks", () => {
+    const changes = verdictReview("user-b", "**Verdict: changes needed**", HEAD, "2026-01-01T13:00:00Z");
+    expect(codes(run(green({ reviews: [changes] })))).toEqual(["review_changes_requested"]);
   });
   test("review_changes_requested: the latest verdict wins", () => {
     const changes = verdictReview("user-b", "Verdict: changes needed", HEAD, "2026-01-01T13:00:00Z");
@@ -268,11 +298,11 @@ describe("reviews: comment-verdict", () => {
     expect(codes(run(green({ reviews: [approve(), changes] })))).toEqual(["review_changes_requested"]);
   });
   test("review_blocking_finding: an approval that lists a P1 is not an approval", () => {
-    const body = "Verdict: approve\n\n- P1, `src/a.rs:1`. Broken.";
+    const body = "Verdict: approve\n\n- P1: `src/a.rs:1` is broken.";
     expect(codes(run(green({ reviews: [verdictReview("user-b", body, HEAD, "2026-01-01T12:00:00Z")] })))).toEqual(["review_blocking_finding"]);
   });
   test("review_blocking_finding: a later review lists a P1", () => {
-    const later = verdictReview("user-b", "- P1, `src/a.rs:9`. New finding.", HEAD, "2026-01-01T13:00:00Z");
+    const later = verdictReview("user-b", "P1 Badge: `src/a.rs:9` new finding.", HEAD, "2026-01-01T13:00:00Z");
     expect(codes(run(green({ reviews: [approve(), later] })))).toEqual(["review_blocking_finding"]);
   });
   test("review_stale: approval on an older head, carry-over does not reach it", () => {
@@ -328,6 +358,12 @@ describe("reviews: github-approval", () => {
   test("review_changes_requested from a counted CHANGES_REQUESTED", () => {
     const snapshot = green({ latestOpinionatedReviews: [{ author: "user-b", association: "MEMBER", state: "CHANGES_REQUESTED", commit: HEAD }] });
     expect(codes(evaluate(snapshot, policy))).toEqual(["review_changes_requested"]);
+  });
+  test("the author's own CHANGES_REQUESTED does not count unless count_author is true", () => {
+    const snapshot = green({ author: "user-b", latestOpinionatedReviews: [{ author: "user-b", association: "MEMBER", state: "CHANGES_REQUESTED", commit: HEAD }] });
+    expect(evaluate(snapshot, policy).state).toBe("READY");
+    const counting = { ...policy, review: { ...policy.review, count_author: true } };
+    expect(codes(evaluate(snapshot, counting))).toEqual(["review_changes_requested"]);
   });
   test("review_decision when approvals are required and the decision is not APPROVED", () => {
     for (const decision of [null, "REVIEW_REQUIRED"] as const) {
@@ -456,11 +492,37 @@ describe("threads, DCO, queue, issues, body, gates", () => {
 describe("GitHub must agree", () => {
   test("READY needs CLEAN or HAS_HOOKS", () => {
     expect(run(green({ mergeStateStatus: "HAS_HOOKS" })).state).toBe("READY");
-    for (const status of ["BLOCKED", "UNSTABLE", "DIRTY", "DRAFT", "SOMETHING_NEW"]) {
+    for (const status of ["BLOCKED", "DIRTY", "DRAFT", "SOMETHING_NEW"]) {
       const verdict = run(green({ mergeStateStatus: status }));
       expect(verdict.state).toBe("BLOCKED");
       expect(codes(verdict)).toContain("github_disagrees");
     }
+  });
+  test("UNSTABLE counts as agreement and lists the non-required failing checks", () => {
+    const base = green();
+    const failing = [check("Optional lint", { conclusion: "failure" }), check("Optional deploy", { conclusion: "timed_out" }), check("Optional cancelled", { conclusion: "cancelled" })];
+    const verdict = run(green({ mergeStateStatus: "UNSTABLE", checks: [...base.checks, ...failing] }));
+    expect(verdict.state).toBe("READY");
+    const info = find(verdict, "non_required_failing");
+    expect(info.kind).toBe("info");
+    expect(info.detail).toContain("Optional lint");
+    expect(info.detail).toContain("Optional deploy");
+    expect(info.detail).toContain("Optional cancelled");
+    expect(run(green({ mergeStateStatus: "UNSTABLE" })).state).toBe("READY");
+  });
+  test("a failing check that is not required is info in any state, and a required failure still blocks", () => {
+    const base = green();
+    const verdict = run(green({ checks: [...base.checks, check("Optional lint", { conclusion: "failure" })] }));
+    expect(verdict.state).toBe("READY");
+    expect(codes(verdict)).toEqual(["non_required_failing"]);
+    const required = run(green({ mergeStateStatus: "UNSTABLE", checks: [check("Required", { isRequired: true, conclusion: "failure" }), check("Required verdict", { isRequired: true })] }));
+    expect(required.state).toBe("BLOCKED");
+    expect(codes(required)).not.toContain("github_disagrees");
+  });
+  test("UNKNOWN stays a wait, never agreement", () => {
+    const verdict = run(green({ mergeStateStatus: "UNKNOWN" }));
+    expect(verdict.state).toBe("WAITING");
+    expect(codes(verdict)).toEqual(["mergeability_pending"]);
   });
   test("github_disagrees names GitHub's status", () => {
     expect(find(run(green({ mergeStateStatus: "BLOCKED" })), "github_disagrees").detail).toContain("BLOCKED");

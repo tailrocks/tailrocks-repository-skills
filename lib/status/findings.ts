@@ -35,6 +35,7 @@ export const OWNER: Readonly<Record<FindingCode, Owner>> = {
   body_template: "pr-refresh",
   gate_failed: "human",
   cross_repository: "pr-status",
+  non_required_failing: "pr-status",
   github_disagrees: "human",
 };
 
