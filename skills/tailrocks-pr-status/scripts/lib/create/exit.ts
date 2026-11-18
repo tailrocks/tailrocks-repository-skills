@@ -7,6 +7,8 @@ export const EXIT = {
   usage: 2,
   /** Refused or stopped, and nothing was written. A failed read ends here too. */
   refused: 3,
+  /** Stopped and nothing was written: the head or tree changed, or open found a blocker. Run plan again. */
+  changed: 4,
   /** plan: the agent must act. open: part of the work was written. */
   act: 20,
 } as const;
@@ -15,6 +17,7 @@ export const EXIT_TABLE = `exit codes:
   0   done: the plan is clean, or the PR is open and finished
   10  never returned by this script
   20  plan: you must act (see the blockers). open: part was written (read the output)
-  3   refused or stopped, and nothing was written (read the output)
+  3   refused, and nothing was written: stop and report the output
+  4   nothing was written: the head or tree changed, or open found a blocker; run plan again
   2   usage error, invalid policy, or Bun too old
   any other code: the script crashed. Stop and report the output.`;

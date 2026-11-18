@@ -60,7 +60,7 @@ describe("open: a new PR", () => {
 
   test("an issue link line is added to the body", async () => {
     const { repos, fake, sha, body } = await setup();
-    fake.world.issues.set(4, { state: "OPEN", title: "Bug", body: "It fails." });
+    fake.world.issues.set(4, { state: "OPEN", title: "Bug", body: "## Done when\n\n- [x] It works\n" });
     finished(await open(repos, fake, sha, "--issue", "4", "--body-file", body));
     expect(fake.world.created[0]?.body).toContain("\n\nCloses #4\n");
   });
@@ -99,7 +99,7 @@ describe("open: draft or ready is set by the policy", () => {
   test("a PR that is not a draft when the policy says draft is a problem", async () => {
     const { repos, fake, sha, body } = await setup({ neverDraft: true });
     const report = finished(await open(repos, fake, sha, "--body-file", body));
-    expect(report.problems[0]).toContain("draft.create_as_draft is true");
+    expect(report.problems[0]).toContain("does not convert a PR back to a draft");
   });
 });
 
@@ -124,6 +124,7 @@ describe("open: failure and retry", () => {
     const report = finished(await open(repos, fake, sha, "--body-file", body));
     expect(fake.world.prs).toHaveLength(1);
     expect(report.pr?.number).toBe(101);
+    expect(report.created).toBe(true);
     expect(report.notes.join(" ")).toContain("not created twice");
     expect(report.problems[0]).toContain("gh pr create failed");
   });
@@ -157,6 +158,7 @@ describe("open: failure and retry", () => {
     const result = await openPr(argsFor("open", "--expect-head", sha, "--body-file", body), racing);
     expect(result.kind).toBe("refused");
     expect(result.kind === "refused" ? result.reasons[0] : "").toContain("git push failed, nothing was pushed");
+    expect(result.kind === "refused" ? result.code : 0).toBe(4);
     expect(fake.world.created).toEqual([]);
     expect(await repos.remoteRef("feat/topic")).not.toBe(sha);
   });
@@ -169,6 +171,7 @@ describe("open: refusals write nothing", () => {
     const result = await open(repos, fake, sha, "--body-file", body, "--title", "feat: both");
     expect(result.kind).toBe("refused");
     expect(result.kind === "refused" ? result.reasons[0] : "").toContain("the head changed since plan");
+    expect(result.kind === "refused" ? result.code : 0).toBe(4);
     expect(await repos.remoteRef("feat/topic")).toBeNull();
     expect(fake.world.created).toEqual([]);
   });
@@ -186,6 +189,7 @@ describe("open: refusals write nothing", () => {
     const result = await openPr(argsFor("open", "--expect-head", sha, "--body-file", body), racing);
     expect(result.kind).toBe("refused");
     expect(result.kind === "refused" ? result.reasons[0] : "").toContain("changed while open ran");
+    expect(result.kind === "refused" ? result.code : 0).toBe(4);
     expect(await repos.remoteRef("feat/topic")).toBeNull();
   });
 
@@ -195,6 +199,7 @@ describe("open: refusals write nothing", () => {
     const result = await open(repos, fake, sha, "--body-file", body);
     expect(result.kind).toBe("refused");
     expect(result.kind === "refused" ? result.reasons.join(" ") : "").toContain("dirty_tree");
+    expect(result.kind === "refused" ? result.code : 0).toBe(4);
     expect(await repos.remoteRef("feat/topic")).toBeNull();
   });
 
@@ -203,6 +208,7 @@ describe("open: refusals write nothing", () => {
     const result = await open(repos, fake, sha);
     expect(result.kind).toBe("refused");
     expect(result.kind === "refused" ? result.reasons[0] : "").toContain("valid --body-file");
+    expect(result.kind === "refused" ? result.code : 0).toBe(4);
     expect(await repos.remoteRef("feat/topic")).toBeNull();
   });
 
@@ -268,11 +274,17 @@ describe("the command line", () => {
     expect(bad.err).toContain("invalid policy");
   });
 
-  test("a refused open prints the reasons on stderr and exits 3", async () => {
+  test("an open that found a blocker exits 4; an open that found a refusal exits 3", async () => {
     const { repos, fake, sha } = await setup();
     const result = await runCli(["open", "--expect-head", sha], repos, fake);
-    expect(result.code).toBe(3);
+    expect(result.code).toBe(4);
     expect(result.err).toContain("REFUSED, nothing was written");
+    fake.world.prs.push({ number: 9, id: "PR_9", title: "t", headRef: "feat/topic", headSha: sha, baseRef: "main", isDraft: true, isCrossRepository: false, author: "someone-else", labels: [], body: "" });
+    const stopped = await runCli(["open", "--expect-head", sha], repos, fake);
+    expect(stopped.code).toBe(3);
+    expect(stopped.err).toContain("pr_not_yours");
+    const moved = await runCli(["open", "--expect-head", "1".repeat(40)], repos, fake);
+    expect(moved.code).toBe(4);
   });
 
   test("an open with a problem after a write exits 20", async () => {
@@ -336,5 +348,93 @@ describe("open: labels on an open PR", () => {
     expect(fake.world.edits.at(-1)).toEqual(["pr", "edit", "101", "--repo", "example-org/example-repo", "--add-label", "ci:run"]);
     expect(report.notes.join(" ")).toContain("GitHub still shows the older head");
     expect(fake.world.created).toHaveLength(1);
+  });
+});
+
+describe("open: the head is compared before any policy command runs", () => {
+  test("a wrong --expect-head refuses before the pre-push step", async () => {
+    const marker = "ran.txt";
+    const policy = `schema = 1\n[[prepush]]\nname = "touch"\nrun = ["${process.execPath}", "-e", "require('fs').writeFileSync('/dev/null','x')"]\n`;
+    const { repos, fake, body } = await setup({ policy });
+    const seen: string[] = [];
+    const config = configFor(repos, fake);
+    const spying = { ...config, runCommand: async (argv: readonly string[], cwd: string) => { seen.push(marker); return config.runCommand(argv, cwd); } };
+    const result = await openPr(argsFor("open", "--expect-head", "b".repeat(40), "--body-file", body), spying);
+    expect(result.kind === "refused" ? result.code : 0).toBe(4);
+    expect(result.kind === "refused" ? result.reasons[0] : "").toContain("Nothing was run");
+    expect(seen).toEqual([]);
+  });
+});
+
+describe("open: a read failure after a write is exit 20, never a refusal", () => {
+  test("gh pr list fails after gh pr create: the problem lists the pushed branch", async () => {
+    const { repos, fake, sha, body } = await setup({ listFailsAfterCreate: true });
+    const result = await runCli(["open", "--expect-head", sha, "--body-file", body], repos, fake);
+    expect(result.code).toBe(20);
+    expect(result.out).toContain("PROBLEM: the branch is pushed, but the PR state is unknown");
+    expect(result.out).toContain("gh printed https://example.invalid/example-org/example-repo/pull/101");
+    expect(result.err).not.toContain("nothing was written");
+    expect(await repos.remoteRef("feat/topic")).toBe(sha);
+    expect(fake.world.prs).toHaveLength(1);
+  });
+
+  test("the read of an existing PR after a push fails: exit 20", async () => {
+    const { repos, fake, sha, body } = await setup();
+    finished(await open(repos, fake, sha, "--body-file", body));
+    const next = await repos.commit("b.txt", "b\n", "feat: add b");
+    fake.world.listFailsAfterCreate = true;
+    const config = configFor(repos, fake);
+    // The first pr list (the plan) must work: fail only the reads after the push.
+    let pushed = false;
+    const wrapped = {
+      ...config,
+      runGit: async (args: readonly string[]) => {
+        const result = await config.runGit(args);
+        pushed ||= args[0] === "push";
+        return result;
+      },
+      runGh: async (args: readonly string[]) => (pushed && args[0] === "pr" && args[1] === "list" ? { code: 1, stdout: "", stderr: "HTTP 502" } : config.runGh(args)),
+    };
+    fake.world.listFailsAfterCreate = false;
+    const result = await openPr(argsFor("open", "--expect-head", next), wrapped);
+    const report = finished(result);
+    expect(report.pushed).toBe(true);
+    expect(report.problems.join(" ")).toContain("a read failed after a write");
+    expect(await repos.remoteRef("feat/topic")).toBe(next);
+  });
+});
+
+describe("open: pushed commits without a sign-off", () => {
+  const readyPolicy = 'schema = 1\n[draft]\ncreate_as_draft = false\n[labels]\npr_ci = "label"\nrun_once = "ci:run"\n';
+
+  test("a ready policy still gives a draft, no ready mutation, no CI label, and exit 20 with the dco-fix step", async () => {
+    const { repos, fake, body } = await setup({ policy: readyPolicy });
+    await repos.git(["reset", "--hard", "-q", "HEAD~1"]);
+    const unsigned = await repos.commit("a.txt", "a\n", "feat: add a", { signoff: false });
+    await repos.git(["push", "origin", "feat/topic"]);
+    const result = await runCli(["open", "--json", "--run-ci", "--expect-head", unsigned, "--body-file", body], repos, fake);
+    expect(result.code).toBe(20);
+    const report = JSON.parse(result.out);
+    expect(report.created).toBe(true);
+    expect(report.pr.isDraft).toBe(true);
+    expect(fake.world.created[0]?.args).toContain("--draft");
+    expect(fake.world.mutations).toEqual([]);
+    expect(fake.world.edits).toEqual([]);
+    expect(report.problems[0]).toContain("dco_missing");
+    expect(report.problems[0]).toContain("pr-refresh dco-fix 101");
+    expect(report.findings.some((f: { code: string }) => f.code === "dco_missing")).toBe(true);
+    expect(report.next).toContain("pr-refresh dco-fix 101");
+  });
+});
+
+describe("open: a second PR that appears during the create", () => {
+  test("no label and no ready mutation run, and the exit is 20", async () => {
+    const { repos, fake, sha, body } = await setup({ duplicateOnCreate: true, policy: 'schema = 1\n[draft]\ncreate_as_draft = false\n' });
+    fake.world.alwaysDraft = true;
+    const result = await runCli(["open", "--expect-head", sha, "--label", "area:docs", "--body-file", body], repos, fake);
+    expect(result.code).toBe(20);
+    expect(result.out).toContain("2 open PRs now have the head feat/topic");
+    expect(fake.world.edits).toEqual([]);
+    expect(fake.world.mutations).toEqual([]);
   });
 });

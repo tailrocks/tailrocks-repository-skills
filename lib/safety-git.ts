@@ -191,6 +191,25 @@ function checkCommitTree(rest: readonly string[]): Guard {
   return tree === null ? refuse("git commit-tree needs a tree id") : ALLOWED;
 }
 
+/**
+ * One shape only: update-ref refs/heads/<branch> <new sha> <old sha>. The old
+ * value makes the update a compare-and-swap. The sign-off step moves a local
+ * branch to a rebuilt history with the same trees, so no checkout follows.
+ */
+function checkUpdateRef(rest: readonly string[]): Guard {
+  const [ref, next, previous, extra] = rest;
+  if (ref === undefined || next === undefined || previous === undefined || extra !== undefined) {
+    return refuse("git update-ref must be exactly: update-ref refs/heads/<branch> <new sha> <old sha>");
+  }
+  if (!ref.startsWith("refs/heads/") || !isBranchName(ref.slice("refs/heads/".length))) {
+    return refuse("git update-ref may only move refs/heads/<branch>");
+  }
+  if (!isSha(next) || !isSha(previous)) {
+    return refuse("git update-ref needs two 40-hex commit ids");
+  }
+  return ALLOWED;
+}
+
 function checkAdd(rest: readonly string[]): Guard {
   const paths = rest[0] === "--" ? rest.slice(1) : rest;
   if (paths.length === 0) {
@@ -334,6 +353,8 @@ export function checkGit(args: readonly string[]): Guard {
       return checkCommitTree(rest);
     case "add":
       return checkAdd(rest);
+    case "update-ref":
+      return checkUpdateRef(rest);
     case "checkout":
       return checkNewBranch(sub, "-b", rest);
     case "switch":

@@ -6,7 +6,7 @@ policy. Fill that skeleton. Do not use a template from memory.
 
 ## Sections
 
-- Write one paragraph per section. Do not hard-wrap inside a paragraph.
+- Write each prose section (why, what) as one paragraph. Do not hard-wrap inside a paragraph. Proof and Done-when are lists.
 - Answer the first section (the reason) in a few lines: what the PR is for and
   who benefits.
 - Write the outcomes that ship. Do not list functions, structs, or fixture
@@ -32,6 +32,8 @@ policy. Fill that skeleton. Do not use a template from memory.
 
 - Remove each placeholder in angle brackets. The script refuses a body that
   keeps one from the template.
+- Never write a token, a URL with credentials, or an authorization header. The
+  script refuses such a body and names the line number.
 - HTML comments in the skeleton are instructions to you. The script removes all
   of them from the posted body.
 - Drop an optional section. Do not fill it with "None". Write "None." only in a

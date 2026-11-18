@@ -44,9 +44,9 @@ describe("tailrocks-pr-create", () => {
 
   test("the exit table of SKILL.md matches the codes of the script", () => {
     const rows = [...skill.matchAll(/^\s*\| (\d+) \|/gm)].map((m) => Number(m[1]));
-    expect(rows.sort((a, b) => a - b)).toEqual([0, 2, 3, 10, 20]);
-    expect(Object.values(EXIT).sort((a, b) => a - b)).toEqual([0, 2, 3, 20]);
-    for (const code of [0, 2, 3, 10, 20]) {
+    expect(rows.sort((a, b) => a - b)).toEqual([0, 2, 3, 4, 10, 20]);
+    expect(Object.values(EXIT).sort((a, b) => a - b)).toEqual([0, 2, 3, 4, 20]);
+    for (const code of [0, 2, 3, 4, 10, 20]) {
       expect(HELP).toMatch(new RegExp(`^  ${code}\\s`, "m"));
     }
   });
@@ -57,6 +57,12 @@ describe("tailrocks-pr-create", () => {
     }
     expect(existsSync(join(dir, "scripts", "create.ts"))).toBe(true);
     expect(existsSync(join(dir, "references", "runtime-trust.md"))).toBe(true);
+  });
+
+  test("SKILL.md names no removed flag and never suggests a rebase", () => {
+    expect(skill).not.toContain("allow-unsigned-pushed");
+    expect(skill).not.toMatch(/rebase/i);
+    expect(skill).toContain("signoff --expect-head");
   });
 
   test("the commands use the skill-dir token and name no shell", () => {

@@ -69,14 +69,18 @@ function isBotAuthor(commit: CommitInfo, bots: readonly string[]): boolean {
   return bots.some((bot) => names.includes(normalizeLogin(bot)));
 }
 
+/** True when the policy wants a Signed-off-by line on this commit and it has none. */
+export function needsSignoff(commit: CommitInfo, policy: Policy): boolean {
+  return (
+    policy.dco.required &&
+    !hasSignoff(commit.message) &&
+    !(policy.dco.bot_commits === "exempt" && isBotAuthor(commit, policy.dco.bot_authors))
+  );
+}
+
 /** Commits without a Signed-off-by trailer that the DCO policy does not exempt. */
 export function unsignedCommits(commits: readonly CommitInfo[], policy: Policy): readonly CommitInfo[] {
-  if (!policy.dco.required) {
-    return [];
-  }
-  return commits.filter(
-    (commit) => !hasSignoff(commit.message) && !(policy.dco.bot_commits === "exempt" && isBotAuthor(commit, policy.dco.bot_authors)),
-  );
+  return commits.filter((commit) => needsSignoff(commit, policy));
 }
 
 // ---------- Inventories ----------

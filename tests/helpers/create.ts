@@ -7,6 +7,7 @@ import { dirname, join } from "node:path";
 import { parseArgs } from "../../lib/create/args.ts";
 import { main, type MainOptions } from "../../lib/create/cli.ts";
 import type { CreateArgs, CreateConfig } from "../../lib/create/types.ts";
+import { git } from "../../lib/git.ts";
 import { defaultGit } from "../../lib/github/git-facts.ts";
 import type { GhRun } from "../../lib/github/graphql.ts";
 import type { GhMutation } from "../../lib/safety-gh.ts";
@@ -59,6 +60,8 @@ export async function makeRepos(): Promise<Repos> {
   await git(["commit", "-s", "-m", "chore: seed"], seed);
   await git(["push", "origin", "HEAD:refs/heads/main"], seed);
   await git(["clone", remote, work], root);
+  await git(["config", "user.name", "Dev A"], work);
+  await git(["config", "user.email", "dev-a@example.invalid"], work);
   const repos: Repos = {
     root,
     remote,
@@ -121,6 +124,10 @@ export interface World {
   neverDraft: boolean;
   /** gh pr create fails. With `afterCreate` the PR exists anyway (a lost reply). */
   createFails: "no" | "before" | "after";
+  /** A second open PR for the head appears while gh pr create runs. */
+  duplicateOnCreate: boolean;
+  /** `gh pr list` fails after the first gh pr create. */
+  listFailsAfterCreate: boolean;
   editFails: boolean;
   readyFails: boolean;
   /** Extra branches that exist on GitHub, with their shas (for a base other than main). */
@@ -141,6 +148,8 @@ export function newWorld(overrides: Partial<World> = {}): World {
     alwaysDraft: false,
     neverDraft: false,
     createFails: "no",
+    duplicateOnCreate: false,
+    listFailsAfterCreate: false,
     editFails: false,
     readyFails: false,
     extraRefs: new Map(),
@@ -196,6 +205,9 @@ export function fakeWorld(repos: Repos, world: World): FakeWorld {
       return { nameWithOwner: REPO, defaultBranchRef: { name: world.defaultBranch } };
     }
     if (name === "pr list") {
+      if (world.listFailsAfterCreate && world.created.length > 0) {
+        return fail("HTTP 502: Bad Gateway");
+      }
       const head = flag(args, "--head");
       return world.prs.filter((p) => head === null || p.headRef === head).map(prJson);
     }
@@ -227,6 +239,12 @@ export function fakeWorld(repos: Repos, world: World): FakeWorld {
         labels: [],
         body: readFileSync(bodyFile, "utf8"),
       });
+      if (world.duplicateOnCreate) {
+        const first = world.prs[world.prs.length - 1];
+        if (first !== undefined) {
+          world.prs.push({ ...first, number: first.number + 1, id: `PR_node_${first.number + 1}` });
+        }
+      }
       if (world.createFails === "after") {
         return fail("timeout waiting for the reply");
       }
@@ -267,6 +285,7 @@ export function configFor(repos: Repos, fake: FakeWorld, extra: Partial<CreateCo
       return guarded(args);
     },
     runCommand: (argv, cwd) => run(argv, { cwd }),
+    runGitEnv: (args, env) => git(args, { cwd: repos.work, env: { ...IDENTITY, ...env } }),
     mutate: async (op) => {
       fake.world.mutations.push(op);
       if (op.kind === "markPullRequestReadyForReview") {
@@ -307,6 +326,7 @@ export async function runCli(argv: readonly string[], repos: Repos, fake: FakeWo
     runGh: config.runGh,
     runGit: config.runGit,
     runCommand: config.runCommand,
+    runGitEnv: config.runGitEnv,
     mutate: config.mutate,
     out: (l) => out.push(l),
     err: (l) => err.push(l),

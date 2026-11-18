@@ -1,7 +1,8 @@
 # Issue link rule
 
 The policy key is `issues.link = "closes-when-complete"`. It governs the line
-that links the PR to an issue. You pass `--issue N`. The script writes the line.
+that links the PR to an issue. You pass `--issue N`. Only the script writes the
+`Closes #N` or `Part of #N` line. You never write it.
 
 ## The rule
 
@@ -16,19 +17,26 @@ that links the PR to an issue. You pass `--issue N`. The script writes the line.
    ```
 
    The line must hold the text of the box. Proof is one of these, outside the
-   text of the box: a code span, a link or URL, a commit id of seven or more
-   hex digits, or an issue or PR number.
-4. When every open box is mapped, the line is `Closes #N`. The issue closes when
-   the PR merges.
+   text of the box:
+   - a code span;
+   - a URL that starts with http or https;
+   - a commit id of seven to forty hex digits that names a commit of this PR;
+   - the number of another issue or PR. The number of the linked issue is not
+     proof.
+4. The line is `Closes #N` only when the issue has a Done-when section and every
+   open box is mapped. The issue closes when the PR merges.
 5. Otherwise the line is `Part of #N`. The plan lists the boxes that lack proof.
-6. An issue with no open Done-when box gets `Closes #N`. Pass `--part-of` when
+6. An issue with no Done-when section never gets `Closes`: the script cannot
+   prove that the PR finishes it. The same holds for an issue that the script
+   cannot read.
+7. A Done-when section with no open box gets `Closes #N`. Pass `--part-of` when
    the PR does not finish the issue.
 
 ## What you may and may not do
 
-- Do not write `Closes`, `Fixes`, or `Resolves` for the issue yourself. When the
-  rule says `Part of`, the script refuses a body that closes the issue.
-- If your body already holds `Part of #N` or `Closes #N` that the rule allows,
-  the script adds nothing.
+- Do not write `Closes`, `Fixes`, `Resolves`, or `Part of` for the issue
+  yourself. The script writes the line. It refuses a body that closes an issue
+  the rule keeps open. It adds nothing when the body already holds a reference
+  that the rule allows.
 - Do not check a box that you did not prove. The proof must be real.
 - `--part-of` can only lower the link from `Closes` to `Part of`.

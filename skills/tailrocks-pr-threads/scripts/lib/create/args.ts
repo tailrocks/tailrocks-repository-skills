@@ -5,7 +5,7 @@ import { parseRepoSlug } from "../types.ts";
 import type { CreateArgs } from "./types.ts";
 
 export const USAGE =
-  "usage: create.ts plan|open [--repo owner/name] [--base branch] [--branch name] [--issue N] [--title text] [--body-file file] [--expect-head sha] [--part-of] [--run-ci] [--label name] [--allow-unsigned-pushed] [--remote name] [--json]";
+  "usage: create.ts plan|open|signoff [--repo owner/name] [--base branch] [--branch name] [--issue N] [--title text] [--body-file file] [--expect-head sha] [--part-of] [--run-ci] [--label name] [--remote name] [--json]";
 
 export type ArgsResult = { readonly ok: true; readonly args: CreateArgs } | { readonly ok: false; readonly message: string };
 
@@ -34,13 +34,12 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
   const labels: string[] = [];
   let partOf = false;
   let runCi = false;
-  let allowUnsignedPushed = false;
   let json = false;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? "";
-    if (arg === "plan" || arg === "open") {
+    if (arg === "plan" || arg === "open" || arg === "signoff") {
       if (mode !== null) {
-        return { ok: false, message: "give one mode: plan or open" };
+        return { ok: false, message: "give one mode: plan, open, or signoff" };
       }
       mode = arg;
     } else if (arg === "--json") {
@@ -49,8 +48,6 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
       partOf = true;
     } else if (arg === "--run-ci") {
       runCi = true;
-    } else if (arg === "--allow-unsigned-pushed") {
-      allowUnsignedPushed = true;
     } else if (VALUE_FLAGS.has(arg)) {
       i += 1;
       const value = argv[i];
@@ -69,7 +66,7 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
     }
   }
   if (mode === null) {
-    return { ok: false, message: "give a mode: plan or open" };
+    return { ok: false, message: "give a mode: plan, open, or signoff" };
   }
   const issueText = values.get("--issue") ?? null;
   if (issueText !== null && !/^#?[1-9][0-9]{0,8}$/.test(issueText)) {
@@ -79,8 +76,8 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
   if (expectHead !== null && !/^[0-9a-f]{40}$/.test(expectHead)) {
     return { ok: false, message: "--expect-head needs the full 40-character head commit id that plan printed" };
   }
-  if (mode === "open" && expectHead === null) {
-    return { ok: false, message: "open needs --expect-head <sha>; run plan first and copy the head it prints" };
+  if (mode !== "plan" && expectHead === null) {
+    return { ok: false, message: `${mode} needs --expect-head <sha>; run plan first and copy the head it prints` };
   }
   if (mode === "plan" && expectHead !== null) {
     return { ok: false, message: "plan takes no --expect-head" };
@@ -118,7 +115,6 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
       partOf,
       runCi,
       labels,
-      allowUnsignedPushed,
       remote,
       json,
     },

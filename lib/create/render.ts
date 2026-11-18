@@ -2,6 +2,7 @@
 // untrusted: the output drops control characters, so no terminal escape passes.
 
 import type { OpenReport } from "./open.ts";
+import type { SignoffResult } from "./signoff.ts";
 import type { Finding, Plan } from "./types.ts";
 
 export function clean(text: string): string {
@@ -112,10 +113,36 @@ export function openObject(report: OpenReport, exit: number) {
     labelsAdded: report.labelsAdded,
     notes: report.notes,
     problems: report.problems,
+    findings: report.findings,
     next: report.next,
   };
 }
 
 export function renderRefusalText(reasons: readonly string[]): string {
   return ["REFUSED, nothing was written", ...reasons.map((r) => `  ${clean(r)}`)].join("\n");
+}
+
+type Done = Extract<SignoffResult, { readonly kind: "done" }>;
+
+export function renderSignoffText(done: Done): string {
+  return [
+    `signed off ${done.trailersAdded} commit${done.trailersAdded === 1 ? "" : "s"} on ${clean(done.branch)}; trees unchanged (old ${done.oldHead.slice(0, 7)} -> new ${done.newHead.slice(0, 7)})`,
+    ...(done.reparented > 0 ? [`${done.reparented} commit${done.reparented === 1 ? "" : "s"} moved onto the new parents with no change`] : []),
+    `head: ${done.newHead}`,
+    "next: Run plan again. Nothing was pushed.",
+  ].join("\n");
+}
+
+export function signoffObject(done: Done) {
+  return {
+    schema: 1,
+    mode: "signoff",
+    exit: 0,
+    branch: done.branch,
+    oldHead: done.oldHead,
+    head: done.newHead,
+    trailersAdded: done.trailersAdded,
+    reparented: done.reparented,
+    next: "Run plan again. Nothing was pushed.",
+  };
 }

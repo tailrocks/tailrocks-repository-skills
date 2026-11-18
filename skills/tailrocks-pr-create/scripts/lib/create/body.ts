@@ -93,10 +93,31 @@ function norm(text: string): string {
   return text.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-const PROOF = /`[^`\n]+`|https?:\/\/\S+|\]\([^)]+\)|\b[0-9a-f]{7,40}\b|#\d+/;
+export interface ProofContext {
+  /** The issue that the PR links. Its own number is no proof. */
+  readonly issue: number;
+  /** The full ids of the commits of the PR range. A commit id is proof only when the range holds it. */
+  readonly commits: readonly string[];
+}
+
+/**
+ * Proof is a code span, a URL, a commit id (7 to 40 hex digits) of a commit in
+ * the PR range, or the number of another issue or PR. The text is lower case.
+ */
+function hasProof(remainder: string, context: ProofContext): boolean {
+  if (/`[^`\n]+`/.test(remainder) || /https?:\/\/\S+/.test(remainder)) {
+    return true;
+  }
+  for (const word of remainder.matchAll(/\b[0-9a-f]{7,40}\b/g)) {
+    if (context.commits.some((commit) => commit.startsWith(word[0]))) {
+      return true;
+    }
+  }
+  return [...remainder.matchAll(/#(\d+)/g)].some((ref) => Number(ref[1]) !== context.issue);
+}
 
 /** Boxes of the issue that the body does not map to a checked line with proof. */
-export function unmappedBoxes(body: string, heading: string, boxes: readonly string[]): readonly string[] {
+export function unmappedBoxes(body: string, heading: string, boxes: readonly string[], context: ProofContext): readonly string[] {
   const lines = sectionLines(body, heading) ?? [];
   const checked = lines.flatMap((line) => {
     const hit = /^\s*[-*+]\s+\[[xX]\]\s+(.*)$/.exec(line);
@@ -104,7 +125,7 @@ export function unmappedBoxes(body: string, heading: string, boxes: readonly str
   });
   return boxes.filter((box) => {
     const wanted = norm(box);
-    return !checked.some((line) => line.includes(wanted) && PROOF.test(line.replace(wanted, " ")));
+    return !checked.some((line) => line.includes(wanted) && hasProof(line.replace(wanted, " "), context));
   });
 }
 
@@ -122,9 +143,17 @@ export function bodyHoldsPartOf(body: string, number: number): boolean {
   return referencePattern("part\\s+of", number).test(stripNoise(body));
 }
 
+export interface IssueKnowledge {
+  /** The issue was read. */
+  readonly readable: boolean;
+  /** The issue body has a Done-when section. */
+  readonly hasDoneWhen: boolean;
+}
+
 /**
- * Closes #n only when every unchecked Done-when box of the issue maps to a
- * checked line with proof in the body. Otherwise Part of #n.
+ * Closes #n only when the issue has a Done-when section and every open box of
+ * it maps to a checked line with proof in the body. Anything less is Part of #n:
+ * an issue that cannot be read, or that has no Done-when section, never closes.
  */
 export function decideLink(
   number: number,
@@ -132,17 +161,23 @@ export function decideLink(
   body: string,
   heading: string,
   partOfRequested: boolean,
+  context: ProofContext,
+  known: IssueKnowledge,
 ): LinkDecision {
-  const unmapped = unmappedBoxes(body, heading, issueBoxes);
-  const closes = !partOfRequested && unmapped.length === 0;
+  const unmapped = known.readable && known.hasDoneWhen ? unmappedBoxes(body, heading, issueBoxes, context) : [];
+  const closes = !partOfRequested && known.readable && known.hasDoneWhen && unmapped.length === 0;
   const kind = closes ? "Closes" : "Part of";
   const reason = partOfRequested
     ? "--part-of was given"
-    : unmapped.length === 0
-      ? issueBoxes.length === 0
-        ? "the issue has no open Done-when box"
-        : "every open Done-when box of the issue maps to proof in the body"
-      : `${unmapped.length} Done-when box${unmapped.length === 1 ? "" : "es"} of the issue ${unmapped.length === 1 ? "has" : "have"} no proof in the body`;
+    : !known.readable
+      ? "the issue could not be read"
+      : !known.hasDoneWhen
+        ? "the issue has no Done-when section"
+        : unmapped.length === 0
+          ? issueBoxes.length === 0
+            ? "the issue has no open Done-when box"
+            : "every open Done-when box of the issue maps to proof in the body"
+          : `${unmapped.length} Done-when box${unmapped.length === 1 ? "" : "es"} of the issue ${unmapped.length === 1 ? "has" : "have"} no proof in the body`;
   return {
     kind,
     line: `${kind} #${number}`,

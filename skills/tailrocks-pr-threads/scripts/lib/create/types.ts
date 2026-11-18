@@ -19,7 +19,7 @@ export interface Finding {
 }
 
 export interface CreateArgs {
-  readonly mode: "plan" | "open";
+  readonly mode: "plan" | "open" | "signoff";
   readonly repo: string | null;
   readonly base: string | null;
   readonly branch: string | null;
@@ -30,7 +30,6 @@ export interface CreateArgs {
   readonly partOf: boolean;
   readonly runCi: boolean;
   readonly labels: readonly string[];
-  readonly allowUnsignedPushed: boolean;
   readonly remote: string;
   readonly json: boolean;
 }
@@ -56,6 +55,9 @@ export interface IssueFacts {
   /** The unchecked Done-when boxes of the issue. */
   readonly unchecked: readonly string[];
   readonly hasDoneWhen: boolean;
+  /** False when the issue could not be read. The link is then Part of. */
+  readonly readable: boolean;
+  readonly problem: string | null;
 }
 
 export type RemoteRelation = "absent" | "same" | "behind" | "diverged";
@@ -98,6 +100,8 @@ export interface Plan {
   /** The body that open posts, when a body file was given and valid. */
   readonly finalBody: string | null;
   readonly prepushRan: readonly string[];
+  /** Commits that lack a sign-off and are already on the remote branch. Only pr-refresh dco-fix can repair them. */
+  readonly unsignedPushed: readonly string[];
   readonly findings: readonly Finding[];
   readonly exit: 0 | 3 | 20;
   readonly next: string;
@@ -113,6 +117,8 @@ export type PlanResult =
 
 /** Runs one policy command (an argument array, never a shell string) in a directory. */
 export type CommandRun = (argv: readonly string[], cwd: string) => Promise<RunResult>;
+/** Runs git with extra environment variables. Used only by the sign-off rewrite, to keep the author. */
+export type GitEnvRun = (args: readonly string[], env: Readonly<Record<string, string>>) => Promise<RunResult>;
 export type MutateRun = (op: GhMutation) => Promise<RunResult>;
 
 export interface CreateConfig {
@@ -120,5 +126,6 @@ export interface CreateConfig {
   readonly runGh: GhRun;
   readonly runGit: GitRun;
   readonly runCommand: CommandRun;
+  readonly runGitEnv: GitEnvRun;
   readonly mutate: MutateRun;
 }

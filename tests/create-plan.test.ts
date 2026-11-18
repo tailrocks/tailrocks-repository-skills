@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildPlan } from "../lib/create/plan.ts";
 import type { Finding, Plan } from "../lib/create/types.ts";
@@ -163,8 +163,47 @@ describe("plan: the base", () => {
     expect(plan.commitCount).toBe(1);
     expect(codes(plan, "info")).toContain("stacked");
     // The policy of a stacked PR comes from the default branch, not from the unmerged parent.
-    const policyCall = fake.gh.calls.find((c) => c.some((a) => a.includes("pr-policy.toml")));
-    expect(policyCall?.some((a) => a.endsWith(`ref=${plan.base.sha}`))).toBe(false);
+    const defaultSha = await repos.remoteRef("main");
+    const policyCalls = fake.gh.calls.filter((c) => c.some((a) => a.includes("pr-policy.toml")));
+    expect(policyCalls.length).toBeGreaterThan(0);
+    for (const call of policyCalls) {
+      expect(call.some((a) => a.endsWith(`ref=${defaultSha}`))).toBe(true);
+    }
+  });
+
+  test("a parent PR that gained commits after the fork is still the parent", async () => {
+    const { repos, fake } = await setup();
+    await repos.git(["checkout", "-b", "parent"]);
+    const forkPoint = await repos.commit("p.txt", "p\n", "feat: parent");
+    await repos.git(["push", "origin", "parent"]);
+    await repos.git(["checkout", "-B", "feat/topic"]);
+    await repos.commit("c.txt", "c\n", "feat: child");
+    // The parent moves on after the fork.
+    await repos.git(["checkout", "parent"]);
+    const tip = await repos.commit("p2.txt", "p2\n", "feat: parent again");
+    await repos.git(["push", "origin", "parent"]);
+    await repos.git(["checkout", "feat/topic"]);
+    fake.world.prs.push({ number: 5, id: "PR_5", title: "parent", headRef: "parent", headSha: tip, baseRef: "main", isDraft: true, isCrossRepository: false, author: "dev-a", labels: [], body: "" });
+    fake.world.prs.push({ number: 6, id: "PR_6", title: "other", headRef: "other", headSha: "9".repeat(40), baseRef: "main", isDraft: true, isCrossRepository: false, author: "dev-a", labels: [], body: "" });
+    const plan = await planOf(repos, fake);
+    expect(plan.base.stackedOn).toEqual({ number: 5, ref: "parent" });
+    expect(String(plan.base.sha)).toBe(tip);
+    expect(plan.commitCount).toBe(1);
+    expect(forkPoint.length).toBe(40);
+  });
+
+  test("a PR that is built on this branch is not its parent", async () => {
+    const { repos, fake } = await setup();
+    await repos.commit("c.txt", "c\n", "feat: child");
+    await repos.git(["push", "origin", "feat/topic"]);
+    await repos.git(["checkout", "-b", "later"]);
+    const later = await repos.commit("l.txt", "l\n", "feat: later");
+    await repos.git(["push", "origin", "later"]);
+    await repos.git(["checkout", "feat/topic"]);
+    fake.world.prs.push({ number: 8, id: "PR_8", title: "later", headRef: "later", headSha: later, baseRef: "feat/topic", isDraft: true, isCrossRepository: false, author: "dev-a", labels: [], body: "" });
+    const plan = await planOf(repos, fake);
+    expect(plan.base.stackedOn).toBeNull();
+    expect(plan.base.ref).toBe("main");
   });
 
   test("an explicit base that is neither the default nor allowed is a blocker", async () => {
@@ -182,6 +221,11 @@ describe("plan: the base", () => {
     const plan = await planOf(repos, fake, "--base", "release/1.x");
     expect(plan.exit).toBe(0);
     expect(plan.base.ref).toBe("release/1.x");
+    // The policy that allows the base is the default branch policy, never the base branch.
+    const defaultSha = await repos.remoteRef("main");
+    for (const call of fake.gh.calls.filter((c) => c.some((a) => a.includes("pr-policy.toml")))) {
+      expect(call.some((a) => a.endsWith(`ref=${defaultSha}`))).toBe(true);
+    }
   });
 
   test("a base that conflicts with the branch is a blocker", async () => {
@@ -214,7 +258,8 @@ describe("plan: sign-off", () => {
     const plan = await planOf(repos, fake);
     expect(plan.exit).toBe(20);
     expect(codes(plan, "blocker")).toEqual(["dco_missing"]);
-    expect(plan.next).toContain(`git rebase --signoff ${plan.base.sha}`);
+    expect(plan.next).toContain(`signoff --expect-head ${plan.headSha}`);
+    expect(plan.next).not.toContain("rebase");
   });
 
   test("dco.required = false skips the scan", async () => {
@@ -232,20 +277,33 @@ describe("plan: sign-off", () => {
     expect(codes(await planOf(repos, fake), "blocker")).toEqual(["dco_missing"]);
   });
 
-  test("an unsigned commit that is already pushed is a refusal, and --allow-unsigned-pushed demotes it", async () => {
+  test("an unsigned commit that is already pushed is reported, forces a draft, and points at pr-refresh dco-fix", async () => {
+    const { repos, fake } = await setup({ policy: "schema = 1\n[draft]\ncreate_as_draft = false\n[labels]\npr_ci = \"label\"\nrun_once = \"ci:run\"\n" });
+    await repos.commit("a.txt", "a\n", "feat: add a", { signoff: false });
+    await repos.git(["push", "origin", "feat/topic"]);
+    const plan = await planOf(repos, fake, "--run-ci");
+    expect(plan.exit).toBe(0);
+    const finding = plan.findings.find((f) => f.code === "dco_missing");
+    expect(finding?.kind).toBe("info");
+    expect(finding?.next).toContain("pr-refresh dco-fix");
+    expect(finding?.items).toHaveLength(1);
+    expect(plan.draft).toBe(true);
+    expect(plan.labels).toEqual([]);
+    expect(codes(plan, "info")).toContain("run_ci_skipped");
+    expect(plan.unsignedPushed).toHaveLength(1);
+  });
+
+  test("a pushed unsigned commit and a local one: only the local one blocks", async () => {
     const { repos, fake } = await setup();
     await repos.commit("a.txt", "a\n", "feat: add a", { signoff: false });
     await repos.git(["push", "origin", "feat/topic"]);
-    const refused = await planOf(repos, fake);
-    expect(refused.exit).toBe(3);
-    expect(codes(refused, "refusal")).toEqual(["dco_pushed"]);
-    expect(refused.next).toContain("--allow-unsigned-pushed");
-    const allowed = await planOf(repos, fake, "--allow-unsigned-pushed");
-    expect(allowed.exit).toBe(0);
-    expect(codes(allowed, "info")).toContain("dco_pushed");
+    await repos.commit("b.txt", "b\n", "feat: add b", { signoff: false });
+    const plan = await planOf(repos, fake, "--title", "feat: ab");
+    expect(plan.exit).toBe(20);
+    expect(plan.findings.filter((f) => f.code === "dco_missing").map((f) => f.kind)).toEqual(["blocker", "info"]);
   });
 
-  test("only the unpushed unsigned commits are rebased", async () => {
+  test("only the unpushed unsigned commits block", async () => {
     const { repos, fake } = await setup();
     await repos.commit("a.txt", "a\n", "feat: add a");
     await repos.git(["push", "origin", "feat/topic"]);
@@ -253,7 +311,8 @@ describe("plan: sign-off", () => {
     await repos.commit("b.txt", "b\n", "feat: add b", { signoff: false });
     const plan = await planOf(repos, fake, "--title", "feat: ab");
     expect(codes(plan, "blocker")).toEqual(["dco_missing"]);
-    expect(plan.next).toContain(`git rebase --signoff ${pushed}`);
+    expect(plan.next).toContain("signoff --expect-head");
+    expect(String(pushed).length).toBe(40);
   });
 });
 
@@ -342,6 +401,21 @@ describe("plan: inventories and pre-push steps", () => {
     const plan = await planOf(repos, fake);
     expect(codes(plan, "blocker")).toEqual(["inventory_miss"]);
     expect(plan.findings[0]?.detail).toContain("cannot be read");
+  });
+
+  test("a file that is moved into a listed group counts as added", async () => {
+    const { repos, fake } = await setup({ policy: inventoryPolicy });
+    await repos.git(["checkout", "main"]);
+    await repos.commit("docs/inventory.txt", "src/core/one.ts\n", "docs: inventory");
+    await repos.commit("lib/x.ts", "export const x = 1;\n", "feat: lib x");
+    await repos.git(["push", "origin", "HEAD:refs/heads/main"]);
+    await repos.git(["checkout", "-b", "feat/move"]);
+    mkdirSync(join(repos.work, "src/core"), { recursive: true });
+    await repos.git(["mv", "lib/x.ts", "src/core/x.ts"]);
+    await repos.git(["commit", "-s", "-q", "-m", "refactor: move x"]);
+    const plan = await planOf(repos, fake);
+    expect(codes(plan, "blocker")).toEqual(["inventory_miss"]);
+    expect(plan.findings[0]?.items).toEqual(["src/core/x.ts"]);
   });
 
   test("a regenerate entry whose inputs changed gives a notice", async () => {
@@ -511,21 +585,45 @@ describe("plan: the body and the issue link", () => {
     expect(plan.finalBody).toBeNull();
   });
 
-  test("an issue without Done-when boxes gets Closes by the rule, and the body keeps its own Part of", async () => {
+  test("an issue without a Done-when section never gets Closes; a section with no open box does", async () => {
     const { repos, fake } = await setup();
-    fake.world.issues.set(3, { state: "OPEN", title: "Small bug", body: "It fails." });
+    fake.world.issues.set(3, { state: "OPEN", title: "Epic", body: "Rewrite everything." });
+    fake.world.issues.set(4, { state: "OPEN", title: "Small bug", body: "## Done when\n\n- [x] It works\n" });
     await repos.commit("a.txt", "a\n", "feat: add a");
     const plain = await planOf(repos, fake, "--issue", "3", "--body-file", writeTemp(repos, "p.md", GOOD_BODY));
-    expect(plain.link?.line).toBe("Closes #3");
+    expect(plain.link).toMatchObject({ kind: "Part of", line: "Part of #3", reason: "the issue has no Done-when section" });
+    expect(plain.finalBody).toContain("\n\nPart of #3\n");
     const own = await planOf(repos, fake, "--issue", "3", "--body-file", writeTemp(repos, "o.md", `${GOOD_BODY}\nPart of #3\n`));
     expect(own.finalBody?.match(/#3/g)?.length).toBe(1);
+    const done = await planOf(repos, fake, "--issue", "4", "--body-file", writeTemp(repos, "d.md", GOOD_BODY));
+    expect(done.link?.kind).toBe("Closes");
   });
 
-  test("an unreadable issue is a blocker", async () => {
+  test("an unreadable issue gives Part of with an info finding, not Closes", async () => {
     const { repos, fake } = await setup();
     await repos.commit("a.txt", "a\n", "feat: add a");
-    const plan = await planOf(repos, fake, "--issue", "99");
-    expect(codes(plan, "blocker")).toEqual(["issue_unreadable"]);
+    const plan = await planOf(repos, fake, "--issue", "99", "--body-file", writeTemp(repos, "u.md", GOOD_BODY));
+    expect(plan.exit).toBe(0);
+    expect(codes(plan, "info")).toContain("issue_unreadable");
+    expect(plan.link?.line).toBe("Part of #99");
+  });
+
+  test("a body or a title that holds a credential is a blocker, and the finding names the line only", async () => {
+    const { repos, fake } = await setup();
+    await repos.commit("a.txt", "a\n", "feat: add a");
+    const token = `ghp_${"a1B2".repeat(9)}`;
+    const body = writeTemp(repos, "s.md", `${GOOD_BODY}\nDebug output: ${token}\n`);
+    const plan = await planOf(repos, fake, "--body-file", body);
+    expect(codes(plan, "blocker")).toEqual(["body_secret"]);
+    const finding = plan.findings[0];
+    expect(finding?.items).toEqual([`line ${GOOD_BODY.split("\n").length + 1}`]);
+    expect(JSON.stringify(plan.findings)).not.toContain(token);
+    expect(plan.finalBody).toBeNull();
+    const url = writeTemp(repos, "u.md", `${GOOD_BODY}\nclone https://user:hunter2@example.invalid/x.git\n`);
+    expect(codes(await planOf(repos, fake, "--body-file", url), "blocker")).toEqual(["body_secret"]);
+    const titled = await planOf(repos, fake, "--title", `feat: use ${token}`);
+    expect(codes(titled, "blocker")).toEqual(["title_secret"]);
+    expect(JSON.stringify(titled.findings)).not.toContain(token);
   });
 
   test("the body file must be a plain file", async () => {

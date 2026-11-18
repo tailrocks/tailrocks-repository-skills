@@ -13,6 +13,7 @@ import {
 } from "../lib/create/body.ts";
 import { branchProblem, inventoryMisses, remoteRepoSlug, unsignedCommits, type CommitInfo } from "../lib/create/checks.ts";
 import { EXIT, EXIT_TABLE } from "../lib/create/exit.ts";
+import { secretLineNumbers } from "../lib/proc.ts";
 import { HELP, main } from "../lib/create/cli.ts";
 import type { Policy } from "../lib/policy/types.ts";
 import { sha } from "./helpers/status.ts";
@@ -39,6 +40,9 @@ describe("arguments", () => {
     expect(ok("plan", "--issue", "#12", "--label", "a", "--label", "b", "--part-of", "--run-ci").labels).toEqual(["a", "b"]);
     expect(ok("plan", "--issue", "#12").issue).toBe(12);
     expect(bad("open")).toContain("--expect-head");
+    expect(bad("signoff")).toContain("--expect-head");
+    expect(ok("signoff", "--expect-head", HEAD).mode).toBe("signoff");
+    expect(bad("plan", "--allow-unsigned-pushed")).toContain("unknown argument");
     expect(ok("open", "--expect-head", HEAD).expectHead).toBe(HEAD);
     expect(bad("plan", "--expect-head", HEAD)).toContain("plan takes no");
   });
@@ -75,7 +79,7 @@ describe("arguments", () => {
       expect(lines.join("\n")).toBe(HELP);
     }
     expect(HELP).toContain(EXIT_TABLE);
-    expect(EXIT).toEqual({ done: 0, usage: 2, refused: 3, act: 20 });
+    expect(EXIT).toEqual({ done: 0, usage: 2, refused: 3, changed: 4, act: 20 });
   });
 
   test("a usage error exits 2 and names the usage", async () => {
@@ -181,29 +185,49 @@ describe("issue boxes and the link rule", () => {
   });
 
   const pr = (lines: string): string => `## Done when\n\n${lines}\n`;
+  const range = ["abcdef0123456789abcdef0123456789abcdef01"];
+  const ctx = { issue: 5, commits: range };
 
   test("a box maps only to a checked line that names it and carries proof", () => {
     const boxes = ["First box", "Second box"];
-    expect(unmappedBoxes(pr("- [x] First box: `bun test`\n- [x] second  BOX, see #44"), heading, boxes)).toEqual([]);
-    expect(unmappedBoxes(pr("- [x] First box\n- [x] Second box abc"), heading, boxes)).toEqual(boxes);
-    expect(unmappedBoxes(pr("- [ ] First box `x`\n- [x] Second box (a1b2c3d4e5)"), heading, boxes)).toEqual(["First box"]);
-    expect(unmappedBoxes("## Other\n\n- [x] First box `x`\n", heading, ["First box"])).toEqual(["First box"]);
+    expect(unmappedBoxes(pr("- [x] First box: `bun test`\n- [x] second  BOX, see #44"), heading, boxes, ctx)).toEqual([]);
+    expect(unmappedBoxes(pr("- [x] First box\n- [x] Second box abc"), heading, boxes, ctx)).toEqual(boxes);
+    expect(unmappedBoxes(pr("- [ ] First box `x`\n- [x] Second box (abcdef0)"), heading, boxes, ctx)).toEqual(["First box"]);
+    expect(unmappedBoxes("## Other\n\n- [x] First box `x`\n", heading, ["First box"], ctx)).toEqual(["First box"]);
+  });
+
+  test("proof: the issue's own number, a hex-looking word, and an unknown commit do not count", () => {
+    const own = unmappedBoxes(pr("- [x] First box (#5)"), heading, ["First box"], ctx);
+    expect(own).toEqual(["First box"]);
+    expect(unmappedBoxes(pr("- [x] First box (defaced)"), heading, ["First box"], ctx)).toEqual(["First box"]);
+    expect(unmappedBoxes(pr("- [x] First box (1234567)"), heading, ["First box"], ctx)).toEqual(["First box"]);
+    expect(unmappedBoxes(pr("- [x] First box (abcdef0123)"), heading, ["First box"], ctx)).toEqual([]);
+    expect(unmappedBoxes(pr("- [x] First box (#6)"), heading, ["First box"], ctx)).toEqual([]);
+    expect(unmappedBoxes(pr("- [x] First box, see https://example.invalid/x"), heading, ["First box"], ctx)).toEqual([]);
+    expect(unmappedBoxes(pr("- [x] First box [notes](docs/notes.md)"), heading, ["First box"], ctx)).toEqual(["First box"]);
   });
 
   test("the proof must come from outside the box text", () => {
-    expect(unmappedBoxes(pr("- [x] Run `bun test`"), heading, ["Run `bun test`"])).toEqual(["Run `bun test`"]);
-    expect(unmappedBoxes(pr("- [x] Run `bun test` (green: `bun test`)"), heading, ["Run `bun test`"])).toEqual([]);
+    expect(unmappedBoxes(pr("- [x] Run `bun test`"), heading, ["Run `bun test`"], ctx)).toEqual(["Run `bun test`"]);
+    expect(unmappedBoxes(pr("- [x] Run `bun test` (green: `bun test`)"), heading, ["Run `bun test`"], ctx)).toEqual([]);
   });
+
+  const known = { readable: true, hasDoneWhen: true };
 
   test("the decision", () => {
     const mapped = pr("- [x] First box `a`");
-    expect(decideLink(5, ["First box"], mapped, heading, false)).toMatchObject({ kind: "Closes", line: "Closes #5", present: false });
-    expect(decideLink(5, ["First box"], mapped, heading, true)).toMatchObject({ kind: "Part of", reason: "--part-of was given" });
-    expect(decideLink(5, ["First box", "Second box"], mapped, heading, false)).toMatchObject({ kind: "Part of", unmapped: ["Second box"] });
-    expect(decideLink(5, [], "x", heading, false)).toMatchObject({ kind: "Closes", reason: "the issue has no open Done-when box" });
-    expect(decideLink(5, [], `${mapped}\nCloses #5`, heading, false).present).toBe(true);
-    expect(decideLink(5, ["First box", "Second box"], `${mapped}\nPart of #5`, heading, false).present).toBe(true);
-    expect(decideLink(5, ["First box", "Second box"], `${mapped}\nCloses #5`, heading, false).present).toBe(false);
+    expect(decideLink(5, ["First box"], mapped, heading, false, ctx, known)).toMatchObject({ kind: "Closes", line: "Closes #5", present: false });
+    expect(decideLink(5, ["First box"], mapped, heading, true, ctx, known)).toMatchObject({ kind: "Part of", reason: "--part-of was given" });
+    expect(decideLink(5, ["First box", "Second box"], mapped, heading, false, ctx, known)).toMatchObject({ kind: "Part of", unmapped: ["Second box"] });
+    expect(decideLink(5, [], "x", heading, false, ctx, known)).toMatchObject({ kind: "Closes", reason: "the issue has no open Done-when box" });
+    expect(decideLink(5, [], `${mapped}\nCloses #5`, heading, false, ctx, known).present).toBe(true);
+    expect(decideLink(5, ["First box", "Second box"], `${mapped}\nPart of #5`, heading, false, ctx, known).present).toBe(true);
+    expect(decideLink(5, ["First box", "Second box"], `${mapped}\nCloses #5`, heading, false, ctx, known).present).toBe(false);
+  });
+
+  test("an issue that cannot be read, or has no Done-when section, never gets Closes", () => {
+    expect(decideLink(5, [], "x", heading, false, ctx, { readable: true, hasDoneWhen: false })).toMatchObject({ kind: "Part of", reason: "the issue has no Done-when section" });
+    expect(decideLink(5, [], "x", heading, false, ctx, { readable: false, hasDoneWhen: false })).toMatchObject({ kind: "Part of", reason: "the issue could not be read" });
   });
 
   test("the final body adds the link and the footer once", () => {
@@ -211,5 +235,15 @@ describe("issue boxes and the link rule", () => {
     expect(once).toBe("## Why\n\nText\n\nMore\n\nPart of #5\n\nFooter.\n");
     expect(finalBody({ body: once, addLine: null, footer: "Footer." })).toBe(once);
     expect(finalBody({ body: "x", addLine: null, footer: "" })).toBe("x\n");
+  });
+});
+
+describe("credential lines", () => {
+  test("a token, a URL with credentials, and an authorization header give line numbers only", () => {
+    const text = ["fine", `a ghp_${"x9".repeat(10)} b`, "ok", "https://user:pw@example.invalid/x", "Authorization: Bearer abc123", "token: not-a-secret-label-here"].join("\n");
+    expect(secretLineNumbers(text)).toEqual([2, 4, 5]);
+    expect(secretLineNumbers("plain\ntext")).toEqual([]);
+    // Calling twice gives the same answer: no regex state leaks between calls.
+    expect(secretLineNumbers(text)).toEqual([2, 4, 5]);
   });
 });

@@ -118,8 +118,8 @@ function names(text: string): readonly string[] {
 /** Paths that the branch changed and added since it left the base. */
 export async function changedPaths(run: GitRun, base: string, head: string): Promise<ChangedPaths> {
   const mergeBase = (await gitOut(run, ["merge-base", base, head])).trim();
-  const changed = names(await gitOut(run, ["diff", "--name-only", "-z", mergeBase, head]));
-  const added = names(await gitOut(run, ["diff", "--name-only", "-z", "--diff-filter=A", mergeBase, head]));
+  const changed = names(await gitOut(run, ["diff", "--name-only", "-z", "--no-renames", mergeBase, head]));
+  const added = names(await gitOut(run, ["diff", "--name-only", "-z", "--no-renames", "--diff-filter=A", mergeBase, head]));
   return { changed, added };
 }
 
@@ -130,4 +130,14 @@ export async function conflictsWithBase(run: GitRun, base: string, head: string)
     return false;
   }
   return result.code === 1 ? true : null;
+}
+
+/** The nearest common ancestor of two commits, or null when they share none. */
+export async function mergeBaseOf(run: GitRun, a: string, b: string): Promise<Sha | null> {
+  const result = await run(["merge-base", a, b]);
+  if (result.code !== 0) {
+    return null;
+  }
+  const parsed = parseSha(result.stdout.trim());
+  return parsed.ok ? parsed.value : null;
 }

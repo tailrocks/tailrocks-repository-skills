@@ -6,6 +6,7 @@ import { resolve, sep } from "node:path";
 import { matchesAnyGlob } from "../glob.ts";
 import { ReadError } from "../github/read.ts";
 import { fetchBasePolicy } from "../policy/fetch.ts";
+import { secretLineNumbers } from "../proc.ts";
 import { sameLogin } from "../status/text.ts";
 import type { Sha } from "../types.ts";
 import { isPushableBranch } from "./args.ts";
@@ -43,6 +44,7 @@ import {
   hasCommit,
   isAncestor,
   listCommits,
+  mergeBaseOf,
   readTreeState,
   remoteUrl,
 } from "./local.ts";
@@ -95,6 +97,62 @@ function short(sha: string): string {
 function withinRoot(root: string, file: string): string | null {
   const full = resolve(root, file);
   return full.startsWith(`${root}${sep}`) ? full : null;
+}
+
+const MAX_PARENT_PROBES = 30;
+
+interface ParentSearch {
+  readonly parent: OpenPr | null;
+  readonly skipped: number;
+}
+
+/**
+ * The open PR that this branch is built on, or null. A PR is the parent when the
+ * merge-base of HEAD and its head is a commit of this branch that the default
+ * branch lacks. This holds also when the parent gained commits after the fork.
+ * The search first tries a PR whose head is in this branch, then fetches the
+ * head branches of the other PRs, at most MAX_PARENT_PROBES of them.
+ */
+async function findParent(
+  git: CreateConfig["runGit"],
+  remote: string,
+  candidates: readonly OpenPr[],
+  headSha: Sha,
+  defaultSha: Sha,
+): Promise<ParentSearch> {
+  const revs = (await gitOut(git, ["rev-list", headSha, `^${defaultSha}`])).split("\n").map((l) => l.trim()).filter((l) => l !== "");
+  for (const rev of revs) {
+    const exact = candidates.find((p) => p.headSha === rev);
+    if (exact !== undefined) {
+      return { parent: exact, skipped: 0 };
+    }
+  }
+  let best: { readonly pr: OpenPr; readonly index: number } | null = null;
+  for (const pr of candidates.slice(0, MAX_PARENT_PROBES)) {
+    if (!(await hasCommit(git, pr.headSha))) {
+      try {
+        await fetchBranch(git, remote, pr.headRef);
+      } catch (error) {
+        if (error instanceof StepError) {
+          continue;
+        }
+        throw error;
+      }
+      if (!(await hasCommit(git, pr.headSha))) {
+        continue;
+      }
+    }
+    // A PR that holds this whole branch is a child, not a parent.
+    if (await isAncestor(git, headSha, pr.headSha)) {
+      continue;
+    }
+    const base = await mergeBaseOf(git, headSha, pr.headSha);
+    const index = base === null ? -1 : revs.indexOf(base);
+    if (index >= 0 && (best === null || index < best.index)) {
+      best = { pr, index };
+    }
+  }
+  return { parent: best?.pr ?? null, skipped: Math.max(0, candidates.length - MAX_PARENT_PROBES) };
 }
 
 export async function buildPlan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
@@ -152,11 +210,11 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
     }
   }
 
-  // ---------- The base ----------
-  const wantedBase = args.base ?? existing?.baseRef ?? null;
-  const isOther = (p: OpenPr): boolean => !p.isCrossRepository && p.headRef !== headBranch;
+  // ---------- The policy ----------
+  // The policy comes from the default branch at its current commit, never from a
+  // parent or another base branch: that work is not reviewed yet.
   const defaultSha = await readBranchSha(gh, repo, defaultBranch);
-  const fetchBase = async (branch: string, sha: Sha): Promise<void> => {
+  const fetchBranchTip = async (branch: string, sha: Sha): Promise<void> => {
     const got = await fetchBranch(git, args.remote, branch);
     if (got.kind === "missing") {
       throw new StepError(`the base branch ${branch} is not on the remote ${args.remote}`);
@@ -165,6 +223,16 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
       throw new StepError(`the base commit ${short(sha)} of ${branch} is not in the local clone after the fetch`);
     }
   };
+  await fetchBranchTip(defaultBranch, defaultSha);
+  const loaded = await fetchBasePolicy(repo, defaultSha, { cwd: cfg.cwd, runGh: gh });
+  if (!loaded.ok) {
+    return { kind: "policy-error", errors: loaded.errors };
+  }
+  const { policy, source: policySource } = loaded;
+
+  // ---------- The base ----------
+  const wantedBase = args.base ?? existing?.baseRef ?? null;
+  const isOther = (p: OpenPr): boolean => !p.isCrossRepository && p.headRef !== headBranch;
   let baseRef = wantedBase ?? defaultBranch;
   let baseSha: Sha = defaultSha;
   let stackedOn: Parent | null = null;
@@ -174,39 +242,27 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
       stackedOn = { number: parent.number, ref: parent.headRef, sha: parent.headSha };
       baseSha = parent.headSha;
       if (!(await hasCommit(git, baseSha))) {
-        throw new StepError(`the head ${short(baseSha)} of the parent PR #${parent.number} is not in the local clone; the branch is not built on it`);
+        await fetchBranchTip(parent.headRef, baseSha);
       }
     } else {
       baseSha = await readBranchSha(gh, repo, wantedBase);
-      await fetchBase(wantedBase, baseSha);
+      await fetchBranchTip(wantedBase, baseSha);
     }
-  } else {
-    await fetchBase(defaultBranch, defaultSha);
-    if (wantedBase === null) {
-      const revs = (await gitOut(git, ["rev-list", headSha, `^${defaultSha}`])).split("\n").map((l) => l.trim()).filter((l) => l !== "");
-      for (const rev of revs) {
-        const parent = openPrs.find((p) => isOther(p) && p.headSha === rev);
-        if (parent !== undefined) {
-          stackedOn = { number: parent.number, ref: parent.headRef, sha: parent.headSha };
-          baseRef = parent.headRef;
-          baseSha = parent.headSha;
-          break;
-        }
-      }
+  } else if (wantedBase === null) {
+    const found = await findParent(git, args.remote, openPrs.filter(isOther), headSha, defaultSha);
+    if (found.parent !== null) {
+      stackedOn = { number: found.parent.number, ref: found.parent.headRef, sha: found.parent.headSha };
+      baseRef = found.parent.headRef;
+      baseSha = found.parent.headSha;
+    }
+    if (found.skipped > 0) {
+      add("stack_probe_capped", "info", `the parent search read ${MAX_PARENT_PROBES} open PRs and skipped ${found.skipped}`, "Pass --base <parent branch> when the branch is built on a PR that was skipped.");
     }
   }
 
-  // ---------- The policy ----------
-  // A stacked PR reads the policy of the default branch: the parent branch is unmerged work.
-  const policySha = stackedOn === null ? baseSha : defaultSha;
-  const loaded = await fetchBasePolicy(repo, policySha, { cwd: cfg.cwd, runGh: gh });
-  if (!loaded.ok) {
-    return { kind: "policy-error", errors: loaded.errors };
-  }
-  const { policy, source: policySource } = loaded;
-
+  // A base that is neither the default branch nor the head of an open PR must be listed in the policy of the default branch.
   if (baseRef !== defaultBranch && stackedOn === null && !matchesAnyGlob(policy.branches.bases, baseRef)) {
-    add("base_not_allowed", "blocker", `${baseRef} is not the default branch and not in branches.bases`, "Omit --base to use the default branch, or ask the user.");
+    add("base_not_allowed", "blocker", `${baseRef} is not the default branch and not in branches.bases of the default-branch policy`, "Omit --base to use the default branch, or ask the user.");
   }
   if (stackedOn !== null) {
     add(
@@ -277,29 +333,29 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
 
   // ---------- Sign-off ----------
   const unsigned = unsignedCommits(commits, policy);
+  let unsignedPushed: readonly string[] = [];
   if (unsigned.length > 0) {
-    const pushed =
-      remoteHead === null ? [] : await Promise.all(unsigned.map(async (c) => ((await isAncestor(git, c.sha, remoteHead)) ? c : null)));
-    const onRemote = pushed.flatMap((c) => (c === null ? [] : [c]));
-    const local = unsigned.filter((c) => !onRemote.some((p) => p.sha === c.sha));
+    const flags = await Promise.all(unsigned.map(async (c) => remoteHead !== null && (await isAncestor(git, c.sha, remoteHead))));
+    const onRemote = unsigned.filter((_, index) => flags[index] === true);
+    const local = unsigned.filter((_, index) => flags[index] !== true);
     const label = (c: { sha: string; subject: string }): string => `${short(c.sha)} ${c.subject}`;
+    unsignedPushed = onRemote.map(label);
     if (onRemote.length > 0) {
+      // A fix needs a force-push, which no script here does. pr-refresh dco-fix owns it, and it needs an open PR.
       add(
-        "dco_pushed",
-        args.allowUnsignedPushed ? "info" : "refusal",
-        `${onRemote.length} commit${onRemote.length === 1 ? " lacks" : "s lack"} a sign-off and ${onRemote.length === 1 ? "is" : "are"} already on the remote branch`,
-        args.allowUnsignedPushed
-          ? "After the PR is open, run pr-refresh dco-fix."
-          : "A rewrite needs a force-push, which this skill never does. Ask the user. With their consent, run plan again with --allow-unsigned-pushed, open the PR, then run pr-refresh dco-fix.",
-        onRemote.map(label),
+        "dco_missing",
+        "info",
+        `${onRemote.length} commit${onRemote.length === 1 ? " lacks" : "s lack"} a sign-off and ${onRemote.length === 1 ? "is" : "are"} already on the remote branch. The PR opens as a draft, and open exits 20.`,
+        existing === null ? "After open, run pr-refresh dco-fix <the PR number that open prints>." : `Run pr-refresh dco-fix ${existing.number}.`,
+        unsignedPushed,
       );
     }
     if (local.length > 0) {
       add(
         "dco_missing",
         "blocker",
-        `${local.length} commit${local.length === 1 ? " lacks" : "s lack"} a Signed-off-by line`,
-        `Add the sign-off to the local commits with git rebase --signoff ${remoteHead ?? baseSha}, then run plan again.`,
+        `${local.length} unpushed commit${local.length === 1 ? " lacks" : "s lack"} a Signed-off-by line`,
+        `Run signoff --expect-head ${headSha}. It adds the trailers to the unpushed commits and keeps every tree. Then run plan again.`,
         local.map(label),
       );
     }
@@ -396,24 +452,25 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
     add("title_invalid", "blocker", `the title must be one line of 1 to ${MAX_TITLE_CHARS} characters`, "Pass --title <text>.");
     title = null;
   }
+  if (existing === null && title !== null && secretLineNumbers(title).length > 0) {
+    add("title_secret", "blocker", "the title holds text that looks like a credential", "Remove the credential from the commit subject or pass --title <text>.");
+    title = null;
+  }
 
   let issue: IssueFacts | null = null;
   if (args.issue !== null) {
-    try {
-      issue = await readIssue(gh, repo, args.issue, policy.issues.done_when_heading);
-      if (issue.state !== "OPEN") {
-        add("issue_closed", "info", `issue #${issue.number} is ${issue.state.toLowerCase()}`, "Check that the link is intended.");
-      }
-    } catch (error) {
-      if (!(error instanceof StepError || error instanceof ReadError)) {
-        throw error;
-      }
-      add("issue_unreadable", "blocker", error.message, "Pass the right --issue number, or omit it.");
+    issue = await readIssue(gh, repo, args.issue, policy.issues.done_when_heading);
+    if (issue.problem !== null) {
+      add("issue_unreadable", "info", issue.problem, `The link is Part of #${issue.number}. Check the issue number.`);
+    } else if (issue.state !== "OPEN") {
+      add("issue_closed", "info", `issue #${issue.number} is ${issue.state.toLowerCase()}`, "Check that the link is intended.");
     }
   }
 
   const labels = [...args.labels];
-  if (policy.labels.pr_ci === "label") {
+  if (unsignedPushed.length > 0 && args.runCi) {
+    add("run_ci_skipped", "info", "--run-ci is skipped while pushed commits lack a sign-off", "Fix the sign-off with pr-refresh dco-fix, then add the label.");
+  } else if (policy.labels.pr_ci === "label") {
     const label = policy.labels.run_once !== "" ? policy.labels.run_once : policy.labels.run_always;
     if (args.runCi) {
       labels.push(label);
@@ -432,7 +489,7 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
   if (existing !== null) {
     add("pr_exists", "info", `PR #${existing.number} is open for ${headBranch ?? ""} (${existing.url})`, "open pushes new commits only. The title and body stay. Use pr-refresh metadata to change them.");
   } else {
-    const found = await readTemplate(gh, repo, policySha, policy.pr_body.template);
+    const found = await readTemplate(gh, repo, defaultSha, policy.pr_body.template);
     let template: string | null = null;
     if (policy.pr_body.template !== "" && found.kind === "found") {
       template = found.text;
@@ -449,13 +506,18 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
       } catch (error) {
         add("body_file_unreadable", "blocker", error instanceof Error ? error.message : "cannot read the body file", "Write the body to a plain text file and pass its path.");
       }
+      const secrets = body === null ? [] : secretLineNumbers(body);
+      if (body !== null && secrets.length > 0) {
+        add("body_secret", "blocker", "the body holds text that looks like a credential", "Remove it from the body file. Never paste a token, a URL with credentials, or an authorization header.", secrets.map((n) => `line ${n}`));
+        body = null;
+      }
       if (body !== null) {
         const problems = bodyChecks(body, requiredList, placeholders);
         if (problems.length > 0) {
           add("body_invalid", "blocker", "the body does not follow the template", "Fill each section, remove each placeholder, and run plan again.", problems);
         }
         if (issue !== null) {
-          link = decideLink(issue.number, issue.unchecked, body, policy.issues.done_when_heading, args.partOf);
+          link = decideLink(issue.number, issue.unchecked, body, policy.issues.done_when_heading, args.partOf, { issue: issue.number, commits: commits.map((c) => c.sha) }, { readable: issue.readable, hasDoneWhen: issue.hasDoneWhen });
           if (link.kind === "Part of" && bodyClosesIssue(body, issue.number)) {
             add(
               "link_conflict",
@@ -513,7 +575,7 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
       commitCount: commits.length,
       existing,
       title,
-      draft: policy.draft.create_as_draft,
+      draft: policy.draft.create_as_draft || unsignedPushed.length > 0,
       labels: [...new Set(labels)],
       issue,
       link,
@@ -521,6 +583,7 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
       skeleton,
       finalBody: finalText,
       prepushRan,
+      unsignedPushed,
       findings: ordered,
       exit,
       next,

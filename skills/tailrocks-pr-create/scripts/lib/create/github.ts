@@ -93,21 +93,37 @@ export async function listOpenPrs(run: GhRun, repo: RepoSlug, head: string | nul
   return arr(parseJson(result.stdout, "pr list"), "pr list").map(parsePr);
 }
 
+/**
+ * Read an issue. A failed or odd reply is not an error: the issue is then
+ * unreadable, and the link rule falls back to Part of.
+ */
 export async function readIssue(run: GhRun, repo: RepoSlug, number: number, heading: string): Promise<IssueFacts> {
+  const unreadable = (problem: string): IssueFacts => ({
+    number, state: "UNKNOWN", title: "", url: "", unchecked: [], hasDoneWhen: false, readable: false, problem,
+  });
   const result = await run(["issue", "view", String(number), "--repo", repo, "--json", "number,state,title,url,body"]);
   if (result.code !== 0) {
-    throw new StepError(`cannot read issue #${number}: ${firstLine(result.stderr)}`);
+    return unreadable(`cannot read issue #${number}: ${firstLine(result.stderr)}`);
   }
-  const o = obj(parseJson(result.stdout, "issue view"), "issue view");
-  const boxes = parseIssueBoxes(str(member(o, "body"), "issue.body"), heading);
-  return {
-    number: num(member(o, "number"), "issue.number"),
-    state: str(member(o, "state"), "issue.state"),
-    title: str(member(o, "title"), "issue.title"),
-    url: str(member(o, "url"), "issue.url"),
-    unchecked: boxes.unchecked,
-    hasDoneWhen: boxes.present,
-  };
+  try {
+    const o = obj(parseJson(result.stdout, "issue view"), "issue view");
+    const boxes = parseIssueBoxes(str(member(o, "body"), "issue.body"), heading);
+    return {
+      number: num(member(o, "number"), "issue.number"),
+      state: str(member(o, "state"), "issue.state"),
+      title: str(member(o, "title"), "issue.title"),
+      url: str(member(o, "url"), "issue.url"),
+      unchecked: boxes.unchecked,
+      hasDoneWhen: boxes.present,
+      readable: true,
+      problem: null,
+    };
+  } catch (error) {
+    if (error instanceof ReadError) {
+      return unreadable(`issue #${number} has an unexpected shape: ${error.message}`);
+    }
+    throw error;
+  }
 }
 
 export type TemplateRead =
