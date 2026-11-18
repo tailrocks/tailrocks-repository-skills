@@ -1,9 +1,11 @@
 // Capability for the DCO-only force-with-lease push (design section 7).
 //
 // Only the DCO module (lib/dco.ts, added later) may call `mintDcoCapability`.
-// tests/safety.test.ts scans the source tree and fails when any other file
-// references it. The class has a private constructor and a private field, so
-// no other module can build a look-alike value.
+// tests/safety-git.test.ts scans the source tree and fails when any other file
+// names it or builds a `DcoCapability` directly. The constructor is private and
+// checks a module-private token, and the only factory is a closure that the
+// class body captures. No static `mint` exists, so no other path leads to a
+// value that passes `instanceof DcoCapability`.
 
 import type { Sha } from "./types.ts";
 
@@ -13,8 +15,10 @@ export interface DcoGrant {
   readonly newHead: Sha;
 }
 
-// Not exported: only `mint` can pass it, so `new DcoCapability(...)` fails at run time too.
+// Not exported: a caller cannot pass it, so `new DcoCapability(...)` fails at run time too.
 const MINT_TOKEN = Symbol("dco-capability-mint");
+
+let create: ((grant: DcoGrant) => DcoCapability) | null = null;
 
 export class DcoCapability {
   readonly #grant: DcoGrant;
@@ -26,16 +30,18 @@ export class DcoCapability {
     this.#grant = grant;
   }
 
-  get grant(): DcoGrant {
-    return this.#grant;
+  static {
+    create = (grant) => new DcoCapability({ ...grant }, MINT_TOKEN);
   }
 
-  /** Internal factory. Call it only from the DCO module. */
-  static mint(grant: DcoGrant): DcoCapability {
-    return new DcoCapability({ ...grant }, MINT_TOKEN);
+  get grant(): DcoGrant {
+    return this.#grant;
   }
 }
 
 export function mintDcoCapability(grant: DcoGrant): DcoCapability {
-  return DcoCapability.mint(grant);
+  if (create === null) {
+    throw new TypeError("DcoCapability is not initialized");
+  }
+  return create(grant);
 }

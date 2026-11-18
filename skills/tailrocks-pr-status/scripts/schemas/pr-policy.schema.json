@@ -106,7 +106,7 @@
           "default": "github-approval"
         },
         "reviewers": {
-          "description": "Logins whose verdict counts. Empty means writers (OWNER, MEMBER, COLLABORATOR) except the PR author.",
+          "description": "Logins whose verdict counts. Empty means writers (OWNER, MEMBER, COLLABORATOR). The PR author may be a reviewer.",
           "$ref": "#/$defs/stringList",
           "default": []
         },

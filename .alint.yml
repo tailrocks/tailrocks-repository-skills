@@ -19,3 +19,11 @@ extends:
 # stops using the upstream filename.
 ignore:
   - skills/tailrocks-pr-template/references/PULL_REQUEST_TEMPLATE.md
+# Narrow ignore for rule skill-max-depth (vendored library copies only).
+# Reason: each script-backed skill must be self-contained, so `bun run
+# vendor` copies lib/ and schemas/ into skills/<id>/scripts/. The copies
+# keep the folder layout of lib/ (for example lib/policy/load.ts), which
+# is one level deeper than the rule allows. The copies are generated,
+# never hand-edited, and a test fails when they differ from lib/.
+  - skills/*/scripts/lib/**
+  - skills/*/scripts/schemas/**

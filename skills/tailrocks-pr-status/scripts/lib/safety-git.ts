@@ -69,7 +69,7 @@ function checkReadOnly(sub: string, rest: readonly string[]): Guard {
 function checkPush(rest: readonly string[]): Guard {
   const [remote, refspec, extra] = rest;
   if (remote === undefined || refspec === undefined || extra !== undefined) {
-    return refuse("git push must be exactly: push <remote> <sha-or-HEAD>:refs/heads/<branch>");
+    return refuse("git push must be exactly: push <remote> <sha>:refs/heads/<branch>");
   }
   if (!REMOTE_NAME.test(remote)) {
     return refuse("git push remote must be a plain remote name");
@@ -80,8 +80,9 @@ function checkPush(rest: readonly string[]): Guard {
   }
   const source = refspec.slice(0, colon);
   const destination = refspec.slice(colon + 1);
-  if (source !== "HEAD" && !isSha(source)) {
-    return refuse("git push source must be HEAD or a 40-hex commit id");
+  // HEAD is a moving source: the caller resolves it to a commit id first.
+  if (!isSha(source)) {
+    return refuse("git push source must be a 40-hex commit id");
   }
   if (!destination.startsWith("refs/heads/") || !isBranchName(destination.slice("refs/heads/".length))) {
     return refuse("git push destination must be refs/heads/<branch>");

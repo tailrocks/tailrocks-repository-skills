@@ -21,7 +21,7 @@ cancellation_is_load = true
 
 [review]
 source = "comment-verdict"
-# Counted reviewers. An empty list counts every writer except the PR author.
+# Counted reviewers. An empty list counts every writer, the PR author included.
 reviewers = []
 approve_pattern = '^\s*Verdict:\s*approve\b'
 changes_pattern = '^\s*Verdict:\s*changes needed\b'

@@ -94,6 +94,10 @@ function dcoFindings(snapshot: PrSnapshot, policy: Policy): readonly Finding[] {
   ];
 }
 
+function clip(text: string): string {
+  return text.length > 60 ? `${text.slice(0, 57)}...` : text;
+}
+
 function issueFindings(snapshot: PrSnapshot, policy: Policy): readonly Finding[] {
   if (policy.issues.done_when === "off") {
     return [];
@@ -105,7 +109,7 @@ function issueFindings(snapshot: PrSnapshot, policy: Policy): readonly Finding[]
     }
     const done = parseDoneWhen(issue.body, policy.issues.done_when_heading);
     if (done !== null && done.unchecked.length > 0) {
-      parts.push(`#${issue.number} has ${done.unchecked.length} unchecked: ${done.unchecked.slice(0, 3).join("; ")}`);
+      parts.push(`#${issue.number} has ${done.unchecked.length} unchecked: ${done.unchecked.slice(0, 3).map(clip).join("; ")}`);
     }
   }
   if (parts.length === 0) {
