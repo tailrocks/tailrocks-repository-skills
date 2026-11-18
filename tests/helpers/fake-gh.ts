@@ -14,6 +14,7 @@ import {
   COMMITS_PAGE_QUERY,
   THREADS_PAGE_QUERY,
 } from "../../lib/github/queries.ts";
+import { FLEET_QUERY } from "../../lib/fleet/list.ts";
 import { PR_HEAD_QUERY, THREAD_DETAILS_QUERY, THREAD_QUERY } from "../../lib/threads/queries.ts";
 import { HEAD, BASE } from "./status.ts";
 
@@ -38,6 +39,7 @@ const QUERIES: readonly (readonly [string, string])[] = [
   ["threadDetails", THREAD_DETAILS_QUERY],
   ["thread", THREAD_QUERY],
   ["prHead", PR_HEAD_QUERY],
+  ["fleetOpen", FLEET_QUERY],
 ];
 
 export function fail(stderr: string, exit = 1): Reply {

@@ -1,0 +1,26 @@
+{
+  "note": "Synthetic world for the fleet tests. Names are anonymized. Each PR has a preset that the world helper turns into GitHub replies.",
+  "defaultBranch": "main",
+  "queueLength": 4,
+  "requiredApprovals": 1,
+  "strictUpToDate": true,
+  "prs": [
+    { "number": 11, "headRef": "feat/alpha", "author": "user-a", "preset": "ready" },
+    { "number": 12, "headRef": "feat/beta", "author": "user-b", "preset": "queued-mergeable", "queue": { "position": 1, "state": "MERGEABLE" } },
+    { "number": 13, "headRef": "fix/gamma", "author": "user-c", "preset": "queued-unmergeable", "queue": { "position": 2, "state": "UNMERGEABLE" } },
+    { "number": 14, "headRef": "feat/delta", "author": "user-a", "preset": "behind-approved" },
+    { "number": 15, "headRef": "feat/epsilon", "author": "user-b", "preset": "unresolved-thread" },
+    { "number": 16, "headRef": "docs/zeta", "author": "user-c", "preset": "needs-review" },
+    { "number": 17, "headRef": "feat/eta", "author": "user-a", "preset": "conflict" },
+    { "number": 18, "headRef": "feat/theta", "author": "user-b", "preset": "draft" },
+    { "number": 19, "headRef": "feat/iota", "author": "user-c", "preset": "ready" },
+    { "number": 20, "headRef": "chore/kappa", "author": "user-a", "preset": "behind-approved" }
+  ],
+  "runs": [
+    { "databaseId": 9001, "headBranch": "feat/alpha", "workflowName": "CI", "event": "pull_request" },
+    { "databaseId": 9002, "headBranch": "feat/closed-work", "workflowName": "CI", "event": "pull_request" },
+    { "databaseId": 9003, "headBranch": "main", "workflowName": "Nightly", "event": "schedule" },
+    { "databaseId": 9004, "headBranch": "gh-readonly-queue/main/pr-12-aaaaaaaa", "workflowName": "CI", "event": "merge_group" },
+    { "databaseId": 9005, "headBranch": "fix/abandoned", "workflowName": "CI", "event": "push" }
+  ]
+}
