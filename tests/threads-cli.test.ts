@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { HELP, main, parseArgs } from "../lib/threads/cli.ts";
-import { AGENT, FIX_COMMIT, REPO, World, type ThreadSpec } from "./helpers/threads-world.ts";
+import { AGENT, FIX_COMMIT, PLAN_AT, REPO, World, type ThreadSpec } from "./helpers/threads-world.ts";
 
 const noSleep = async (): Promise<void> => undefined;
 const tmp = mkdtempSync(join(tmpdir(), "threads-cli-"));
@@ -35,7 +35,7 @@ async function run(argv: readonly string[], w: World): Promise<{ code: number; o
 function decisionsFile(w: World, decisions: readonly { readonly id: string; readonly action: string; readonly [key: string]: unknown }[]): string {
   const path = join(tmp, `d-${Math.random().toString(36).slice(2)}.json`);
   const filled = decisions.map((x) => (x.action === "reply-only" ? x : { ...x, lastCommentId: w.lastCommentId(x.id) }));
-  writeFileSync(path, JSON.stringify({ schema: 1, decisions: filled }));
+  writeFileSync(path, JSON.stringify({ schema: 1, planAt: PLAN_AT, decisions: filled }));
   return path;
 }
 

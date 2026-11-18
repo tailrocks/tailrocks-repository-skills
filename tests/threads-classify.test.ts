@@ -10,7 +10,7 @@ const context = { policy, prAuthor: PR_AUTHOR, agent: AGENT };
 let counter = 0;
 function c(author: string, body: string, bot = false): CommentView {
   counter += 1;
-  return { id: `c${counter}`, author, body, isBotAccount: bot, url: null };
+  return { id: `c${counter}`, author, body, isBotAccount: bot, url: null, editedAt: null };
 }
 
 function thread(...comments: CommentView[]): ThreadDetail {

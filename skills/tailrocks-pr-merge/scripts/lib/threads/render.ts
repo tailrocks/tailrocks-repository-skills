@@ -75,6 +75,7 @@ export interface PlanView {
 export function renderPlanText(view: PlanView): string {
   const { snapshot, open } = view;
   const lines = [`${snapshot.repo}#${snapshot.number}: ${open.length} unresolved review thread${open.length === 1 ? "" : "s"} (head ${snapshot.headSha.slice(0, 7)})`];
+  lines.push(`  planAt: ${snapshot.capturedAt}`);
   for (const p of view.problems) {
     lines.push(`  problem: ${p}`);
   }
@@ -99,6 +100,7 @@ export function planObject(view: PlanView, exit: number) {
     repo: view.snapshot.repo,
     number: view.snapshot.number,
     headSha: view.snapshot.headSha,
+    planAt: view.snapshot.capturedAt,
     agent: view.agent,
     problems: view.problems,
     exit,

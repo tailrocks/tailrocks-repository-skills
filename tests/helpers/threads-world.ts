@@ -13,6 +13,9 @@ export const REPO: RepoSlug = (() => {
   return r.value;
 })();
 
+/** The time that the test plans print, before any edit. */
+export const PLAN_AT = "2026-01-01T00:00:00Z";
+
 export const AGENT = "agent-user";
 export const PR_AUTHOR = "dev-a";
 
@@ -20,6 +23,8 @@ export interface CommentSpec {
   readonly author: string;
   readonly body: string;
   readonly bot?: boolean;
+  /** GitHub's `lastEditedAt` of the comment. */
+  readonly editedAt?: string;
 }
 
 export interface ThreadSpec {
@@ -47,6 +52,8 @@ function commentNode(c: CommentSpec, n: number, threadId: string): Record<string
     author: { login: c.author, __typename: c.bot === true ? "Bot" : "User" },
     body: c.body,
     url: `https://example.invalid/c/${n}`,
+    lastEditedAt: c.editedAt ?? null,
+    updatedAt: c.editedAt ?? "2025-12-31T00:00:00Z",
   };
 }
 

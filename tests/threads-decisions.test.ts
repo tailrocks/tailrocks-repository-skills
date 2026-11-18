@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { classifyThread } from "../lib/threads/classify.ts";
 import { commitUrl, composeReply, hasReply, parseDecisions, planWrites, replyMarker } from "../lib/threads/decisions.ts";
 import type { ClassifiedThread, CommentView, Decision, DecisionFile } from "../lib/threads/types.ts";
-import { AGENT, FIX_COMMIT, PR_AUTHOR, POLICY_TOML, REPO } from "./helpers/threads-world.ts";
+import { AGENT, FIX_COMMIT, PLAN_AT, PR_AUTHOR, POLICY_TOML, REPO } from "./helpers/threads-world.ts";
 import { policyFromText } from "./helpers/status.ts";
 
 const policy = policyFromText(POLICY_TOML);
@@ -12,7 +12,7 @@ const context = { policy, repo: REPO };
 let counter = 0;
 function c(author: string, body: string, bot = false): CommentView {
   counter += 1;
-  return { id: `c${counter}`, author, body, isBotAccount: bot, url: null };
+  return { id: `c${counter}`, author, body, isBotAccount: bot, url: null, editedAt: null };
 }
 
 function classified(id: string, resolved: boolean, ...comments: CommentView[]): ClassifiedThread {
@@ -47,7 +47,7 @@ function fill(all: readonly ClassifiedThread[], file: DecisionFile): DecisionFil
 }
 
 function plan(...decisions: Decision[]) {
-  return planWrites(fill(threads, { expectHead: null, decisions }), threads, context);
+  return planWrites(fill(threads, { expectHead: null, planAt: PLAN_AT, decisions }), threads, context);
 }
 
 function refusal(...decisions: Decision[]): string {
@@ -164,9 +164,9 @@ describe("planWrites", () => {
 
   test("a bot thread that a person answered needs the confirmation too", () => {
     const answered = classified("T-b", false, c("review-bot", "P3: nit"), c("reviewer-1", "Agreed, please fix."));
-    const file: DecisionFile = { expectHead: null, decisions: [d("T-b", "defer", "Later.")] };
+    const file: DecisionFile = { expectHead: null, planAt: PLAN_AT, decisions: [d("T-b", "defer", "Later.")] };
     expect(planWrites(fill([answered], file), [answered], context).ok).toBe(false);
-    const ok: DecisionFile = { expectHead: null, decisions: [d("T-b", "defer", "Later.", null, true)] };
+    const ok: DecisionFile = { expectHead: null, planAt: PLAN_AT, decisions: [d("T-b", "defer", "Later.", null, true)] };
     expect(planWrites(fill([answered], ok), [answered], context).ok).toBe(true);
   });
 
@@ -209,17 +209,17 @@ describe("planWrites", () => {
 
   test("an empty policy defer_reply is a validation error before any write", () => {
     const noDefer = { ...context, policy: { ...policy, threads: { ...policy.threads, defer_reply: "" } } };
-    const file: DecisionFile = { expectHead: null, decisions: [d("T-fix", "fix", "", FIX_COMMIT), d("T-defer", "defer")] };
+    const file: DecisionFile = { expectHead: null, planAt: PLAN_AT, decisions: [d("T-fix", "fix", "", FIX_COMMIT), d("T-defer", "defer")] };
     const r = planWrites(fill(threads, file), threads, noDefer);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.refusals.join(" ")).toContain("defer_reply is empty");
-    const withText: DecisionFile = { expectHead: null, decisions: [d("T-defer", "defer", "Later.")] };
+    const withText: DecisionFile = { expectHead: null, planAt: PLAN_AT, decisions: [d("T-defer", "defer", "Later.")] };
     expect(planWrites(fill(threads, withText), threads, noDefer).ok).toBe(true);
   });
 
   test("a reply that is too long is refused before any write", () => {
     const big = { ...context, policy: { ...policy, threads: { ...policy.threads, defer_reply: "y".repeat(10_000) } } };
-    const file: DecisionFile = { expectHead: null, decisions: [d("T-defer", "defer", "x".repeat(59_000))] };
+    const file: DecisionFile = { expectHead: null, planAt: PLAN_AT, decisions: [d("T-defer", "defer", "x".repeat(59_000))] };
     const r = planWrites(fill(threads, file), threads, big);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.refusals.join(" ")).toContain("too long");
@@ -232,12 +232,13 @@ describe("lastCommentId", () => {
   const lastId = t.detail.comments.at(-1)?.id ?? "";
   const resolving = (lastCommentId: string | null): DecisionFile => ({
     expectHead: null,
+    planAt: PLAN_AT,
     decisions: [{ ...d("T-l", "reply-resolve", "Thanks.", null, true), lastCommentId }],
   });
 
   test("every resolving action needs it", () => {
     for (const action of ["fix", "defer", "reply-resolve"] as const) {
-      const bare: DecisionFile = { expectHead: null, decisions: [{ ...d("T-l", action, "x", action === "fix" ? FIX_COMMIT : null, true), lastCommentId: null }] };
+      const bare: DecisionFile = { expectHead: null, planAt: PLAN_AT, decisions: [{ ...d("T-l", action, "x", action === "fix" ? FIX_COMMIT : null, true), lastCommentId: null }] };
       const r = planWrites(bare, [t], context);
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.refusals.join(" ")).toContain("lastCommentId");
@@ -246,7 +247,7 @@ describe("lastCommentId", () => {
   });
 
   test("reply-only does not need it", () => {
-    const f: DecisionFile = { expectHead: null, decisions: [d("T-l", "reply-only", "Later.")] };
+    const f: DecisionFile = { expectHead: null, planAt: PLAN_AT, decisions: [d("T-l", "reply-only", "Later.")] };
     expect(planWrites(f, [t], context).ok).toBe(true);
   });
 
@@ -273,6 +274,45 @@ describe("lastCommentId", () => {
     expect(planWrites(resolving(lastId), [own], context).ok).toBe(true);
   });
 
+  test("a comment edited after the plan time refuses the resolve, like a new comment", () => {
+    const plan = (editedAt: string | null) => {
+      const base = mk();
+      const comments = base.detail.comments.map((x, i) => (i === 0 ? { ...x, editedAt } : x));
+      const thread = { ...base, detail: { ...base.detail, comments } };
+      return planWrites(resolving(comments.at(-1)?.id ?? ""), [thread], context);
+    };
+    const r = plan("2026-01-01T00:00:01Z");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.refusals.join(" ")).toContain("comment edited since plan; run plan again");
+    expect(plan("2025-12-31T23:59:59Z").ok).toBe(true);
+    expect(plan(null).ok).toBe(true);
+    expect(plan("not a time").ok).toBe(false);
+  });
+
+  test("an edit of our own reply is not a stale comment", () => {
+    const before = planWrites(resolving(lastId), [t], context);
+    const body = before.ok ? (before.writes[0]?.body ?? "") : "";
+    const own = { ...c(AGENT, body), editedAt: "2026-01-02T00:00:00Z" };
+    const withOwn = { ...t, detail: { ...t.detail, comments: [...t.detail.comments, own] } };
+    expect(planWrites(resolving(lastId), [withOwn], context).ok).toBe(true);
+  });
+
+  test("a resolving decision needs planAt; reply-only does not", () => {
+    const noTime: DecisionFile = { ...resolving(lastId), planAt: null };
+    const r = planWrites(noTime, [t], context);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.refusals.join(" ")).toContain("planAt");
+    expect(planWrites({ expectHead: null, planAt: null, decisions: [d("T-l", "reply-only", "Later.")] }, [t], context).ok).toBe(true);
+  });
+
+  test("parseDecisions reads planAt and refuses a value that is not a time", () => {
+    const ok = parseDecisions(JSON.stringify({ schema: 1, planAt: "2026-01-01T00:00:00Z", decisions: [] }));
+    expect(ok.ok && ok.value.planAt).toBe("2026-01-01T00:00:00Z");
+    expect(parseDecisions(JSON.stringify({ schema: 1, decisions: [] })).ok && true).toBe(true);
+    expect(parseDecisions(JSON.stringify({ schema: 1, planAt: "yesterday", decisions: [] })).ok).toBe(false);
+    expect(parseDecisions(JSON.stringify({ schema: 1, planAt: 5, decisions: [] })).ok).toBe(false);
+  });
+
   test("parseDecisions reads it and refuses an empty or a non-string one", () => {
     const ok = parseDecisions(JSON.stringify({ schema: 1, decisions: [{ id: "T1", action: "defer", lastCommentId: "C1" }] }));
     expect(ok.ok && ok.value.decisions[0]?.lastCommentId).toBe("C1");
@@ -283,7 +323,7 @@ describe("lastCommentId", () => {
 
 describe("re-run dedupe", () => {
   const visible = `${policy.threads.defer_reply}\n\nLater.`;
-  const file: DecisionFile = { expectHead: null, decisions: [d("T-p", "defer", "Later.", null, true)] };
+  const file: DecisionFile = { expectHead: null, planAt: PLAN_AT, decisions: [d("T-p", "defer", "Later.", null, true)] };
 
   test("every reply ends with a hidden marker line", () => {
     const t = classified("T-p", false, c("review-bot", "P3: nit"));
@@ -307,7 +347,7 @@ describe("re-run dedupe", () => {
 
   test("the same text without our marker does not count: a reviewer's \"Thanks.\" never suppresses ours", () => {
     const thanks = classified("T-t", false, c("reviewer-3", "Nice cleanup."), c("reviewer-3", "Thanks."));
-    const f: DecisionFile = { expectHead: null, decisions: [d("T-t", "reply-resolve", "Thanks.", null, true)] };
+    const f: DecisionFile = { expectHead: null, planAt: PLAN_AT, decisions: [d("T-t", "reply-resolve", "Thanks.", null, true)] };
     const r = planWrites(fill([thanks], f), [thanks], context);
     expect(r.ok && r.writes[0]).toMatchObject({ post: true, resolve: true });
     expect(hasReply(thanks, "Thanks.")).toBe(false);
