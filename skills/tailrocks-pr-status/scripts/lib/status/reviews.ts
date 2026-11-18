@@ -54,12 +54,16 @@ function githubApproval(snapshot: PrSnapshot, policy: Policy): readonly Finding[
     );
   }
   const { requiredApprovingReviewCount: count, requireCodeOwnerReview: owners } = snapshot.rules;
-  if ((count > 0 || owners) && snapshot.reviewDecision !== "APPROVED") {
+  // Classic branch protection does not show its review rules to the rules facts, but GitHub's
+  // own decision does: REVIEW_REQUIRED means that a rule asks for a review.
+  const required = count > 0 || owners || snapshot.reviewDecision === "REVIEW_REQUIRED";
+  if (required && snapshot.reviewDecision !== "APPROVED") {
+    const need = count > 0 ? `${count} approval${count === 1 ? "" : "s"}` : owners ? "a code-owner review" : "a review";
     out.push(
       finding(
         "review_decision",
         "blocker",
-        `branch rules need ${count > 0 ? `${count} approval${count === 1 ? "" : "s"}` : "a code-owner review"}; reviewDecision is ${snapshot.reviewDecision ?? "empty"}`,
+        `branch rules need ${need}; reviewDecision is ${snapshot.reviewDecision ?? "empty"}`,
         "Request a review from an eligible reviewer",
       ),
     );

@@ -243,16 +243,66 @@ describe("gatherPr", () => {
     const fake = gh(prResponse({ mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN" }), baseResponse(), {
       mergeability: () => {
         reads += 1;
-        return { data: { repository: { pullRequest: reads < 2 ? { mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN" } : { mergeable: "CONFLICTING", mergeStateStatus: "DIRTY" } } } };
+        return { data: { repository: { pullRequest: reads < 2 ? { mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN", headRefOid: HEAD } : { mergeable: "CONFLICTING", mergeStateStatus: "DIRTY", headRefOid: HEAD } } } };
       },
     });
     const result = await gather(fake);
     if (!result.ok) throw new Error(result.error);
     expect(reads).toBe(2);
     expect([result.snapshot.mergeable, result.snapshot.mergeStateStatus]).toEqual(["CONFLICTING", "DIRTY"]);
-    const stuck = await gather(gh(prResponse({ mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN" }), baseResponse(), { mergeability: () => ({ data: { repository: { pullRequest: { mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN" } } } }) }));
+    const stuck = await gather(gh(prResponse({ mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN" }), baseResponse(), { mergeability: () => ({ data: { repository: { pullRequest: { mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN", headRefOid: HEAD } } } }) }));
     if (!stuck.ok) throw new Error(stuck.error);
     expect(stuck.snapshot.mergeable).toBe("UNKNOWN");
+  });
+
+  test("stops when the head moves while mergeability is re-read", async () => {
+    const fake = gh(prResponse({ mergeable: "UNKNOWN", mergeStateStatus: "UNKNOWN" }), baseResponse(), {
+      mergeability: () => ({ data: { repository: { pullRequest: { mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", headRefOid: OLD } } } }),
+    });
+    const result = await gather(fake);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain("head moved");
+  });
+
+  test("a queued re-run with no start time is the newest attempt and the check is pending", async () => {
+    const nodes = [
+      ctxRun("Build", { startedAt: "2026-01-01T00:00:00Z", conclusion: "FAILURE" }),
+      ctxRun("Build", { status: "QUEUED", conclusion: null, startedAt: null, completedAt: null }),
+    ];
+    const pr = prResponse({
+      latestCommit: { nodes: [{ commit: { id: "C", oid: HEAD, statusCheckRollup: { contexts: { totalCount: 2, pageInfo: { hasNextPage: false, endCursor: null }, nodes } } } }] },
+    });
+    const result = await gather(gh(pr));
+    if (!result.ok) throw new Error(result.error);
+    const build = result.snapshot.checks.find((c) => c.name === "Build");
+    expect([build?.status, build?.conclusion, build?.attempts, build?.failedAttempts]).toEqual(["queued", null, 2, 1]);
+  });
+
+  test("checks with one name from two apps stay apart", async () => {
+    const other = { checkSuite: { app: { databaseId: 99 }, workflowRun: { event: "push", workflow: { name: "CI" } } } };
+    const nodes = [ctxRun("Build"), ctxRun("Build", other)];
+    const pr = prResponse({
+      latestCommit: { nodes: [{ commit: { id: "C", oid: HEAD, statusCheckRollup: { contexts: { totalCount: 2, pageInfo: { hasNextPage: false, endCursor: null }, nodes } } } }] },
+    });
+    const result = await gather(gh(pr));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.snapshot.checks.map((c) => c.appId).sort((a, b) => (a ?? 0) - (b ?? 0))).toEqual([99, 15368]);
+  });
+
+  test("a commit list cut at GitHub's limit is truncated and says that DCO is unknown", async () => {
+    const nodes = Array.from({ length: 100 }, (_, i) => commitNode(`${(i + 1).toString(16).padStart(40, "0")}`, [OLD]));
+    const pr = prResponse({ commits: { totalCount: 300, pageInfo: { hasPreviousPage: false, startCursor: null }, nodes } });
+    const result = await gather(gh(pr));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.snapshot.commitsTruncated).toBe(true);
+    expect(result.snapshot.problems.join(" ")).toContain("DCO");
+  });
+
+  test("a review list shorter than its total is truncated", async () => {
+    const pr = prResponse({ reviews: { totalCount: 7, pageInfo: { hasPreviousPage: false, startCursor: null }, nodes: [] } });
+    const result = await gather(gh(pr));
+    if (!result.ok) throw new Error(result.error);
+    expect(result.snapshot.reviewsTruncated).toBe(true);
   });
 
   test("notes a head that moved during the read", async () => {

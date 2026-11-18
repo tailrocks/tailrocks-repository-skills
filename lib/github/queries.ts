@@ -122,6 +122,6 @@ query($owner: String!, $name: String!, $after: String) {
 export const MERGEABILITY_QUERY = `
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
-    pullRequest(number: $number) { mergeable mergeStateStatus }
+    pullRequest(number: $number) { mergeable mergeStateStatus headRefOid }
   }
 }`;

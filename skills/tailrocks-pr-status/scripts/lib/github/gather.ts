@@ -176,6 +176,7 @@ async function settleMergeability(
   repo: RepoSlug,
   number: number,
   first: { readonly mergeable: (typeof MERGEABLE_VALUES)[number]; readonly status: string },
+  headSha: string,
   sleep: (ms: number) => Promise<void>,
 ): Promise<{ readonly mergeable: (typeof MERGEABLE_VALUES)[number]; readonly status: string }> {
   const { owner, name } = splitRepo(repo);
@@ -184,6 +185,9 @@ async function settleMergeability(
     await sleep(MERGEABILITY_WAIT_MS);
     const data = await graphql(run, MERGEABILITY_QUERY, { owner: text(owner), name: text(name), number: int(number) });
     const pr = path(data, "repository", "pullRequest");
+    if (member(obj(pr, "pullRequest"), "headRefOid") !== headSha) {
+      throw new ReadError("the head moved while mergeability was read; run again");
+    }
     current = {
       mergeable: oneOf(member(obj(pr, "pullRequest"), "mergeable"), MERGEABLE_VALUES, "pr.mergeable"),
       status: str(member(obj(pr, "pullRequest"), "mergeStateStatus"), "pr.mergeStateStatus"),
@@ -260,12 +264,20 @@ async function gather(repo: RepoSlug, number: number, options: GatherOptions): P
     true,
   );
   const commits = parseCommits(commitPages.nodes, problems);
+  // GitHub lists at most 250 commits of a pull request, so a longer PR ends the paging with commits missing.
+  const commitTotal = num(member(obj(member(pr, "commits"), "commits"), "totalCount"), "commits.totalCount");
+  const commitsTruncated = commitPages.truncated || commitPages.nodes.length < commitTotal;
+  if (commitPages.nodes.length < commitTotal) {
+    problems.push(`only ${commitPages.nodes.length} of ${commitTotal} commits are listed (GitHub lists at most 250), so the sign-off scan (DCO) is unknown`);
+  }
   const reviewPages = await allPages(
     backPage(member(pr, "reviews"), "reviews"),
     async (before) =>
       backPage(path(await graphql(run, REVIEWS_PAGE_QUERY, { id: text(nodeId), before: text(before) }), "node", "reviews"), "reviews page"),
     true,
   );
+  const reviewTotal = num(member(obj(member(pr, "reviews"), "reviews"), "totalCount"), "reviews.totalCount");
+  const reviewsTruncated = reviewPages.truncated || reviewPages.nodes.length < reviewTotal;
   const opinionatedConnection = obj(member(pr, "latestOpinionatedReviews"), "latestOpinionatedReviews");
   const opinionatedNodes = arr(member(opinionatedConnection, "nodes"), "latestOpinionatedReviews.nodes");
   const labelsConnection = obj(member(pr, "labels"), "labels");
@@ -330,6 +342,7 @@ async function gather(repo: RepoSlug, number: number, options: GatherOptions): P
       mergeable: oneOf(member(pr, "mergeable"), MERGEABLE_VALUES, "pr.mergeable"),
       status: str(member(pr, "mergeStateStatus"), "pr.mergeStateStatus"),
     },
+    headSha,
     options.sleep ?? ((ms) => Bun.sleep(ms)),
   );
   const rawDecision = member(pr, "reviewDecision");
@@ -364,12 +377,12 @@ async function gather(repo: RepoSlug, number: number, options: GatherOptions): P
     checks,
     checksTruncated,
     reviews: parseReviews(reviewPages.nodes, problems),
-    reviewsTruncated: reviewPages.truncated,
+    reviewsTruncated,
     latestOpinionatedReviews: parseOpinionated(opinionatedNodes, problems),
     threads,
     threadsTruncated: threadPages.truncated,
     commits,
-    commitsTruncated: commitPages.truncated,
+    commitsTruncated,
     queueEntry: parseQueueEntry(member(pr, "mergeQueueEntry")),
     lastQueueRemoval,
     linkedIssues,

@@ -117,7 +117,7 @@ export function parseChecks(nodes: readonly unknown[], problems: string[]): read
   nodes.forEach((node, index) => {
     try {
       const raw = parseContext(node, index);
-      const key = `${raw.observation.kind}\u0000${raw.observation.workflow ?? ""}\u0000${raw.observation.name}`;
+      const key = `${raw.observation.kind}\u0000${raw.observation.appId ?? ""}\u0000${raw.observation.workflow ?? ""}\u0000${raw.observation.name}`;
       groups.set(key, [...(groups.get(key) ?? []), raw]);
     } catch (error) {
       problems.push(error instanceof ReadError ? error.message : "check: unreadable");
@@ -125,7 +125,8 @@ export function parseChecks(nodes: readonly unknown[], problems: string[]): read
   });
   const out: CheckObservation[] = [];
   for (const attempts of groups.values()) {
-    const stamp = (r: RawCheck): string => r.observation.startedAt ?? "";
+    // An attempt that has not started (a queued re-run) is the newest one.
+    const stamp = (r: RawCheck): string => r.observation.startedAt ?? "\uffff";
     const latest = [...attempts].sort((a, b) => stamp(a).localeCompare(stamp(b)) || a.order - b.order).at(-1);
     if (latest === undefined) {
       continue;

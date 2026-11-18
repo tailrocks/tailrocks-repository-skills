@@ -389,6 +389,12 @@ describe("reviews: github-approval", () => {
     }
     expect(evaluate(green({ reviewDecision: "APPROVED", ...strict({ requiredApprovingReviewCount: 1 }) }), policy).state).toBe("READY");
   });
+  test("review_decision when GitHub says REVIEW_REQUIRED and the rule facts are empty (classic protection)", () => {
+    const verdict = evaluate(green({ reviewDecision: "REVIEW_REQUIRED" }), policy);
+    expect(codes(verdict)).toEqual(["review_decision"]);
+    expect(find(verdict, "review_decision").detail).toContain("REVIEW_REQUIRED");
+    expect(find(verdict, "review_decision").next).toBe("Request a review from an eligible reviewer");
+  });
   test("review_decision for a code-owner rule", () => {
     expect(codes(evaluate(green({ reviewDecision: "REVIEW_REQUIRED", ...strict({ requireCodeOwnerReview: true }) }), policy))).toEqual(["review_decision"]);
   });
