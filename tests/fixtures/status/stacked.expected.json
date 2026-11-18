@@ -1,0 +1,10 @@
+{
+  "state": "BLOCKED",
+  "codes": [
+    "check_cancelled",
+    "check_failed",
+    "done_when_unchecked",
+    "non_required_failing",
+    "stacked"
+  ]
+}

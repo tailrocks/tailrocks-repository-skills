@@ -88,6 +88,21 @@ requests. Cleanup defaults to off. Recovery never merges. Later
 integration needs a separate human invocation of
 `tailrocks-repository-merge` with the published source list.
 
+## Example: read the status of a pull request
+
+Invoke the status owner with a pull-request number, or with `--all`:
+
+```text
+/tailrocks-repository-skills:tailrocks-pr-status 1663
+```
+
+The skill runs one script. The script reads the pull request, the
+repository policy from the base branch, and the branch rules. It
+returns READY, WAITING, or BLOCKED. Each blocker names the next action
+and the skill that owns it. The skill is read-only. A READY verdict is
+not a merge. The agent never decides READY itself. The reference
+`finding-codes.md` in the skill lists every finding code.
+
 ## Lifecycle boundary
 
 Local-work recovery belongs to `tailrocks-repository-recover`.

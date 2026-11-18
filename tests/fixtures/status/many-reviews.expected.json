@@ -1,0 +1,9 @@
+{
+  "state": "BLOCKED",
+  "codes": [
+    "behind_base",
+    "conflict",
+    "non_required_failing",
+    "queue_ejected"
+  ]
+}

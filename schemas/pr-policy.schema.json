@@ -110,6 +110,11 @@
           "$ref": "#/$defs/stringList",
           "default": []
         },
+        "count_author": {
+          "description": "true: the PR author's reviews count too, even when the author is a writer or is listed in reviewers. Fits processes that post agent reviews under the owner's account. false: the author's reviews never count.",
+          "type": "boolean",
+          "default": false
+        },
         "approve_pattern": {
           "description": "comment-verdict: regular expression for an approval. Required for comment-verdict.",
           "$ref": "#/$defs/pattern",
