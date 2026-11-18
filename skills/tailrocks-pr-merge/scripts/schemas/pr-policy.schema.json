@@ -524,6 +524,17 @@
           "items": { "type": "integer", "minimum": 1 },
           "uniqueItems": true,
           "default": []
+        },
+        "max_merges_per_pass": {
+          "description": "Merges or enqueues that one fleet pass may start. Unset: 3 through a merge queue, 1 for direct merges. The pass also keeps the queue length plus its enqueues at or below ci.congestion_queue_length.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_merges_per_pass_congested": {
+          "description": "Merges or enqueues that one fleet pass may start when the queue length is at or above ci.congestion_queue_length.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
         }
       }
     }

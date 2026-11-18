@@ -46,6 +46,11 @@ positions, and the head must be the head of the plan.
 | below `ci.congestion_queue_length` | `ci.max_refreshes` |
 | at or above it, or not shown by GitHub | `ci.max_refreshes_congested` |
 
+Refreshes that an earlier pass started and whose CI still runs use up the
+budget. A PR counts when its head commit is a merge of the base (or the commit
+"Start a fresh CI run") and a check on it is not complete. A person's own merge
+commit counts too, which only makes the budget safer.
+
 A refresh candidate is an open, non-draft, same-repository PR on the default
 branch. It is not queued. Each of its blockers is `behind_base`, `conflict`, or
 `check_stale_base`. Candidates are taken in PR number order, up to the budget.
@@ -55,19 +60,47 @@ The rest is `deferred`.
 grow the queue, so the budget can shrink during the run. A refresh counts
 against the budget when it starts, whatever its result.
 
+## Merge budget
+
+| Route | Cap when the policy sets none |
+| --- | --- |
+| Merge queue | 3 enqueues |
+| Direct merges | 1 merge |
+
+`fleet.max_merges_per_pass` replaces the default. At or above
+`ci.congestion_queue_length` the cap is `fleet.max_merges_per_pass_congested`
+(default 0). On a merge queue, the cap is also limited so that the queue length
+plus the enqueues of the pass stays at or below `ci.congestion_queue_length`.
+A queue of unknown length has no room. The READY PRs over the cap are listed as
+`deferred (merge budget)` in ranked order.
+
+`apply` reads the queue and the policy again before each merge. After a direct
+merge, the base has moved. The next PR is read on the new base. A PR that is
+behind it is skipped as a merge and becomes a refresh candidate for this pass,
+within the refresh budget.
+
+## Freeze, hold, and the deadline
+
+Before each write, `apply` reads freeze and hold from the policy of the read
+that came right before it, and the environment variable again. A freeze refuses
+that action and every action after it (exit 3). A held PR is skipped. The pass
+stops at its deadline (30 minutes, below the 60 minute lock bound): the actions
+left are pending.
+
 ## Orphan runs
 
-An orphan run is an in-progress run on a branch that no open PR uses. Runs on
+An orphan run is an in-progress, queued, waiting, or pending run on a branch that no open PR uses. Runs on
 the default branch, on protected branches, and on merge queue branches are not
-orphans. The list holds 100 runs at most; the report says when it may be cut.
+orphans. Each status list holds 100 runs at most; the report says when it may be cut.
 The script never cancels a run.
 
 ## Order of `apply`
 
 1. Dequeues, by queue position.
-2. Merges (enqueue, or direct merge), by PR number. The route comes from
+2. Merges (enqueue, or direct merge), in ranked order, up to the merge budget. The route comes from
    `pr-merge`: the policy and the branch rules decide it.
-3. Refreshes, by PR number, up to the budget.
+3. Refreshes, by PR number, up to the budget. Refreshes that a direct merge made
+   necessary come last.
 
 Each action reads the PR again right before it writes. `apply` takes one lock
 per repository, so two runs never overlap.
@@ -80,3 +113,4 @@ per repository, so two runs never overlap.
 | skipped | The PR no longer matches the plan. Nothing was written. |
 | pending | The action cannot run in this build. Nothing was written. |
 | stopped | The head moved, or the other skill refused. Nothing was written for it. |
+| refused | A freeze started. Nothing was written for it or for any action after it. |

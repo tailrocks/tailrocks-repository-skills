@@ -13,7 +13,6 @@ import { baseResponse, commitNode, ctxRun, fakeGh, prResponse, thread } from "./
 import { sha } from "./status.ts";
 
 export const REPO = "example-org/example-repo";
-const DEFAULT_SHA = sha("f");
 const OTHER_BASE_SHA = sha("d");
 
 export type Preset =
@@ -24,6 +23,9 @@ export type Preset =
   | "unresolved-thread"
   | "needs-review"
   | "conflict"
+  | "conflict-thread"
+  | "refreshing"
+  | "ci-running"
   | "draft";
 
 const QUEUE_STATES = ["QUEUED", "AWAITING_CHECKS", "MERGEABLE", "UNMERGEABLE", "LOCKED"] as const;
@@ -46,12 +48,24 @@ export interface FleetWorld {
   readonly io: MergeIo;
   readonly prs: Map<number, WorldPr>;
   defaultBranch: string;
+  /** The tip of the default branch. A test moves it to make GitHub serve a new policy commit. */
+  defaultSha: ReturnType<typeof sha>;
+  /** False: the base branch has no merge queue (direct merges). */
+  hasQueue: boolean;
+  /** True: every PR is behind the base, as after a direct merge. */
+  baseMoved: boolean;
+  /** The fake clock in milliseconds. */
+  clock: number;
+  /** Runs after each mutation and each direct merge. */
+  afterWrite: ((world: FleetWorld) => void) | null;
   queueLength: number | null;
   requiredApprovals: number;
   strictUpToDate: boolean;
   policyToml: string | null;
   files: readonly string[];
   runs: readonly Record<string, unknown>[] | "fail";
+  /** Runs by status. A status that is not a key lists no run. When set, it replaces `runs`. */
+  runsByStatus: Readonly<Record<string, readonly Record<string, unknown>[]>> | null;
   /** GraphQL points that the fake shows as left. */
   graphqlRemaining: number;
   /** Runs before each read of a PR. Return after changing the world. */
@@ -86,7 +100,7 @@ interface Fixture {
   readonly runs: readonly Record<string, unknown>[];
 }
 
-const PRESETS: readonly Preset[] = ["ready", "queued-mergeable", "queued-unmergeable", "behind-approved", "unresolved-thread", "needs-review", "conflict", "draft"];
+const PRESETS: readonly Preset[] = ["ready", "queued-mergeable", "queued-unmergeable", "behind-approved", "unresolved-thread", "needs-review", "conflict", "conflict-thread", "refreshing", "ci-running", "draft"];
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -140,13 +154,26 @@ function ok(data: unknown = {}): RunResult {
 }
 
 function baseShaOf(world: FleetWorld, pr: WorldPr) {
-  return pr.baseRef === world.defaultBranch ? DEFAULT_SHA : OTHER_BASE_SHA;
+  return pr.baseRef === world.defaultBranch ? world.defaultSha : OTHER_BASE_SHA;
+}
+
+function hasThread(pr: WorldPr): boolean {
+  return pr.preset === "unresolved-thread" || pr.preset === "conflict-thread";
+}
+
+function conflicting(pr: WorldPr): boolean {
+  return pr.preset === "conflict" || pr.preset === "conflict-thread";
 }
 
 function prNode(world: FleetWorld, pr: WorldPr): Record<string, unknown> {
   const head = headOf(pr);
   const approved = pr.preset !== "needs-review";
-  const check = ctxRun("Required", { isRequired: true });
+  const running = pr.preset === "refreshing" || pr.preset === "ci-running";
+  const check = ctxRun("Required", running ? { isRequired: true, status: "IN_PROGRESS", conclusion: null, completedAt: null } : { isRequired: true });
+  const message =
+    pr.preset === "refreshing"
+      ? "Merge remote-tracking branch 'origin/main' into topic\n\nSigned-off-by: A <a@example.com>"
+      : "msg\n\nSigned-off-by: A <a@example.com>";
   return {
     id: `PR_node_${pr.number}`,
     number: pr.number,
@@ -158,13 +185,13 @@ function prNode(world: FleetWorld, pr: WorldPr): Record<string, unknown> {
     isCrossRepository: pr.isCrossRepository,
     headRepository: { nameWithOwner: pr.isCrossRepository ? "other-user/example-repo" : REPO },
     author: { login: pr.author },
-    mergeable: pr.preset === "conflict" ? "CONFLICTING" : "MERGEABLE",
-    mergeStateStatus: pr.preset === "conflict" ? "DIRTY" : pr.preset === "behind-approved" ? "BEHIND" : "CLEAN",
+    mergeable: conflicting(pr) ? "CONFLICTING" : "MERGEABLE",
+    mergeStateStatus: conflicting(pr) ? "DIRTY" : pr.preset === "behind-approved" ? "BEHIND" : "CLEAN",
     reviewDecision: approved ? "APPROVED" : "REVIEW_REQUIRED",
     labels: { totalCount: 0, nodes: [] },
     mergeQueueEntry:
       pr.queue === null ? null : { id: `MQE_${pr.number}`, position: pr.queue.position, state: pr.queue.state, enqueuedAt: "2026-01-02T00:00:00Z", jump: false },
-    commits: { totalCount: 1, pageInfo: { hasPreviousPage: false, startCursor: null }, nodes: [commitNode(head, [sha("b")])] },
+    commits: { totalCount: 1, pageInfo: { hasPreviousPage: false, startCursor: null }, nodes: [commitNode(head, pr.preset === "refreshing" ? [sha("b"), sha("c")] : [sha("b")], message)] },
     latestCommit: {
       nodes: [
         {
@@ -181,9 +208,9 @@ function prNode(world: FleetWorld, pr: WorldPr): Record<string, unknown> {
       nodes: approved ? [{ author: { login: "user-r" }, authorAssociation: "MEMBER", state: "APPROVED", commit: { oid: head } }] : [],
     },
     reviewThreads: {
-      totalCount: pr.preset === "unresolved-thread" ? 1 : 0,
+      totalCount: hasThread(pr) ? 1 : 0,
       pageInfo: { hasNextPage: false, endCursor: null },
-      nodes: pr.preset === "unresolved-thread" ? [thread(pr.number)] : [],
+      nodes: hasThread(pr) ? [thread(pr.number)] : [],
     },
     timelineItems: { nodes: [] },
   };
@@ -229,7 +256,7 @@ export function makeFleetWorld(fixtureName = "mixed-queue.json"): FleetWorld {
       return {
         data: {
           repository: {
-            defaultBranchRef: { name: world.defaultBranch, target: { oid: DEFAULT_SHA } },
+            defaultBranchRef: { name: world.defaultBranch, target: { oid: world.defaultSha } },
             pullRequests: {
               pageInfo: { hasNextPage: false, endCursor: null },
               nodes: [...prs.values()].map((pr) => ({
@@ -259,8 +286,12 @@ export function makeFleetWorld(fixtureName = "mixed-queue.json"): FleetWorld {
     base: (vars) => {
       const pr = [...prs.values()].find((p) => headOf(p) === vars["head"]);
       return baseResponse({
-        mergeQueue: world.queueLength === null ? { id: "MQ_1", entries: { totalCount: null } } : { id: "MQ_1", entries: { totalCount: world.queueLength } },
-        ref: { compare: { behindBy: pr?.preset === "behind-approved" ? 3 : 0, aheadBy: 1 } },
+        mergeQueue: !world.hasQueue
+          ? null
+          : world.queueLength === null
+            ? { id: "MQ_1", entries: { totalCount: null } }
+            : { id: "MQ_1", entries: { totalCount: world.queueLength } },
+        ref: { compare: { behindBy: pr?.preset === "behind-approved" || world.baseMoved ? 3 : 0, aheadBy: 1 } },
       });
     },
     issue: () => ({ data: { repository: { issueOrPullRequest: null } } }),
@@ -277,6 +308,9 @@ export function makeFleetWorld(fixtureName = "mixed-queue.json"): FleetWorld {
       throw new Error(`fake gh: the guard refused ${args.slice(0, 3).join(" ")}: ${guard.reason}`);
     }
     if (args[0] === "run" && args[1] === "list") {
+      if (world.runsByStatus !== null) {
+        return reply(world.runsByStatus[args[args.indexOf("--status") + 1] ?? ""] ?? []);
+      }
       return world.runs === "fail" ? { code: 1, stdout: "", stderr: "gh: Server Error (HTTP 500)" } : reply(world.runs);
     }
     if (args[0] === "pr") {
@@ -285,6 +319,8 @@ export function makeFleetWorld(fixtureName = "mixed-queue.json"): FleetWorld {
         case "merge":
           merges.push([...args]);
           prs.delete(number);
+          world.baseMoved = true;
+          world.afterWrite?.(world);
           return { code: 0, stdout: "", stderr: "" };
         case "view": {
           const pr = prs.get(number);
@@ -326,7 +362,7 @@ export function makeFleetWorld(fixtureName = "mixed-queue.json"): FleetWorld {
             type: "required_status_checks",
             parameters: { strict_required_status_checks_policy: world.strictUpToDate, required_status_checks: [{ context: "Required" }] },
           },
-          { type: "merge_queue", parameters: { merge_method: "SQUASH" } },
+          ...(world.hasQueue ? [{ type: "merge_queue", parameters: { merge_method: "SQUASH" } }] : []),
         ]);
       }
       if (endpoint === `repos/${REPO}/branches/${world.defaultBranch}`) {
@@ -340,6 +376,14 @@ export function makeFleetWorld(fixtureName = "mixed-queue.json"): FleetWorld {
   const mutate = async (op: GhMutation): Promise<RunResult> => {
     mutations.push(op);
     ghMutationArgv(op);
+    try {
+      return await applyMutation(op);
+    } finally {
+      world.afterWrite?.(world);
+    }
+  };
+
+  const applyMutation = async (op: GhMutation): Promise<RunResult> => {
     const byNode = (id: string): WorldPr | undefined => [...prs.values()].find((p) => `PR_node_${p.number}` === id || `MQE_${p.number}` === id);
     if (op.kind === "dequeuePullRequest") {
       const pr = byNode(op.entryId);
@@ -364,7 +408,7 @@ export function makeFleetWorld(fixtureName = "mixed-queue.json"): FleetWorld {
     runGh,
     mutate,
     sleep: async () => undefined,
-    now: () => 1_000_000,
+    now: () => world.clock,
     lockDir,
     pid: 4242,
     isAlive: (pid) => world.alivePids.has(pid),
@@ -377,12 +421,18 @@ export function makeFleetWorld(fixtureName = "mixed-queue.json"): FleetWorld {
     io,
     prs,
     defaultBranch: fixture.defaultBranch,
+    defaultSha: sha("f"),
+    hasQueue: true,
+    baseMoved: false,
+    clock: 1_000_000,
+    afterWrite: null,
     queueLength: fixture.queueLength,
     requiredApprovals: fixture.requiredApprovals,
     strictUpToDate: fixture.strictUpToDate,
     policyToml: null,
     files: ["src/lib.rs"],
     runs: fixture.runs,
+    runsByStatus: null,
     graphqlRemaining: 4000,
     script: null,
     gathers: 0,
@@ -403,6 +453,14 @@ export function makeFleetWorld(fixtureName = "mixed-queue.json"): FleetWorld {
     addPr,
   };
   return world;
+}
+
+/** Replace every PR with `count` READY PRs from one author. */
+export function onlyReady(world: FleetWorld, count: number): void {
+  world.prs.clear();
+  for (let i = 0; i < count; i += 1) {
+    world.addPr(100 + i, { headRef: `feat/ready-${i}` });
+  }
 }
 
 /** A refresh port that records its calls. */

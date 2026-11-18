@@ -4,7 +4,8 @@
 //            [--policy path] [--wait]
 //
 // Exit codes: 0 done, 10 waiting (an action is pending), 20 blocked (an action
-// was stopped), 3 refused (nothing was written), 4 plan shown (nothing was
+// was stopped), 3 refused (a freeze, a local policy, or a second apply; the
+// refused actions wrote nothing), 4 plan shown (nothing was
 // written), 2 usage or policy error. Any other code means the script crashed.
 
 import { removeBodyFiles } from "../body-file.ts";
@@ -14,7 +15,7 @@ import { newShared, type MergeIo } from "../merge/types.ts";
 import type { Policy } from "../policy/types.ts";
 import { loadLocalPolicy, resolveRepo } from "../status/cli.ts";
 import { assertBun } from "../version.ts";
-import { applyPlan, exitFor } from "./apply.ts";
+import { applyPlan, estimatedReads, exitFor } from "./apply.ts";
 import { buildPlan, type FleetDeps } from "./plan.ts";
 import { jsonOf, renderPlan, renderResults } from "./render.ts";
 import { EXIT, PENDING_REFRESH, type ActionResult, type Plan, type RefreshPort } from "./types.ts";
@@ -26,9 +27,9 @@ export const HELP = `${USAGE}
 Plans the next steps for all open pull requests of a repository under a CI
 budget, and runs the plan only when asked. The fleet reads each PR with the
 pr-status logic. It ranks the PRs, counts stockpiled PRs, plans the removal of
-UNMERGEABLE queue entries in the first 5 positions, and plans base merges up to
-the refresh budget. It reports in-progress runs on branches with no open PR. It
-never cancels a run.
+UNMERGEABLE queue entries in the first 5 positions, plans merges up to the merge
+budget (fleet.max_merges_per_pass), and plans base merges up to the refresh
+budget. It reports active runs on branches with no open PR. It never cancels a run.
 
 Modes:
   plan     Read everything and print the plan. Writes nothing.
@@ -49,13 +50,15 @@ Options:
 
 The policy comes from the default branch at its current commit. Hold and freeze:
 policy fleet.hold skips PRs. Policy fleet.freeze, or the environment variable
-PR_FLEET_FREEZE=1, stops every push, enqueue, and dequeue: apply is refused.
+PR_FLEET_FREEZE=1, stops every push, enqueue, and dequeue: apply is refused. Apply
+reads both again before each write.
 
 Exit codes:
   0   done: the plan was printed, or every planned action ran, or nothing was planned
-  10  waiting: apply ran and stopped nothing, but an action is pending (${PENDING_REFRESH})
+  10  waiting: apply ran and stopped no action, but one is pending (${PENDING_REFRESH}, or the pass deadline passed)
   20  blocked: apply ran, and an action was stopped (the head moved, GitHub or a gate refused)
-  3   refused, nothing was written: freeze, a local policy, or a second apply is running
+  3   refused: a freeze (also one that starts during the pass), a local policy, or a
+      second apply is running. The refused actions wrote nothing.
   4   plan shown, nothing was written: apply without --apply
   2   usage or policy error, or the GraphQL budget is too low
   1   the script crashed. Any other code means a crash as well.`;
@@ -215,7 +218,7 @@ async function run(argv: readonly string[], options: MainOptions): Promise<numbe
       const message = "nothing was written; add --apply to run the plan";
       return finish(EXIT.plan, plan, [], `Run fleet.ts apply --apply --repo ${plan.repo} when the user asked to apply the plan.`, message, [shown, message]);
     }
-    const needed = plan.actions.length * 3 * ESTIMATED_POINTS_PER_PR;
+    const needed = estimatedReads(plan.actions) * ESTIMATED_POINTS_PER_PR;
     try {
       const budget = await ensureBudget(io.runGh, needed, { wait: args.wait });
       if (!budget.ok) {

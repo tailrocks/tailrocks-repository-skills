@@ -3,6 +3,8 @@ import { removeBodyFiles } from "../lib/body-file.ts";
 import { acquireWatchLock } from "../lib/merge/lock.ts";
 import { LOCK_PREFIX } from "../lib/fleet/apply.ts";
 import { fakeRefresh, headOf, makeFleetWorld, REPO, removeFleetWorlds } from "./helpers/fleet-world.ts";
+import { DEADLINE_SECONDS, LOCK_SECONDS, estimatedReads } from "../lib/fleet/apply.ts";
+import { sha } from "./helpers/status.ts";
 import { runFleet } from "./helpers/fleet-run.ts";
 import type { GhMutation } from "../lib/safety-gh.ts";
 import { parseRepoSlug } from "../lib/types.ts";
@@ -52,6 +54,7 @@ describe("apply without --apply", () => {
 describe("apply --apply", () => {
   test("dequeues the UNMERGEABLE entry, enqueues READY PRs, and leaves refresh pending without pr-refresh", async () => {
     const world = makeFleetWorld();
+    world.queueLength = 2;
     const run = await runFleet(world, ["apply", "--apply"]);
     expect(kinds(world)).toEqual(["dequeuePullRequest", "enqueuePullRequest", "enqueuePullRequest"]);
     expect(world.mutations.map(target)).toEqual(["MQE_13", "PR_node_11", "PR_node_19"]);
@@ -96,11 +99,12 @@ describe("apply --apply", () => {
 
   test("the queue grows while the fleet enqueues, so the budget shrinks before the refreshes run", async () => {
     const world = makeFleetWorld();
-    // Queue 4 now: below 5, so the plan holds two refreshes. Two enqueues make it 6: congested.
+    // Queue 4 now: below 5, so the plan holds two refreshes and one enqueue. The enqueue makes it 5: congested.
+    world.prs.delete(13);
     const port = fakeRefresh();
     const run = await runFleet(world, ["apply", "--apply"], { refresh: port });
     expect(port.calls).toEqual([]);
-    expect(run.out.join("\n")).toContain("skipped: refresh #14: deferred: the queue is congested (0 of 0 refreshes run)");
+    expect(run.out.join("\n")).toContain("skipped: refresh #14: deferred: the queue is congested");
     expect(run.code).toBe(0);
   });
 
@@ -118,8 +122,29 @@ describe("apply --apply", () => {
 
   test("a failed refresh still counts against the budget", async () => {
     const world = makeFleetWorld();
-    world.policyToml = "[ci]\ncongestion_queue_length = 9\nmax_refreshes = 1";
+    world.policyToml = "[ci]\ncongestion_queue_length = 9";
+    for (const number of [11, 19]) world.prs.delete(number);
+    // The plan holds two refreshes. After the first write, a new policy commit lowers the budget to one.
+    let first = true;
+    world.afterWrite = (w) => {
+      if (first) {
+        first = false;
+        w.policyToml = "[ci]\ncongestion_queue_length = 9\nmax_refreshes = 1";
+        w.defaultSha = sha("e");
+      }
+    };
     const port = fakeRefresh({ ok: false, note: "blocked", next: "none" });
+    const run = await runFleet(world, ["apply", "--apply"], { refresh: port });
+    expect(port.calls).toEqual([14]);
+    expect(run.out.join("\n")).toContain("skipped: refresh #17: deferred: the budget is used (1 refreshes run in this pass, 0 still in CI, budget 1)");
+  });
+
+  test("refreshes that still run CI from an earlier pass count against the budget in apply", async () => {
+    const world = makeFleetWorld();
+    world.policyToml = "[ci]\ncongestion_queue_length = 9";
+    for (const number of [11, 19]) world.prs.delete(number);
+    world.addPr(50, { headRef: "feat/refreshed", preset: "refreshing" });
+    const port = fakeRefresh();
     await runFleet(world, ["apply", "--apply"], { refresh: port });
     expect(port.calls).toEqual([14]);
   });
@@ -152,8 +177,41 @@ describe("re-evaluation right before each action", () => {
     expect(world.mutations.some((m) => m.kind === "dequeuePullRequest")).toBe(false);
   });
 
+  test("a dequeue whose head moved is stopped even when the entry is still UNMERGEABLE", async () => {
+    const world = makeFleetWorld();
+    world.script = (gather, w) => {
+      if (gather > 10) prOf(w, 13).headChar = "9";
+    };
+    const run = await runFleet(world, ["apply", "--apply"]);
+    expect(run.out.join("\n")).toContain("stopped: dequeue #13: the head moved since the plan");
+    expect(world.mutations.some((m) => m.kind === "dequeuePullRequest")).toBe(false);
+    expect(run.code).toBe(20);
+  });
+
+  test("a dequeue is skipped when the entry has dropped out of the first 5 positions", async () => {
+    const world = makeFleetWorld();
+    world.script = (gather, w) => {
+      const pr = prOf(w, 13);
+      if (gather > 10 && pr.queue !== null) pr.queue = { position: 6, state: "UNMERGEABLE" };
+    };
+    const run = await runFleet(world, ["apply", "--apply"]);
+    expect(run.out.join("\n")).toContain("skipped: dequeue #13: the entry is UNMERGEABLE at position 6");
+    expect(world.mutations.some((m) => m.kind === "dequeuePullRequest")).toBe(false);
+  });
+
+  test("a dequeue is skipped when the PR was retargeted to another base branch", async () => {
+    const world = makeFleetWorld();
+    world.script = (gather, w) => {
+      if (gather > 10) prOf(w, 13).baseRef = "release/1";
+    };
+    const run = await runFleet(world, ["apply", "--apply"]);
+    expect(run.out.join("\n")).toContain("skipped: dequeue #13: the PR base is release/1, not the default branch");
+    expect(world.mutations.some((m) => m.kind === "dequeuePullRequest")).toBe(false);
+  });
+
   test("a PR that is no longer READY is not enqueued", async () => {
     const world = makeFleetWorld();
+    world.queueLength = 2;
     world.script = (gather, w) => {
       if (gather > 10) w.setPreset(19, "unresolved-thread");
     };
@@ -197,6 +255,12 @@ describe("re-evaluation right before each action", () => {
     expect(run.out.join("\n")).toContain("stopped: merge #11");
     expect(run.out.join("\n")).toContain("high-risk");
     expect(run.code).toBe(20);
+  });
+});
+
+describe("pass deadline", () => {
+  test("the pass deadline is below the lock bound", () => {
+    expect(DEADLINE_SECONDS).toBeLessThan(LOCK_SECONDS);
   });
 });
 
@@ -265,6 +329,25 @@ describe("freeze, local policy, and one apply at a time", () => {
 });
 
 describe("rate limit", () => {
+  test("the estimate counts 4 reads for an enqueue, 3 for a dequeue, and 6 for a refresh", () => {
+    const action = (kind: "dequeue" | "merge" | "refresh") => ({ kind, number: 1, headSha: sha("a"), detail: "", late: false, pending: null });
+    expect(estimatedReads([action("merge")])).toBe(4);
+    expect(estimatedReads([action("dequeue"), action("merge"), action("refresh")])).toBe(13);
+    expect(estimatedReads([])).toBe(0);
+  });
+
+  test("a budget that covers the plan but not the writes stops apply with exit 2", async () => {
+    const world = makeFleetWorld();
+    world.prs.clear();
+    world.addPr(100, { headRef: "feat/only" });
+    world.queueLength = 0;
+    // Plan: 2 x 8 = 16 points. The enqueue: 4 reads x 8 = 32 points. Three reads would need only 24.
+    world.graphqlRemaining = 28;
+    const run = await runFleet(world, ["apply", "--apply"]);
+    expect(run.code).toBe(2);
+    expect(world.mutations).toEqual([]);
+  });
+
   test("a low GraphQL budget stops the plan with exit 2 and reads no PR", async () => {
     const world = makeFleetWorld();
     world.graphqlRemaining = 10;

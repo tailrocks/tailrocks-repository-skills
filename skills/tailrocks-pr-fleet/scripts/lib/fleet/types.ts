@@ -3,12 +3,13 @@
 // Exit codes. Each code has one meaning. Any other code means the script crashed.
 //   0   done: `plan` printed the plan; `apply --apply` ran every planned action,
 //       or nothing was planned
-//   10  waiting: `apply --apply` stopped nothing, but at least one action did not
-//       run (pending: pr-refresh not available); run it again later
+//   10  waiting: `apply --apply` stopped no action, but at least one action did not
+//       run (pending: pr-refresh not available, or the pass deadline passed)
 //   20  blocked: `apply --apply` ran, and at least one action was stopped by a
 //       re-read (head moved, GitHub refused, a gate failed)
-//   3   refused, nothing was written: freeze, a local policy file, a second apply
-//       that holds the lock
+//   3   refused: freeze, a local policy file, or a second apply that holds the
+//       lock. The refused actions wrote nothing. A freeze that starts during the
+//       pass refuses the remaining actions; the earlier ones are listed as done
 //   4   plan shown, nothing was written: `apply` without `--apply`
 //   2   usage or policy error, or the GraphQL budget is too low
 
@@ -29,6 +30,8 @@ export interface Action {
   /** The head the plan saw. A write runs only when the PR still has this head. */
   readonly headSha: Sha;
   readonly detail: string;
+  /** A refresh that a direct merge made necessary during this pass. The plan never holds one. */
+  readonly late: boolean;
   /** Set when the action cannot run in this build, for example "pending: pr-refresh not available". */
   readonly pending: string | null;
 }
@@ -57,6 +60,8 @@ export interface Entry {
   readonly queue: QueueSlot | null;
   readonly behind: boolean;
   readonly approved: boolean;
+  /** The head is a sync merge (or a fresh-CI commit) and its CI still runs. */
+  readonly refreshing: boolean;
 }
 
 export interface Hygiene {
@@ -73,6 +78,8 @@ export interface OrphanRun {
   readonly workflow: string;
   readonly event: string;
 }
+
+export type MergeRoute = "queue" | "direct";
 
 export interface OrphanRuns {
   readonly runs: readonly OrphanRun[];
@@ -107,8 +114,19 @@ export interface Plan {
     readonly head: readonly (QueueSlot & { readonly number: number })[];
   };
   readonly hygiene: readonly Hygiene[];
+  readonly merge: {
+    readonly route: MergeRoute;
+    /** Merges or enqueues that this pass may start. */
+    readonly cap: number;
+    readonly candidates: readonly number[];
+    readonly planned: readonly number[];
+    /** READY PRs over the merge budget, in ranked order. */
+    readonly deferred: readonly number[];
+  };
   readonly refresh: {
     readonly budget: number;
+    /** PRs whose refresh from an earlier pass still has CI running. They use up the budget. */
+    readonly inFlight: readonly number[];
     readonly candidates: readonly number[];
     readonly planned: readonly number[];
     readonly deferred: readonly number[];
@@ -137,7 +155,7 @@ export interface RefreshPort {
 
 export const PENDING_REFRESH = "pending: pr-refresh not available";
 
-export type ResultKind = "done" | "skipped" | "pending" | "stopped";
+export type ResultKind = "done" | "skipped" | "pending" | "stopped" | "refused";
 
 export interface ActionResult {
   readonly action: Action;

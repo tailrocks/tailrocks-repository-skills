@@ -36,9 +36,25 @@ describe("SKILL.md", () => {
     expect(skill).toMatch(/1\. Run `bun --version`/);
   });
 
-  test("apply needs --apply, and the skill reports next and runs only what the request covers", () => {
+  test("apply needs --apply, and the user confirms the action list first", () => {
     expect(skill).toContain("never authorizes `--apply`");
-    expect(skill).toContain("only when it is a step that the user's request covers");
+    expect(skill).toContain("Show the user the action list");
+    expect(skill).toContain('"drain them" or "run the plan"');
+    expect(skill).toContain("show the list and ask once");
+  });
+
+  test("the skill reports next lines of failed actions and does not run them", () => {
+    expect(skill).toContain("Do not run the\n   `next` line of a stopped, skipped, pending, or refused action");
+  });
+
+  test("an unknown exit code is reported word for word and is not retried", () => {
+    expect(skill).toMatch(/^\| 1, 127, or any other code \|.*Do not retry\./m);
+  });
+
+  test("orphan runs are a report item that does not stop the run, and --wait needs the user", () => {
+    expect(skill).toContain("Report orphan runs only.");
+    expect(skill).not.toContain("orphan runs and stop");
+    expect(skill).toContain("Add `--wait` only when the user asks for it.");
   });
 
   test("it points to no bypass", () => {

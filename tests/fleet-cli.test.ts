@@ -47,7 +47,7 @@ describe("help", () => {
       /^ {2}0 {3}done/m,
       /^ {2}10 {2}waiting/m,
       /^ {2}20 {2}blocked/m,
-      /^ {2}3 {3}refused, nothing was written/m,
+      /^ {2}3 {3}refused: a freeze/m,
       /^ {2}4 {3}plan shown, nothing was written/m,
       /^ {2}2 {3}usage or policy error/m,
       /^ {2}1 {3}the script crashed/m,
@@ -68,6 +68,7 @@ describe("help", () => {
     expect(HELP).toContain("PR_FLEET_FREEZE=1");
     expect(HELP).toContain("fleet.hold");
     expect(HELP).toContain("second apply is running");
+    expect(HELP).toContain("fleet.max_merges_per_pass");
   });
 });
 

@@ -85,6 +85,8 @@ export async function listOpen(run: GhRun, repo: RepoSlug): Promise<OpenList> {
 
 const RUN_LIMIT = 100;
 const MERGE_QUEUE_PREFIX = "gh-readonly-queue/";
+/** Runs that hold CI capacity. `gh run list` takes one status per call. */
+const ACTIVE_STATUSES = ["in_progress", "queued", "waiting", "pending"] as const;
 
 export interface OrphanFilter {
   /** Head branches of every open PR, held ones included. */
@@ -94,36 +96,36 @@ export interface OrphanFilter {
 }
 
 /**
- * In-progress runs on branches with no open PR. The report only lists them. No
- * script cancels a run. Runs on a base branch and runs of the merge queue are
- * not orphans.
+ * Active runs (in progress, queued, waiting, or pending) on branches with no
+ * open PR. The report only lists them. No script cancels a run. Runs on a base
+ * branch and runs of the merge queue are not orphans.
  */
 export async function readOrphanRuns(run: GhRun, repo: RepoSlug, filter: OrphanFilter): Promise<OrphanRuns> {
-  const reply = await run(["run", "list", "--repo", repo, "--status", "in_progress", "--limit", String(RUN_LIMIT), "--json", "databaseId,headBranch,workflowName,event"]);
-  if (reply.code !== 0) {
-    return { runs: [], truncated: false, error: `the runs could not be read: ${reply.stderr.trim().split("\n")[0] ?? ""}` };
-  }
-  try {
-    const items = arr(parseJson(reply.stdout, "run list"), "run list");
-    const runs: OrphanRun[] = [];
-    for (const item of items) {
-      const entry = obj(item, "run");
-      const branch = str(member(entry, "headBranch"), "headBranch");
-      if (filter.openBranches.has(branch) || filter.isBaseBranch(branch) || branch.startsWith(MERGE_QUEUE_PREFIX)) {
-        continue;
+  const runs = new Map<number, OrphanRun>();
+  let truncated = false;
+  for (const status of ACTIVE_STATUSES) {
+    const reply = await run(["run", "list", "--repo", repo, "--status", status, "--limit", String(RUN_LIMIT), "--json", "databaseId,headBranch,workflowName,event"]);
+    if (reply.code !== 0) {
+      return { runs: [], truncated: false, error: `the ${status} runs could not be read: ${reply.stderr.trim().split("\n")[0] ?? ""}` };
+    }
+    try {
+      const items = arr(parseJson(reply.stdout, "run list"), "run list");
+      truncated = truncated || items.length >= RUN_LIMIT;
+      for (const item of items) {
+        const entry = obj(item, "run");
+        const branch = str(member(entry, "headBranch"), "headBranch");
+        if (filter.openBranches.has(branch) || filter.isBaseBranch(branch) || branch.startsWith(MERGE_QUEUE_PREFIX)) {
+          continue;
+        }
+        const id = num(member(entry, "databaseId"), "databaseId");
+        runs.set(id, { id, branch, workflow: str(member(entry, "workflowName"), "workflowName"), event: str(member(entry, "event"), "event") });
       }
-      runs.push({
-        id: num(member(entry, "databaseId"), "databaseId"),
-        branch,
-        workflow: str(member(entry, "workflowName"), "workflowName"),
-        event: str(member(entry, "event"), "event"),
-      });
+    } catch (error) {
+      if (error instanceof ReadError) {
+        return { runs: [], truncated: false, error: "the run list is unreadable" };
+      }
+      throw error;
     }
-    return { runs, truncated: items.length >= RUN_LIMIT, error: null };
-  } catch (error) {
-    if (error instanceof ReadError) {
-      return { runs: [], truncated: false, error: "the run list is unreadable" };
-    }
-    throw error;
   }
+  return { runs: [...runs.values()].sort((a, b) => a.id - b.id), truncated, error: null };
 }

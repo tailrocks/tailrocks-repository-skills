@@ -37,7 +37,11 @@ export function renderPlan(plan: Plan): string {
   const length = plan.queue.length === null ? "unknown" : String(plan.queue.length);
   const head = plan.queue.head.map((s) => `#${s.number}@${s.position} ${s.state}`).join(", ");
   lines.push(`queue: length ${length}, ${plan.queue.congested ? "congested" : "not congested"}${head === "" ? "" : `; entries read: ${head}`}`);
-  lines.push(`refresh budget: ${plan.refresh.budget}; candidates: ${numbers(plan.refresh.candidates)}; planned: ${numbers(plan.refresh.planned)}; deferred: ${numbers(plan.refresh.deferred)}`);
+  const merge = plan.merge;
+  lines.push(`merge budget: ${merge.cap} (${merge.route}); READY: ${numbers(merge.candidates)}; planned: ${numbers(merge.planned)}`);
+  lines.push(`deferred (merge budget): ${numbers(merge.deferred)}`);
+  const refresh = plan.refresh;
+  lines.push(`refresh budget: ${refresh.budget}; still in CI from an earlier refresh: ${numbers(refresh.inFlight)}; candidates: ${numbers(refresh.candidates)}; planned: ${numbers(refresh.planned)}; deferred: ${numbers(refresh.deferred)}`);
   lines.push("", "ranking (READY, then WAITING, then BLOCKED by owner):");
   if (plan.ranking.length === 0) {
     lines.push("  none");
@@ -52,7 +56,7 @@ export function renderPlan(plan: Plan): string {
     lines.push(`  #${h.number} ${h.state} at position ${h.position}: ${h.planned ? "dequeue planned" : `not planned (${h.note ?? "unknown"})`}`);
   }
   const runs = plan.orphanRuns;
-  lines.push(`orphan runs (in progress, no open PR; never cancelled): ${runs.error !== null ? `unknown (${runs.error})` : String(runs.runs.length)}${runs.truncated ? " (list may be cut)" : ""}`);
+  lines.push(`orphan runs (in progress or queued, no open PR; never cancelled): ${runs.error !== null ? `unknown (${runs.error})` : String(runs.runs.length)}${runs.truncated ? " (list may be cut)" : ""}`);
   for (const run of runs.runs.slice(0, 10)) {
     lines.push(`  run ${run.id} on ${clean(run.branch)}: ${clean(run.workflow)} (${clean(run.event, 20)})`);
   }
