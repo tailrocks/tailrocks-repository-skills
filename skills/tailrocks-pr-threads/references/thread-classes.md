@@ -61,18 +61,23 @@ same words from someone else ("Thanks.") never count.
 ## confirmedNoOpenQuestion
 
 A decision that resolves a thread (`fix`, `defer`, `reply-resolve`) must carry
-`"confirmedNoOpenQuestion": true` when a person wrote in the thread. Set it only
+`"confirmedNoOpenQuestion": true` when a person wrote anywhere in the thread,
+whatever its class. Set it only
 after you read the whole thread and no one waits for an answer. When in doubt,
 use `reply-only`.
 
-## lastCommentId
+## lastCommentId and planAt
 
-Plan prints `lastCommentId` for each thread. A decision that resolves a thread
-(`fix`, `defer`, `reply-resolve`) must carry it. The id binds the decision, and
+Plan prints `lastCommentId` for each thread and one `planAt` for the run. A
+decision that resolves a thread (`fix`, `defer`, `reply-resolve`) must carry
+`lastCommentId`, and the file must carry `planAt`. They bind the decision, and
 its `confirmedNoOpenQuestion`, to the thread as you read it. The script reads the
 thread again before each resolve. A comment after `lastCommentId` from anyone but
 our own reply (a person, a bot, anyone) stops the resolve: "new comment since
-plan; run plan again". `reply-only` needs no `lastCommentId`.
+plan; run plan again". A comment that GitHub shows as edited after `planAt`
+(`lastEditedAt` or `updatedAt`) counts the same way: "comment edited since plan;
+run plan again". A time that the script cannot read counts as an edit.
+`reply-only` needs neither.
 
 ## Decisions file
 
@@ -80,4 +85,5 @@ The file is strict JSON. An unknown key is an error. Keys:
 
 - `schema`: the number 1.
 - `expectHead`: optional. The full head commit id. The run is refused when the head differs.
+- `planAt`: the `planAt` time of the plan. Needed when any decision resolves a thread.
 - `decisions`: a list. Each item has `id`, `action`, and optionally `reply`, `fixCommit`, `confirmedNoOpenQuestion`, and `lastCommentId` (needed to resolve).

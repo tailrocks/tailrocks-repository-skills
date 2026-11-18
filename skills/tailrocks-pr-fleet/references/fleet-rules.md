@@ -70,8 +70,8 @@ against the budget when it starts, whatever its result.
 `fleet.max_merges_per_pass` replaces the default. On a merge queue, the cap is
 also limited so that the queue length plus the enqueues of the pass stays at or
 below `ci.congestion_queue_length`. At or above that length the room is 0, so
-nothing is enqueued. A queue of unknown length has no room. The READY PRs over the cap are listed as
-`deferred (merge budget)` in ranked order.
+nothing is enqueued. A queue of unknown length has no room. The READY PRs over
+the cap are listed as `deferred (merge budget)` in ranked order.
 
 `apply` reads the queue and the policy again before each merge. After a direct
 merge, the base has moved. The next PR is read on the new base. A PR that is

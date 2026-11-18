@@ -7,8 +7,8 @@ The script runs these gates in order. The first failure ends the step.
 1. `--confirm` equals the PR number. A different number exits 3 before any read.
    No `--confirm` prints the plan and exits 4.
 2. The PR head is in the same repository. A fork PR exits 3.
-3. The verdict uses the base-branch policy (or the built-in default when the
-   base branch has no policy file). A verdict from a local policy exits 3.
+3. The verdict uses the default-branch policy (or the built-in default when the
+   default branch has no policy file). A verdict from a local policy exits 3.
 4. The verdict is READY. WAITING exits 10. BLOCKED exits 20. The verdict lists
    each finding with its owner and next action.
 5. For `merge`: the changed files hold no high-risk path, unless the user passed

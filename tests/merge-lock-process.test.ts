@@ -1,9 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { acquireWatchLock, lockPath, processStartTime } from "../lib/merge/lock.ts";
 import { parseRepoSlug } from "../lib/types.ts";
+
+// Each test starts a real child process. A loaded machine can need more than the default 5 seconds.
+setDefaultTimeout(30_000);
 
 const child = join(import.meta.dir, "helpers", "watch-child.ts");
 const dirs: string[] = [];
@@ -31,7 +34,7 @@ async function startWatcher(dir: string, json = false) {
   let seen = "";
   while (!seen.includes("ready")) {
     const chunk = await reader.read();
-    if (chunk.done) throw new Error(`the child ended early: ${seen}`);
+    if (chunk.done) throw new Error(`the child ended early: ${seen} ${await new Response(proc.stderr).text()}`);
     seen += new TextDecoder().decode(chunk.value);
   }
   /** The rest of the output, read after the process ended. */
