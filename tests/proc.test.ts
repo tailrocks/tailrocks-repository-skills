@@ -75,3 +75,40 @@ describe("run", () => {
     expect((await run([], { cwd: "." })).code).toBe(127);
   });
 });
+
+// Each case below is a gap that the code review reproduced against the first version.
+describe("regression: credential scrubbing", () => {
+  test("a password that holds @ is hidden up to the last @ before the host", () => {
+    expect(scrub("https://user:p@ss@example.invalid/x.git")).toBe("https://***@example.invalid/x.git");
+    expect(scrub("fatal: 'https://user:a@b@c@example.invalid:8443/x'")).toBe("fatal: 'https://***@example.invalid:8443/x'");
+    expect(scrub("ssh://git@example.invalid/x")).toBe("ssh://***@example.invalid/x");
+  });
+
+  test("text after the host is not touched", () => {
+    expect(scrub("https://example.invalid/path with a@b and https://u:p@h.invalid/y")).toBe(
+      "https://example.invalid/path with a@b and https://***@h.invalid/y",
+    );
+  });
+
+  test("a labelled classic token is hidden", () => {
+    const token = "0123456789abcdef0123456789abcdef01234567";
+    expect(scrub(`  - Token: ${token}`)).toBe("  - Token: ***");
+    expect(scrub(`password=${token} done`)).toBe("password=*** done");
+    expect(scrub(`secret: ${token}`)).not.toContain(token);
+  });
+
+  test("stdout is data: it is returned as is, and stderr is scrubbed", async () => {
+    const text = "ssh://git@example.invalid/x ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8 Authorization: Bearer abc";
+    const result = await run(["sh", "-c", `printf '%s' '${text}'; printf '%s' '${text}' >&2`], { cwd: "." });
+    expect(result.stdout).toBe(text);
+    expect(result.stderr).not.toBe(text);
+    expect(result.stderr).not.toContain("ghp_");
+    expect(result.stderr).toContain("ssh://***@example.invalid/x");
+  });
+
+  test("a spawn failure message is scrubbed", async () => {
+    const result = await run(["https://u:p@example.invalid/not-a-program"], { cwd: "." });
+    expect(result.code).toBe(127);
+    expect(result.stderr).not.toContain("u:p");
+  });
+});

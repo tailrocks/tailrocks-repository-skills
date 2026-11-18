@@ -187,6 +187,22 @@ Proven behavior: the 0.1.0 generator from velnor-new commit
 template survived the regenerate. The generation-diff comparison
 was empty. No restore step is necessary.
 
+The Bun checks run as a generated verification task, not as a
+`[stacks.bun]` route. In velnor-actions 0.1.80 the `[stacks.bun]`
+route fails: it hard-codes a cache read that the job cannot do. The
+config declares one `[[workflow.tasks]]` entry with `kind =
+"verification"` and `mise_task = "ci:bun-checks"`. The task lives in
+`mise.toml`. It installs Bun as `aqua:oven-sh/bun` (the core `bun`
+backend is rejected) and runs `bun install --frozen-lockfile`,
+`bun run typecheck`, and `bun test`. The generator checks the SHA-256
+of `mise.toml` and `mise.lock`, so regenerate after any change to
+either file. Make `mise.lock` with `mise lock`. Keep it at
+`lockfile_version = 3`.
+
+After a change to the config, `mise.toml`, or `mise.lock`, run
+`velnor-actions generate` and commit the result. The job `Verify
+bun-checks` is a required need of the final gate.
+
 ## Release and migration
 
 Release in this order:

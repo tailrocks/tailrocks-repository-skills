@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
+import { checkGh } from "../lib/safety.ts";
 import { fetchBasePolicy } from "../lib/policy/fetch.ts";
 import { defaultPolicy, formatPolicyErrors, loadPolicy } from "../lib/policy/load.ts";
 import type { PolicyResult } from "../lib/policy/types.ts";
@@ -188,6 +189,18 @@ describe("fetchBasePolicy", () => {
     ]);
   });
 
+  test("the argv that it builds passes the gh guard", async () => {
+    let seen: readonly string[] = [];
+    await fetchBasePolicy(repo.value, sha.value, {
+      cwd: ".",
+      runGh: async (args) => {
+        seen = args;
+        return { code: 0, stdout: "schema = 1\n", stderr: "" };
+      },
+    });
+    expect(checkGh(seen).allowed).toBe(true);
+  });
+
   test("404 gives the defaults with source default", async () => {
     const result = await fetchBasePolicy(repo.value, sha.value, {
       cwd: ".",
@@ -222,5 +235,18 @@ describe("fetchBasePolicy", () => {
       `repos/${repo.value}/contents/.config/pr-policy.toml?ref=${sha.value}`,
     ]);
     expect(guard.allowed).toBe(true);
+  });
+});
+
+describe("regression: inherited object names in a policy file", () => {
+  test("a prototype name is an unknown key at every level", () => {
+    for (const name of ["toString", "constructor", "hasOwnProperty", "valueOf"]) {
+      expect(errorsOf(`schema = 1\n[checks]\n${name} = 1\n`)).toEqual([`/checks/${name}: is not a known key`]);
+      expect(errorsOf(`schema = 1\n${name} = 1\n`)).toEqual([`/${name}: is not a known key`]);
+    }
+  });
+
+  test("a quoted __proto__ key is an unknown key", () => {
+    expect(errorsOf('schema = 1\n[checks]\n"__proto__" = 1\n')).toEqual(["/checks/__proto__: is not a known key"]);
   });
 });

@@ -153,3 +153,78 @@ describe("defaults", () => {
     expect(input).toEqual({ section: {} });
   });
 });
+
+// Each case below is a bypass that the code review reproduced against the first version.
+describe("regression: inherited object names", () => {
+  const PROTOTYPE_NAMES = ["toString", "constructor", "hasOwnProperty", "valueOf", "__proto__", "isPrototypeOf"];
+  const strict: JsonValue = {
+    type: "object",
+    additionalProperties: false,
+    properties: { a: { type: "string" } },
+  };
+
+  test("a prototype name is an unknown key under additionalProperties false", () => {
+    for (const name of PROTOTYPE_NAMES) {
+      // JSON.parse makes __proto__ an own property, as a data file would.
+      const data: JsonValue = JSON.parse(`{"${name}": 1}`);
+      expect(messages(strict, data)).toEqual([`/${name}: is not a known key`]);
+    }
+  });
+
+  test("a prototype name is not a declared property", () => {
+    const schema: JsonValue = { type: "object", properties: { a: { type: "string" } }, additionalProperties: { type: "string" } };
+    for (const name of PROTOTYPE_NAMES) {
+      const data: JsonValue = JSON.parse(`{"${name}": 1}`);
+      expect(messages(schema, data)).toEqual([`/${name}: must be of type string`]);
+    }
+  });
+
+  test("a required prototype name is missing unless the data owns it", () => {
+    for (const name of PROTOTYPE_NAMES) {
+      const schema: JsonValue = { type: "object", required: [name] };
+      expect(messages(schema, {})).toEqual([`/${name}: is required`]);
+      expect(messages(schema, JSON.parse(`{"${name}": 1}`))).toEqual([]);
+    }
+  });
+
+  test("a $ref to a prototype name does not resolve", () => {
+    for (const name of ["toString", "constructor", "hasOwnProperty"]) {
+      const schema: JsonValue = { $defs: {}, $ref: `#/$defs/${name}` };
+      expect(() => validate(schema, 1)).toThrow(SchemaError);
+    }
+  });
+
+  test("enum and const comparison ignores inherited names", () => {
+    expect(messages({ const: { a: 1 } }, JSON.parse('{"toString": 1}'))).toHaveLength(1);
+    expect(messages({ const: JSON.parse('{"toString": 1}') }, { a: 1 })).toHaveLength(1);
+  });
+
+  test("applyDefaults ignores a data key with a prototype name", () => {
+    const schema: JsonValue = { type: "object", properties: { constructor: { type: "integer", default: 3 } } };
+    expect(applyDefaults(schema, {})).toEqual({ constructor: 3 });
+  });
+});
+
+describe("regression: recursive $ref", () => {
+  test("a self-referencing $ref throws a SchemaError, not a RangeError", () => {
+    const schema: JsonValue = { $defs: { a: { $ref: "#/$defs/a" } }, $ref: "#/$defs/a" };
+    expect(() => validate(schema, 1)).toThrow(SchemaError);
+    expect(() => validate(schema, 1)).toThrow(/cycle/);
+    expect(() => applyDefaults(schema, {})).toThrow(SchemaError);
+    expect(() => assertSupportedSchema(schema)).toThrow(SchemaError);
+  });
+
+  test("a two-step $ref cycle throws a SchemaError", () => {
+    const schema: JsonValue = { $defs: { a: { $ref: "#/$defs/b" }, b: { $ref: "#/$defs/a" } }, $ref: "#/$defs/a" };
+    expect(() => validate(schema, 1)).toThrow(/cycle/);
+  });
+
+  test("recursion through a property is still allowed, because it consumes data", () => {
+    const schema: JsonValue = {
+      $defs: { node: { type: "object", properties: { next: { $ref: "#/$defs/node" } }, additionalProperties: false } },
+      $ref: "#/$defs/node",
+    };
+    expect(messages(schema, { next: { next: {} } })).toEqual([]);
+    expect(messages(schema, { next: { next: { x: 1 } } })).toEqual(["/next/next/x: is not a known key"]);
+  });
+});
