@@ -1,0 +1,101 @@
+# Example .config/pr-policy.toml for a repository that:
+#   - reviews with comments that carry a verdict line,
+#   - uses review bots,
+#   - merges through a squash merge queue,
+#   - requires a DCO sign-off,
+#   - regenerates golden files and keeps an inventory.
+# Replace every name, path, and login below with your own.
+
+schema = 1
+
+[branches]
+protected = ["main", "release/*"]
+bases = ["release/*"]
+
+[checks]
+required = ["Required", "Required verdict"]
+flaky = []
+accept_skipped = []
+base_sensitive = ["Required"]
+cancellation_is_load = true
+
+[review]
+source = "comment-verdict"
+# Counted reviewers. An empty list counts every writer except the PR author.
+reviewers = []
+approve_pattern = '^\s*Verdict:\s*approve\b'
+changes_pattern = '^\s*Verdict:\s*changes needed\b'
+# An approval that also lists a blocking P1 finding is not an approval.
+blocking_pattern = '^\s*(?:[-*]\s*)?\[?P1\]?\b'
+flags = "im"
+carry_over = "clean-base-merge"
+max_carry_merges = 3
+rerequest = { comment = "Please review the new head.", reviewers = [] }
+
+[threads]
+bots = ["chatgpt-codex-connector"]
+fix_pattern = '\bP1\b'
+
+[dco]
+required = true
+bot_authors = ["renovate[bot]", "dependabot[bot]"]
+bot_commits = "exempt"
+fix = "rewrite-trailers"
+dequeue_for_fix = false
+
+[merge]
+method = "squash"
+queue = "required"
+jump = "labelled"
+jump_labels = ["queue:jump"]
+delete_branch = "own-only"
+
+[draft]
+create_as_draft = true
+ready_when = "checks-and-review"
+
+[labels]
+pr_ci = "label"
+run_once = "ci:run"
+run_always = "ci:auto"
+
+[ci]
+congestion_queue_length = 5
+max_refreshes = 2
+max_refreshes_congested = 0
+
+[issues]
+link = "closes-when-complete"
+done_when_heading = "Done when"
+done_when = "warn"
+
+[pr_body]
+sections = ["Why", "What", "Proof", "Done when"]
+template = ".github/PULL_REQUEST_TEMPLATE.md"
+
+[[prepush]]
+name = "fmt"
+run = ["cargo", "fmt", "--all", "--check"]
+when_changed = ["**/*.rs"]
+
+[[prepush]]
+name = "clippy"
+run = ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"]
+when_changed = ["**/*.rs"]
+
+[[regenerate]]
+name = "goldens"
+run = ["scripts/capture-goldens.sh", "capture"]
+when_changed = ["generator/**"]
+outputs = ["fixtures/goldens/**"]
+
+[[inventories]]
+name = "source-inventory"
+file = "docs/inventory/sources.txt"
+added = ["crates/*/src/**/*.rs"]
+exclude = ["**/tests/**", "**/benches/**"]
+group_depth = 2
+
+[fleet]
+freeze = false
+hold = []
