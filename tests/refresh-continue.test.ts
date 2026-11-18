@@ -540,3 +540,80 @@ describe("a kept worktree trusts only library-owned state", () => {
     expect(sb.remoteRev("refs/heads/feat/topic")).toBe(oldHead as never);
   });
 });
+
+describe("generator outputs and the base", () => {
+  test("a hand-made file under an output glob is refused before any generator runs", async () => {
+    const sb = box();
+    sb.commit({ "out/second.txt": "second\n" }, "feat: second output");
+    const { oldHead } = conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    writeFileSync(join(path, "README.md"), "# fixed\n");
+    writeFileSync(join(path, "out", "backdoor.txt"), "hand made\n");
+    const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
+    expect(run.code).toBe(20);
+    expect(run.json.code).toBe("continue_outside_edit");
+    expect(run.json.details).toContain("outside: out/backdoor.txt");
+    expect(pushes(run.gitCalls)).toBe(0);
+    expect(sb.remoteRev("refs/heads/feat/topic")).toBe(oldHead as never);
+  });
+
+  test("an edit to a tracked file under an output glob that the generator never writes is refused", async () => {
+    const sb = box();
+    sb.commit({ "out/second.txt": "second\n" }, "feat: second output");
+    const { oldHead } = conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    writeFileSync(join(path, "README.md"), "# fixed\n");
+    writeFileSync(join(path, "out", "second.txt"), "tampered\n");
+    const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
+    expect(run.json.code).toBe("continue_outside_edit");
+    expect(run.json.details).toContain("outside: out/second.txt");
+    expect(pushes(run.gitCalls)).toBe(0);
+    expect(sb.remoteRev("refs/heads/feat/topic")).toBe(oldHead as never);
+  });
+
+  test("a staged hand-made file under an output glob is refused too", async () => {
+    const sb = box();
+    conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    writeFileSync(join(path, "README.md"), "# fixed\n");
+    writeFileSync(join(path, "out", "backdoor.txt"), "hand made\n");
+    sb.git(["add", "out/backdoor.txt"], path);
+    const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
+    expect(run.json.code).toBe("continue_outside_edit");
+    expect(pushes(run.gitCalls)).toBe(0);
+  });
+
+  test("a file that the generator writes is accepted, and only that file", async () => {
+    const sb = box();
+    const script = `const fs = require("fs"); fs.mkdirSync("out", {recursive: true}); fs.writeFileSync("out/generated.txt", "G\\n"); fs.writeFileSync("out/extra.txt", "E\\n")`;
+    const section = ["[[regenerate]]", 'name = "gen"', `run = [${JSON.stringify(BUN)}, "-e", ${JSON.stringify(script)}]`, 'outputs = ["out/**"]'].join("\n");
+    conflictSetup(sb);
+    const { gh, path } = await keep(sb, { policy: policyToml(section) });
+    writeFileSync(join(path, "README.md"), "# fixed\n");
+    const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
+    expect(run.code).toBe(0);
+    const head = sb.remoteRev("refs/heads/feat/topic");
+    expect(sb.git(["show", `${head}:out/generated.txt`], sb.remote)).toBe("G\n");
+    expect(sb.git(["show", `${head}:out/extra.txt`], sb.remote)).toBe("E\n");
+  });
+
+  test("a base that moved since sync is refused and nothing is pushed", async () => {
+    const sb = box();
+    const { oldHead } = conflictSetup(sb);
+    const { gh, path } = await keep(sb);
+    const other = sb.other();
+    sb.git(["pull", "-q", "origin", "main"], other);
+    sb.commit({ "docs/later.md": "later\n" }, "chore: base moves again", { cwd: other });
+    sb.git(["push", "origin", "main"], other);
+    writeFileSync(join(path, "README.md"), "# fixed\n");
+    const run = await cli(sb, gh, ["continue", "7", "--worktree", path]);
+    expect(run.code).toBe(20);
+    expect(run.json.code).toBe("base_moved");
+    expect(run.json.next).toBe(`abort 7 --worktree ${path}, then run sync 7 --keep-worktree again`);
+    expect(pushes(run.gitCalls)).toBe(0);
+    expect(sb.remoteRev("refs/heads/feat/topic")).toBe(oldHead as never);
+    expect(existsSync(path)).toBe(true);
+    const abort = await cli(sb, gh, ["abort", "7", "--worktree", path]);
+    expect(abort.code).toBe(0);
+  });
+});

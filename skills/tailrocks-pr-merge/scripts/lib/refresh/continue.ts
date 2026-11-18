@@ -4,7 +4,7 @@
 import { join } from "node:path";
 import { type PrContext, type RefreshDeps } from "./context.ts";
 import { writeRefusal } from "./gate.ts";
-import { GitFailure, must, splitNul, type Repo } from "./gitx.ts";
+import { GitFailure, must, repoAt, splitNul, type Repo } from "./gitx.ts";
 import { blocked, done, type Outcome } from "./outcome.ts";
 import { hasConflictMarkers } from "./steps.ts";
 import { entryFor, finishAndPush, guarded, regenerateConflicts, withNotes } from "./sync.ts";
@@ -87,6 +87,20 @@ export function runContinue(deps: RefreshDeps, ctx: PrContext, worktree: string,
       return discard(blocked(refusal.code, `${refusal.headline}; the kept merge was removed`, refusal.next));
     }
     const { repo } = handle;
+    // The kept merge holds the base that the state names. If the base moved, the checks would
+    // run against a base that the merge does not contain.
+    const origin = repoAt(deps.cwd, deps.git);
+    const fetched = await origin.run(["fetch", "--no-tags", "--quiet", deps.remote, marker.baseRef]);
+    const tip = fetched.code === 0 ? (await origin.run(["rev-parse", `${deps.remote}/${marker.baseRef}^{commit}`])).stdout.trim() : "";
+    if (fetched.code !== 0 || tip !== marker.baseSha || snapshot.baseSha !== marker.baseSha) {
+      return blocked(
+        fetched.code !== 0 ? "fetch_failed" : "base_moved",
+        fetched.code !== 0
+          ? `cannot fetch the base from ${deps.remote}: ${fetched.stderr.trim().split("\n")[0] ?? ""}`
+          : `the base branch moved from ${marker.baseSha.slice(0, 7)} to ${(snapshot.baseSha !== marker.baseSha ? snapshot.baseSha : tip).slice(0, 7)} since sync; the kept merge is out of date`,
+        `abort ${ctx.number} --worktree ${handle.path}, then run sync ${ctx.number} --keep-worktree again`,
+      );
+    }
     const mergeHead = await repo.run(["rev-parse", "-q", "--verify", "MERGE_HEAD"]);
     const head = (await must(repo, ["rev-parse", "HEAD"])).trim();
     if (mergeHead.code !== 0 || mergeHead.stdout.trim() !== marker.baseSha || head !== marker.headSha) {
@@ -105,6 +119,19 @@ export function runContinue(deps: RefreshDeps, ctx: PrContext, worktree: string,
     if (marked.length > 0) {
       return keepOnFailure(
         blocked("conflict_markers", `${marked.length} resolved file(s) still hold conflict markers`, "remove the markers, keeping both sides", marked.map((p) => `markers: ${p}`)),
+      );
+    }
+    // Before any generator runs, only the recorded conflict set may differ from the plain
+    // auto-merge. A hand-made file under an output glob is refused here.
+    const early = await editsOutside(repo, marker.headSha, marker.baseSha, new Set(marker.conflicts));
+    if (early.length > 0) {
+      return keepOnFailure(
+        blocked(
+          "continue_outside_edit",
+          `${early.length} path(s) outside the conflict set differ from the plain merge; nothing was committed`,
+          "undo those edits (an edit that was staged needs abort and a new sync)",
+          early.map((p) => `outside: ${p}`),
+        ),
       );
     }
     const regenerated = await regenerateConflicts(repo, ctx, generated);

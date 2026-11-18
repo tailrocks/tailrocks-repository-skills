@@ -2,6 +2,7 @@
 // inventories, scan sign-offs, run pre-push steps. Commands are argument
 // arrays from the base-branch policy. No command passes through a shell.
 
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { matchesAnyGlob } from "../glob.ts";
@@ -58,10 +59,37 @@ export async function runPolicyCommand(argv: readonly string[], worktree: string
 const CONFLICT_MARKER = /^(?:<{7} |>{7} )/m;
 const MAX_MARKER_SCAN_BYTES = 8_000_000;
 
-/** Files in the work tree that are modified or untracked and match the entry's output globs. */
-export async function changedOutputs(repo: Repo, entry: PolicyRegenerateStep): Promise<readonly string[]> {
-  const listing = await must(repo, ["ls-files", "-z", "--modified", "--others", "--exclude-standard"]);
-  return splitNul(listing).filter((file) => matchesAnyGlob(entry.outputs, file) && existsSync(join(repo.cwd, file)));
+const ABSENT = "absent";
+
+/** A content hash of one work tree file, or "absent". */
+function fileState(file: string): string {
+  try {
+    return createHash("sha1").update(readFileSync(file)).digest("hex");
+  } catch {
+    return ABSENT;
+  }
+}
+
+/**
+ * The exact state (content hash, or "absent") of every tracked or untracked
+ * path under the entry's output globs. A generator run is judged against it.
+ */
+export async function snapshotOutputs(repo: Repo, entry: PolicyRegenerateStep): Promise<ReadonlyMap<string, string>> {
+  const listing = await must(repo, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"]);
+  const states = new Map<string, string>();
+  for (const path of splitNul(listing)) {
+    if (matchesAnyGlob(entry.outputs, path)) {
+      states.set(path, fileState(join(repo.cwd, path)));
+    }
+  }
+  return states;
+}
+
+/** Paths under the entry's output globs whose content differs from the snapshot taken before the run. */
+export async function outputsChangedSince(repo: Repo, entry: PolicyRegenerateStep, before: ReadonlyMap<string, string>): Promise<readonly string[]> {
+  const after = await snapshotOutputs(repo, entry);
+  const paths = new Set([...before.keys(), ...after.keys()]);
+  return [...paths].filter((path) => (before.get(path) ?? ABSENT) !== (after.get(path) ?? ABSENT)).sort();
 }
 
 export function hasConflictMarkers(file: string): boolean {
@@ -77,7 +105,7 @@ export function hasConflictMarkers(file: string): boolean {
 
 export interface RegenerateRun {
   readonly entry: PolicyRegenerateStep;
-  /** Paths to stage: the conflicted outputs and any other changed output. */
+  /** Paths to stage: the conflicted outputs and the outputs that the generator changed. */
   readonly paths: readonly string[];
   readonly problem: StepProblem | null;
 }
@@ -91,6 +119,9 @@ export async function regenerateEntry(repo: Repo, entry: PolicyRegenerateStep, c
   for (const path of conflicted) {
     rmSync(join(repo.cwd, path), { force: true });
   }
+  // Only what the generator changes from this snapshot may be staged. A file that
+  // was already under an output glob (a hand-made file) is never accepted.
+  const before = await snapshotOutputs(repo, entry);
   const result = await runPolicyCommand(entry.run, repo.cwd, entry.cwd);
   const fail = (headline: string, details: readonly string[]): RegenerateRun => ({
     entry,
@@ -105,7 +136,7 @@ export async function regenerateEntry(repo: Repo, entry: PolicyRegenerateStep, c
   if (!result.ok) {
     return fail(`regenerate step "${entry.name}" failed`, result.tail);
   }
-  const changed = await changedOutputs(repo, entry);
+  const changed = await outputsChangedSince(repo, entry, before);
   const missing = conflicted.filter((path) => !existsSync(join(repo.cwd, path)));
   if (missing.length > 0) {
     return fail(`regenerate step "${entry.name}" did not write ${missing.length} conflicted output(s)`, missing);
