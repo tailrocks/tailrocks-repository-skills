@@ -132,4 +132,3 @@ export async function gatherRules(run: GhRun, repo: RepoSlug, base: string): Pro
   }
   return { rules: facts, problems };
 }
-
