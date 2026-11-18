@@ -37,7 +37,7 @@ export type StatusResult =
   | { readonly kind: "verdict"; readonly verdict: Verdict; readonly snapshot: PrSnapshot | null }
   | { readonly kind: "policy-error"; readonly errors: readonly PolicyError[] };
 
-function policyFor(repo: RepoSlug, baseSha: Sha, config: StatusConfig, runGh: GhRun): Promise<PolicyLoad> {
+export function policyFor(repo: RepoSlug, baseSha: Sha, config: StatusConfig, runGh: GhRun): Promise<PolicyLoad> {
   if (config.localPolicy !== undefined) {
     return Promise.resolve({ ok: true, policy: config.localPolicy.policy, source: "local" });
   }
