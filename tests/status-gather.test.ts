@@ -264,6 +264,21 @@ describe("gatherPr", () => {
     if (!result.ok) expect(result.error).toContain("head moved");
   });
 
+  test("the latest attempt is the one with the highest check-run id, even when its start time is older", async () => {
+    const nodes = [
+      ctxRun("Build", { databaseId: 20, startedAt: "2026-01-01T00:10:00Z", conclusion: "FAILURE" }),
+      ctxRun("Build", { databaseId: 31, startedAt: "2026-01-01T00:02:00Z", conclusion: "SUCCESS" }),
+      ctxRun("Build", { databaseId: 25, startedAt: "2026-01-01T00:20:00Z", conclusion: "FAILURE" }),
+    ];
+    const pr = prResponse({
+      latestCommit: { nodes: [{ commit: { id: "C", oid: HEAD, statusCheckRollup: { contexts: { totalCount: 3, pageInfo: { hasNextPage: false, endCursor: null }, nodes } } } }] },
+    });
+    const result = await gather(gh(pr));
+    if (!result.ok) throw new Error(result.error);
+    const build = result.snapshot.checks.find((c) => c.name === "Build");
+    expect([build?.conclusion, build?.runId, build?.attempts, build?.failedAttempts]).toEqual(["success", 31, 3, 2]);
+  });
+
   test("a queued re-run with no start time is the newest attempt and the check is pending", async () => {
     const nodes = [
       ctxRun("Build", { startedAt: "2026-01-01T00:00:00Z", conclusion: "FAILURE" }),

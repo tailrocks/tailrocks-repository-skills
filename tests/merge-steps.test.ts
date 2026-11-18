@@ -515,7 +515,7 @@ describe("ready", () => {
     world.script = (gather, w) => {
       if (gather === 2) {
         w.policyToml = '[draft]\nready_when = "manual"\n';
-        w.pr = { ...w.pr, baseRefOid: sha("d") };
+        w.defaultSha = sha("d");
       }
     };
     const outcome = await readyStep(world.context());

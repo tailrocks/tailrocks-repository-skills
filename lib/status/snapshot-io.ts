@@ -48,6 +48,7 @@ function check(o: Obj, w: string): CheckObservation {
     event: strOrNull(member(o, "event"), `${w}.event`),
     startedAt: strOrNull(member(o, "startedAt"), `${w}.startedAt`),
     completedAt: strOrNull(member(o, "completedAt"), `${w}.completedAt`),
+    runId: numOrNull(member(o, "runId"), `${w}.runId`),
     attempts: num(member(o, "attempts"), `${w}.attempts`),
     failedAttempts: num(member(o, "failedAttempts"), `${w}.failedAttempts`),
   };
@@ -204,6 +205,7 @@ export function parseSnapshot(source: string): PrSnapshot {
     body: str(member(o, "body"), "body"),
     baseRef: str(member(o, "baseRef"), "baseRef"),
     baseSha: sha(member(o, "baseSha"), "baseSha"),
+    defaultSha: sha(member(o, "defaultSha"), "defaultSha"),
     headRef: str(member(o, "headRef"), "headRef"),
     headSha: sha(member(o, "headSha"), "headSha"),
     mergeable: oneOf(member(o, "mergeable"), ["MERGEABLE", "CONFLICTING", "UNKNOWN"], "mergeable"),

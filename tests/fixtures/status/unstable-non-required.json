@@ -13,6 +13,7 @@
   "body": "### Configuration",
   "baseRef": "main",
   "baseSha": "94615900c0f84cad178394a62774fb3587806a2a",
+  "defaultSha": "94615900c0f84cad178394a62774fb3587806a2a",
   "headRef": "feature/1296",
   "headSha": "9fadf754314e99b2c6c0829ea2dbbfd1c2aeb02b",
   "mergeable": "MERGEABLE",

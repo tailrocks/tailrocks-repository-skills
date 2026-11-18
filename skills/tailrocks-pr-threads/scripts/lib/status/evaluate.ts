@@ -304,7 +304,8 @@ function build(snapshot: PrSnapshot, policy: Policy, policySource: PolicySource)
     ...bodyFindings(snapshot, policy),
     ...gateFindings(snapshot, policy),
   ];
-  const blocked = findings.filter((f) => f.kind === "blocker" && f.code !== "queue_unmergeable");
+  // An unreadable state is not a known blocker, and a wait is not a blocker. Neither one makes a queued entry "blocked".
+  const blocked = findings.filter((f) => f.kind === "blocker" && f.code !== "queue_unmergeable" && f.code !== "unknown_state");
   const queuedAt = findings.findIndex((f) => f.code === "queued");
   if (queuedAt >= 0 && blocked.length > 0) {
     const queued = findings[queuedAt];

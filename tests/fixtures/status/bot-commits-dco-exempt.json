@@ -13,6 +13,7 @@
   "body": "### Release Notes\n### [`v3.4.0`](https://redirect.github.com/actions/create-github-app-token/releases/tag/v3.4.0)\n##### Features\n##### Bug Fixes\n### Configuration",
   "baseRef": "main",
   "baseSha": "95de9b704b7e6585dd3b1a66b96d9fd08c8b6cd9",
+  "defaultSha": "95de9b704b7e6585dd3b1a66b96d9fd08c8b6cd9",
   "headRef": "feature/1341",
   "headSha": "5fc61f1ff782397a04d8ae0649b99d5ccd699a4a",
   "mergeable": "MERGEABLE",

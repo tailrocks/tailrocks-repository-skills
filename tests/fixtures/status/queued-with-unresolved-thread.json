@@ -13,6 +13,7 @@
   "body": "Closes #1159, part of #1305.",
   "baseRef": "main",
   "baseSha": "d4d13ca618d118293409db1ff4c95900c246df53",
+  "defaultSha": "d4d13ca618d118293409db1ff4c95900c246df53",
   "headRef": "feature/1321",
   "headSha": "18aad2f42484271c46a67e0c1b75087d36732251",
   "mergeable": "UNKNOWN",

@@ -37,11 +37,12 @@ export type StatusResult =
   | { readonly kind: "verdict"; readonly verdict: Verdict; readonly snapshot: PrSnapshot | null }
   | { readonly kind: "policy-error"; readonly errors: readonly PolicyError[] };
 
-export function policyFor(repo: RepoSlug, baseSha: Sha, config: StatusConfig, runGh: GhRun): Promise<PolicyLoad> {
+/** Load the policy at one commit of the default branch. */
+export function policyFor(repo: RepoSlug, defaultSha: Sha, config: StatusConfig, runGh: GhRun): Promise<PolicyLoad> {
   if (config.localPolicy !== undefined) {
     return Promise.resolve({ ok: true, policy: config.localPolicy.policy, source: "local" });
   }
-  const key = `${repo}@${baseSha}`;
+  const key = `${repo}@${defaultSha}`;
   const known = config.policies.get(key);
   if (known !== undefined) {
     return known;
@@ -51,7 +52,7 @@ export function policyFor(repo: RepoSlug, baseSha: Sha, config: StatusConfig, ru
     config.policies.delete(key);
     return { ok: false, unreadable: true, errors: [{ pointer: "", message }] };
   };
-  const pending = fetchBasePolicy(repo, baseSha, { cwd: config.cwd, runGh }).then(
+  const pending = fetchBasePolicy(repo, defaultSha, { cwd: config.cwd, runGh }).then(
     (result): PolicyLoad => {
       if (result.ok) {
         return { ok: true, policy: result.policy, source: result.source };
@@ -80,7 +81,8 @@ export async function statusFor(repo: RepoSlug, number: number, config: StatusCo
     return { kind: "verdict", verdict: unknownVerdict(repo, number, gathered.error), snapshot: null };
   }
   let snapshot = gathered.snapshot;
-  const loaded = await policyFor(repo, snapshot.baseSha, config, runGh);
+  // The policy comes from the default branch, never from the base of a stacked PR.
+  const loaded = await policyFor(repo, snapshot.defaultSha, config, runGh);
   if (!loaded.ok) {
     if (loaded.unreadable) {
       // A failed read is not a verdict on the policy. Report it as an unknown state, so a caller can try again.
@@ -91,7 +93,7 @@ export async function statusFor(repo: RepoSlug, number: number, config: StatusCo
   }
   const { policy, source } = loaded;
   if (policy.pr_body.enforce) {
-    snapshot = { ...snapshot, bodyTemplate: await gatherBodyTemplate(runGh, repo, snapshot.baseSha, policy.pr_body.template) };
+    snapshot = { ...snapshot, bodyTemplate: await gatherBodyTemplate(runGh, repo, snapshot.defaultSha, policy.pr_body.template) };
   }
   const carryOver = policy.review.source === "comment-verdict" && policy.review.carry_over === "clean-base-merge";
   const git =

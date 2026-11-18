@@ -38,7 +38,7 @@ export async function evaluateFresh(ctx: StepContext): Promise<Fresh> {
     ctx.say(renderText(verdict));
     return { ok: false, kind: "unreadable", result: result(EXIT.blocked, "blocked", verdict.next) };
   }
-  const loaded = await policyFor(ctx.repo, snapshot.baseSha, config, ctx.io.runGh);
+  const loaded = await policyFor(ctx.repo, snapshot.defaultSha, config, ctx.io.runGh);
   if (!loaded.ok) {
     ctx.say(`invalid policy:\n${formatPolicyErrors(loaded.errors)}`);
     return { ok: false, kind: "policy", result: result(EXIT.usage, "policy_error", "Fix the policy file on the base branch. No step ran.") };

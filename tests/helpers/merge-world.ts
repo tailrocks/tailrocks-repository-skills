@@ -12,7 +12,7 @@ import type { RunResult } from "../../lib/proc.ts";
 import { checkGh, ghMutationArgv, type GhMutation } from "../../lib/safety-gh.ts";
 import { parseRepoSlug, type Sha } from "../../lib/types.ts";
 import { baseResponse, commitNode, fakeGh, prResponse } from "./fake-gh.ts";
-import { HEAD, OLD, sha } from "./status.ts";
+import { BASE, HEAD, OLD, sha } from "./status.ts";
 
 const REPO = "example-org/example-repo";
 
@@ -30,6 +30,8 @@ export interface World {
   /** Patch of the PR query. Each key replaces the default. */
   pr: Record<string, unknown>;
   head: Sha;
+  /** Tip of the default branch. The policy is read at this commit. */
+  defaultSha: Sha;
   prState: "OPEN" | "MERGED" | "CLOSED";
   mergeCommit: Sha;
   /** Number of PR reads so far. */
@@ -128,7 +130,7 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
         world.failReads -= 1;
         return { errors: [{ message: "read failed" }] };
       }
-      return prResponse({ ...headPatch(world.head), state: world.prState, ...world.pr });
+      return prResponse({ ...headPatch(world.head), state: world.prState, ...world.pr }, { defaultBranchRef: { name: "main", target: { oid: world.defaultSha } } });
     },
     base: () => baseResponse(world.hasQueue ? {} : { mergeQueue: null }),
     issue: () => ({ data: { repository: { issueOrPullRequest: null } } }),
@@ -269,6 +271,7 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
   const world: World = {
     pr: {},
     head: HEAD,
+    defaultSha: BASE,
     prState: "OPEN",
     mergeCommit: sha("e"),
     gathers: 0,

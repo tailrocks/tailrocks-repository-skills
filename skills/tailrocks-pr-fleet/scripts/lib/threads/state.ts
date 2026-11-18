@@ -53,7 +53,7 @@ export async function readThreadState(repo: RepoSlug, number: number, config: Th
     return { ok: false, kind: "unreadable", error: gathered.error };
   }
   const { snapshot } = gathered;
-  const loaded = await fetchBasePolicy(repo, snapshot.baseSha, { cwd: config.cwd, runGh: config.runGh });
+  const loaded = await fetchBasePolicy(repo, snapshot.defaultSha, { cwd: config.cwd, runGh: config.runGh });
   if (!loaded.ok) {
     return { ok: false, kind: "policy", errors: loaded.errors };
   }

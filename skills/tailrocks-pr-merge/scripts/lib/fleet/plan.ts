@@ -93,11 +93,7 @@ export async function buildPlan(repo: RepoSlug, deps: FleetDeps): Promise<PlanRe
     return { ok: false, exit: EXIT.usage, message: `${prefix}:\n${formatPolicyErrors(loaded.errors)}` };
   }
   const { policy, source } = loaded;
-  // Every verdict of this run uses this policy: the default branch at its current commit.
-  // A PR on another base branch never brings the policy of that branch.
-  for (const pr of list.prs) {
-    deps.shared.policies.set(`${repo}@${pr.baseSha}`, Promise.resolve(loaded));
-  }
+  // Every verdict of this run reads the policy by the key `repo@default sha`, so it reuses this load.
   const held = list.prs.filter((pr) => policy.fleet.hold.includes(pr.number)).map((pr) => pr.number);
   const readable = list.prs.filter((pr) => !held.includes(pr.number));
 

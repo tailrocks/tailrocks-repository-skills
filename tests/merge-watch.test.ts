@@ -192,7 +192,7 @@ describe("watch", () => {
     const world = queued();
     world.script = (gather, w) => {
       if (gather === 2) {
-        w.pr = { ...w.pr, baseRefOid: sha("d") };
+        w.defaultSha = sha("d");
         w.policyFails = 1;
       }
       if (gather === 4) w.prState = "MERGED";
@@ -208,7 +208,7 @@ describe("watch", () => {
     const world = queued();
     world.script = (gather, w) => {
       if (gather === 2) {
-        w.pr = { ...w.pr, baseRefOid: sha("d") };
+        w.defaultSha = sha("d");
         w.policyFails = 3;
       }
     };
@@ -222,7 +222,7 @@ describe("watch", () => {
     const world = queued();
     world.script = (gather, w) => {
       if (gather === 2) {
-        w.pr = { ...w.pr, baseRefOid: sha("d") };
+        w.defaultSha = sha("d");
         w.policyToml = "schema = 9\n";
       }
     };

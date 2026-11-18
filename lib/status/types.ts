@@ -31,6 +31,8 @@ export interface CheckObservation {
   readonly event: string | null;
   readonly startedAt: string | null;
   readonly completedAt: string | null;
+  /** Database id of the check run. A later attempt has a higher id. Null for a status context. */
+  readonly runId: number | null;
   /** Number of attempts seen on the head for this (workflow, name). */
   readonly attempts: number;
   /** Number of those attempts that failed. */
@@ -170,6 +172,8 @@ export interface PrSnapshot {
   readonly body: string;
   readonly baseRef: string;
   readonly baseSha: Sha;
+  /** The default branch tip when the PR was read. The policy comes from this commit, never from the base of a stacked PR. */
+  readonly defaultSha: Sha;
   readonly headRef: string;
   readonly headSha: Sha;
   readonly mergeable: "MERGEABLE" | "CONFLICTING" | "UNKNOWN";

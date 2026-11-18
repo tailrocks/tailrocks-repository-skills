@@ -15,6 +15,7 @@ import type {
   ReviewState,
   ThreadObservation,
 } from "../status/types.ts";
+import { newestOf } from "../status/attempts.ts";
 import { arr, bool, isObj, member, num, numOrNull, obj, oneOf, ReadError, str, strOrNull, path } from "./read.ts";
 
 export function sha(value: unknown, where: string): Sha {
@@ -85,6 +86,7 @@ function parseContext(node: unknown, order: number): RawCheck {
         event: strOrNull(path(suite, "workflowRun", "event"), `check ${name} event`),
         startedAt: strOrNull(member(o, "startedAt"), `check ${name} startedAt`),
         completedAt: strOrNull(member(o, "completedAt"), `check ${name} completedAt`),
+        runId: numOrNull(member(o, "databaseId"), `check ${name} databaseId`),
       },
     };
   }
@@ -105,6 +107,7 @@ function parseContext(node: unknown, order: number): RawCheck {
         event: null,
         startedAt: strOrNull(member(o, "createdAt"), `status ${name} createdAt`),
         completedAt: done ? strOrNull(member(o, "createdAt"), `status ${name} createdAt`) : null,
+        runId: null,
       },
     };
   }
@@ -125,9 +128,8 @@ export function parseChecks(nodes: readonly unknown[], problems: string[]): read
   });
   const out: CheckObservation[] = [];
   for (const attempts of groups.values()) {
-    // An attempt that has not started (a queued re-run) is the newest one.
-    const stamp = (r: RawCheck): string => r.observation.startedAt ?? "\uffff";
-    const latest = [...attempts].sort((a, b) => stamp(a).localeCompare(stamp(b)) || a.order - b.order).at(-1);
+    // The attempt with the highest check-run id is the newest. Without ids, an attempt that has not started (a queued re-run) is the newest.
+    const latest = newestOf(attempts.map((r) => ({ ...r.observation, raw: r })))?.raw;
     if (latest === undefined) {
       continue;
     }

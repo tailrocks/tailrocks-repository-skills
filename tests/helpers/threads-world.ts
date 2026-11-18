@@ -57,6 +57,8 @@ export class World {
   /** Extra PR commits besides the head. */
   commits: readonly Sha[] = [];
   policy: string | null = POLICY_TOML;
+  /** Extra fields of the PR query, for example a stacked base. */
+  prPatch: Record<string, unknown> = {};
   readonly ops: GhMutation[] = [];
   /** Called after each mutation. Tests use it to move the head. */
   afterMutation: ((world: World, op: GhMutation) => void) | null = null;
@@ -118,6 +120,7 @@ export class World {
       {
         pr: () =>
           prResponse({
+            ...this.prPatch,
             headRefOid: this.head,
             state: this.state,
             commits: { totalCount: commits.length, nodes: commits },
