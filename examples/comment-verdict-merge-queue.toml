@@ -54,6 +54,12 @@ queue = "required"
 jump = "labelled"
 jump_labels = ["queue:jump"]
 delete_branch = "own-only"
+# Paths that need the user's confirmation before a merge. The default list
+# holds .github, release, auth, and migration directories. An empty list turns
+# the check off. Replace the globs with your own.
+high_risk_paths = [".github/**", "**/release/**", "**/auth/**", "**/migrations/**"]
+# Seconds between the polls of `merge.ts watch`. The flag --interval overrides it.
+watch_interval_seconds = 180
 
 [draft]
 create_as_draft = true

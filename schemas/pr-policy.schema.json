@@ -253,6 +253,29 @@
           "type": "string",
           "enum": ["own-only", "never"],
           "default": "own-only"
+        },
+        "high_risk_paths": {
+          "description": "Globs of paths that need the user's confirmation before pr-merge lands a change. A rename counts when the old or the new path matches. An empty list turns the check off.",
+          "$ref": "#/$defs/globList",
+          "default": [
+            ".github/**",
+            "**/release/**",
+            "**/releases/**",
+            "**/auth/**",
+            "**/authn/**",
+            "**/authz/**",
+            "**/authentication/**",
+            "**/authorization/**",
+            "**/migration/**",
+            "**/migrations/**",
+            "**/migrate/**"
+          ]
+        },
+        "watch_interval_seconds": {
+          "description": "Seconds between the polls of pr-merge watch. The flag --interval overrides it.",
+          "type": "integer",
+          "minimum": 5,
+          "default": 180
         }
       }
     },
