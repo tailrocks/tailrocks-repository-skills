@@ -5,6 +5,7 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { StopSignal } from "../../lib/merge/signals.ts";
 import type { MergeIo, StepContext } from "../../lib/merge/types.ts";
 import { newShared } from "../../lib/merge/types.ts";
 import type { RunResult } from "../../lib/proc.ts";
@@ -67,6 +68,12 @@ export interface World {
   readonly lockDir: string;
   /** Pids that count as alive. Pid 4242 is the pid of this run. */
   alivePids: Set<number>;
+  /** Start times by pid. A pid without an entry has none. */
+  starts: Map<number, string>;
+  /** Handlers that the watch installed for the stop signals. */
+  readonly signalHandlers: ((signal: StopSignal) => void)[];
+  /** Exit codes that the watch asked for. */
+  readonly exits: number[];
   queue(entry: Partial<QueueEntryData> | null): void;
   removed(reason: string): void;
 }
@@ -106,6 +113,8 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
   const merges: string[][] = [];
   const sleeps: number[] = [];
   const lines: string[] = [];
+  const signalHandlers: ((signal: StopSignal) => void)[] = [];
+  const exits: number[] = [];
   let clock = 1_000_000;
   const lockDir = mkdtempSync(join(tmpdir(), "pr-merge-test-"));
   lockDirs.push(lockDir);
@@ -238,6 +247,12 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
     lockDir,
     pid: 4242,
     isAlive: (pid) => world.alivePids.has(pid),
+    startOf: (pid) => world.starts.get(pid) ?? null,
+    onStopSignal: (handler) => {
+      signalHandlers.push(handler);
+      return () => void signalHandlers.splice(signalHandlers.indexOf(handler), 1);
+    },
+    exit: (code) => void exits.push(code),
   };
   const context = (extra: Partial<StepContext> = {}): StepContext => ({
     repo: slug.value,
@@ -278,6 +293,9 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
     lines,
     lockDir,
     alivePids: new Set([4242]),
+    starts: new Map(),
+    signalHandlers,
+    exits,
     ...patch,
     io,
     context,

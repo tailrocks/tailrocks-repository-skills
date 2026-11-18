@@ -99,7 +99,7 @@ Trust rules:
 | Code | Meaning | What you do |
 | --- | --- | --- |
 | 0 | Merged, or the step is done | Report it. |
-| 10 | Waiting: queued, a check still runs, or the watch time bound passed | Report it. For `queued`, go to `watch` (step 8). |
+| 10 | Waiting: queued, a check still runs, the watch time bound passed, or a signal stopped the watch (the lock is removed and the PR was not judged) | Report it. For `queued`, go to `watch` (step 8). After a signal stop, read the PR with pr-status first. |
 | 20 | Blocked: the PR or GitHub stops the step. From `watch`: `ejected` (removal reason and verdict printed), `dequeued` (a review asks for changes), `closed` | Report the findings. Give each `next` line to its owner. |
 | 4 | Plan shown, nothing written | Go to step 5. |
 | 3 | Refused, nothing written: a fork PR, a high-risk change, a `--confirm` that differs from the PR number, a policy that forbids the step, a second watcher | Report the reason. Do not retry. |

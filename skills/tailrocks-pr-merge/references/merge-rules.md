@@ -57,9 +57,15 @@ unknown, and unknown counts as high risk. GitHub lists at most 3000 files.
   minimum 5). The flag `--interval` overrides it.
 - A lock file per repository and PR, in the temporary directory of the system,
   keeps a second watcher out. A second watcher exits 3. The lock is removed when
-  the watch ends. A lock is replaced only when it is older than its time bound
-  plus ten minutes and its process no longer exists. The script never kills a
-  process.
+  the watch ends, and when SIGTERM, SIGINT, or SIGHUP stops it. A stop by a
+  signal prints a line, removes the lock, and exits 10: the watch stopped, wrote
+  nothing, and did not judge the PR.
+- A new watcher takes a lock at once when the recorded process no longer exists.
+  It takes a lock too when the process id was reused (the start time differs,
+  where the system shows it), or when the lock is older than its time bound plus
+  ten minutes. It takes a stale lock by an atomic rename, so only one watcher
+  wins. The script never kills a process. A lock that cannot be read is never
+  replaced; remove that one file by hand when no watcher runs.
 - A failed read of the PR or of the policy file counts as one unreadable poll. The
   failed policy read is not kept: the next poll tries again. A policy file that
   was read and is invalid ends the watch with exit 2.

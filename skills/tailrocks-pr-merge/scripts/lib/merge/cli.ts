@@ -19,7 +19,8 @@ import { DEQUEUE_REASONS, dequeueStep, type DequeueReason } from "./dequeue.ts";
 import { mergeStep } from "./merge.ts";
 import { readyStep } from "./ready.ts";
 import { EXIT, newShared, type MergeIo, type Step, type StepContext, type StepResult } from "./types.ts";
-import { processExists } from "./lock.ts";
+import { processExists, processStartTime } from "./lock.ts";
+import { onStopSignal } from "./signals.ts";
 import { DEFAULT_TIMEOUT_SECONDS, MIN_INTERVAL_SECONDS, watchStep } from "./watch.ts";
 
 export const USAGE = `usage: merge.ts <ready|merge|dequeue|watch> <pr-number> --confirm <pr-number> [--repo owner/name] [--json] [--git-dir path] [--accept-risk] [--reason changes-needed|blocked|unmergeable|manual] [--interval seconds] [--timeout seconds]`;
@@ -53,7 +54,8 @@ Options:
 
 Exit codes:
   0   merged, or the step is done (ready, dequeued, nothing to do)
-  10  waiting: queued, or the time bound of watch passed
+  10  waiting: queued, the time bound of watch passed, or watch was stopped by a
+      signal (SIGTERM, SIGINT, SIGHUP) and removed its lock; the PR was not judged
   20  blocked: the PR or GitHub stops the step
   3   refused: the call is not allowed; do not retry; nothing was written
   4   plan: the plan is shown and nothing was written; run again with --confirm
@@ -175,6 +177,9 @@ export function defaultIo(cwd: string): MergeIo {
     lockDir: tmpdir(),
     pid: process.pid,
     isAlive: processExists,
+    startOf: processStartTime,
+    onStopSignal,
+    exit: (code) => process.exit(code),
   };
 }
 

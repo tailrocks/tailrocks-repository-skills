@@ -99,14 +99,23 @@ export async function watchStep(ctx: StepContext, options: WatchOptions): Promis
     timeoutSeconds: options.timeoutSeconds,
     now: ctx.io.now,
     isAlive: ctx.io.isAlive,
+    startOf: ctx.io.startOf,
     pid: ctx.io.pid,
   });
   if (!lock.ok) {
     return refuse(ctx, lock.reason, "Wait for the other watcher. Do not start a second one.", first.evaluated);
   }
+  // A signal skips `finally`. The handler removes the lock, says why, and ends the run with exit 10:
+  // the watch stopped, nothing was written, and the PR was not judged.
+  const removeHandlers = ctx.io.onStopSignal((signal) => {
+    lock.release();
+    ctx.say(`the watch was stopped by ${signal}; the PR was not judged. Read it with pr-status before any other step`);
+    ctx.io.exit(EXIT.waiting);
+  });
   try {
     return await poll(ctx, first.evaluated, intervalSeconds, options.timeoutSeconds);
   } finally {
+    removeHandlers();
     lock.release();
   }
 }

@@ -2,7 +2,8 @@
 //
 // Exit codes. Each code has one meaning. Any other code means the script crashed.
 //   0   merged, or the step is done (ready, dequeued, or nothing to do)
-//   10  waiting: the PR is queued, or a check or a watch still runs
+//   10  waiting: the PR is queued, a check or a watch still runs, or a watch was
+//       stopped by a signal (the lock is removed, the PR was not judged)
 //   20  blocked: the state of the PR or of GitHub stops the step
 //   3   refused: the call is not allowed; do not retry; nothing was written
 //   4   plan: the plan is shown and nothing was written; run again with --confirm
@@ -13,6 +14,7 @@ import type { RunResult } from "../proc.ts";
 import type { GhMutation } from "../safety-gh.ts";
 import type { Policy } from "../policy/types.ts";
 import type { PolicyLoad } from "../status/run.ts";
+import type { StopSignal } from "./signals.ts";
 import type { PrSnapshot, Verdict } from "../status/types.ts";
 import type { RepoSlug, Sha } from "../types.ts";
 
@@ -60,6 +62,12 @@ export interface MergeIo {
   readonly pid: number;
   /** True when a process exists. Used only to judge a stale watch lock. */
   readonly isAlive: (pid: number) => boolean;
+  /** The start time of a process, or null when the platform does not show it. */
+  readonly startOf: (pid: number) => string | null;
+  /** Run the handler when the process gets SIGTERM, SIGINT, or SIGHUP. Returns a remover. */
+  readonly onStopSignal: (handler: (signal: StopSignal) => void) => () => void;
+  /** End the process. The watch uses it after a stop signal. */
+  readonly exit: (code: number) => void;
 }
 
 export interface Evaluated {
