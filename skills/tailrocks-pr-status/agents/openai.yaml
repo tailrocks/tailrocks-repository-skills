@@ -1,6 +1,6 @@
 interface:
   display_name: "PR Status"
-  short_description: "One merge-readiness verdict per pull request, with the next action for each blocker"
-  default_prompt: "Use $tailrocks-pr-status to read the merge-readiness of one pull request or all open pull requests. Report READY, WAITING, or BLOCKED and act on each next step. Never conclude READY yourself."
+  short_description: "Merge-readiness verdict and next step for each PR"
+  default_prompt: "Use $tailrocks-pr-status to read the merge-readiness of one pull request or all open pull requests. Report READY, WAITING, or BLOCKED exactly as the script prints it, with each blocker's next line and owner. Do not change the PR, and never conclude READY yourself."
 policy:
   allow_implicit_invocation: true
