@@ -16,14 +16,7 @@ env:
   GH_HOST: ""
   GH_TOKEN: ""
   GITHUB_TOKEN: ""
-  MISE_AUTO_INSTALL: "false"
-  MISE_EXEC_AUTO_INSTALL: "false"
   MISE_GITHUB_TOKEN: ""
-  MISE_LOCKFILE: "0"
-  MISE_NO_CONFIG: "1"
-  MISE_NO_ENV: "1"
-  MISE_NO_HOOKS: "1"
-  MISE_QUIET: "1"
   NODE_AUTH_TOKEN: ""
   NPM_TOKEN: ""
 concurrency:
@@ -70,6 +63,11 @@ jobs:
           mise-sha256: 7129dbab31d698f9028db9374f7ba7987232b0426f837dcbce437130a61415f9
           seed-admitted: ${{ steps.v2.outputs.seed_admitted }}
       - name: Prepare pinned tools
+        env:
+          MISE_LOCKFILE: "0"
+          MISE_NO_CONFIG: "1"
+          MISE_NO_ENV: "1"
+          MISE_NO_HOOKS: "1"
         run: mise --no-config --no-env --no-hooks install jactionlint@2.4.0 shellcheck@0.11.0
       - name: Verify jactionlint
         uses: ./.github/actions/velnor-verify-jactionlint # zizmor: ignore[self-repository]
@@ -82,6 +80,13 @@ jobs:
           VELNOR_REQUEST_FILE: ${{ runner.temp }}/velnor/request/plan-v1-request.json
         run: "\"$RUNNER_TEMP\"'/velnor/bin/velnor-actions-0.1.80'"
       - name: Check generated files
+        env:
+          MISE_AUTO_INSTALL: "false"
+          MISE_EXEC_AUTO_INSTALL: "false"
+          MISE_LOCKFILE: "0"
+          MISE_NO_CONFIG: "1"
+          MISE_NO_ENV: "1"
+          MISE_NO_HOOKS: "1"
         run: "sh -c 'unset ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL ACTIONS_RUNTIME_TOKEN GITHUB_TOKEN MISE_GITHUB_TOKEN GH_TOKEN GH_HOST GH_CONFIG_DIR; $RUNNER_TEMP/velnor/bin/velnor-actions-0.1.80 generate --output-dir \"$RUNNER_TEMP/velnor-actions-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}\" && diff -r --brief .github \"$RUNNER_TEMP/velnor-actions-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}/.github\"'"
       - name: Plan
         id: plan
@@ -89,6 +94,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VELNOR_INTERNAL_OP: plan-v1
           VELNOR_REQUEST_FILE: ${{ runner.temp }}/velnor/request/plan-v1-request.json
+          MISE_AUTO_INSTALL: "false"
+          MISE_EXEC_AUTO_INSTALL: "false"
+          MISE_LOCKFILE: "0"
+          MISE_NO_CONFIG: "1"
+          MISE_NO_ENV: "1"
+          MISE_NO_HOOKS: "1"
         run: "\"$RUNNER_TEMP\"'/velnor/bin/velnor-actions-0.1.80'"
       - name: Publish plan
         if: always()
@@ -104,6 +115,8 @@ jobs:
     timeout-minutes: 5
     continue-on-error: true
     env:
+      MISE_NO_CONFIG: "1"
+      MISE_NO_ENV: "1"
       VELNOR_RUN_KEY_ATTEMPT: ${{ github.run_attempt }}
     cache-mode: write
     if: "!cancelled() && github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.ref_protected == true"
@@ -152,6 +165,9 @@ jobs:
           mise-sha256: 7129dbab31d698f9028db9374f7ba7987232b0426f837dcbce437130a61415f9
       - name: Prepare pinned tools
         if: steps.v2.outputs.enabled == 'true' && steps.tools-restore.outputs.cache-hit != 'true'
+        env:
+          MISE_LOCKFILE: "0"
+          MISE_NO_HOOKS: "1"
         run: mise --no-config --no-env --no-hooks install jactionlint@2.4.0 shellcheck@0.11.0
       - name: Verify jactionlint
         if: steps.v2.outputs.enabled == 'true' && steps.tools-restore.outputs.cache-hit != 'true'
@@ -183,6 +199,8 @@ jobs:
     timeout-minutes: 5
     continue-on-error: true
     env:
+      MISE_NO_CONFIG: "1"
+      MISE_NO_ENV: "1"
       VELNOR_RUN_KEY_ATTEMPT: ${{ github.run_attempt }}
     cache-mode: write
     if: "!cancelled() && github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.ref_protected == true"
@@ -259,6 +277,8 @@ jobs:
     timeout-minutes: 5
     continue-on-error: true
     env:
+      MISE_NO_CONFIG: "1"
+      MISE_NO_ENV: "1"
       VELNOR_RUN_KEY_ATTEMPT: ${{ github.run_attempt }}
     cache-mode: write
     if: "!cancelled() && github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.ref_protected == true"

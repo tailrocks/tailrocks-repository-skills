@@ -49,7 +49,8 @@ describe("git allow-list: accepted forms", () => {
     ["symbolic-ref", "--short", "HEAD"],
     ["symbolic-ref", "refs/remotes/origin/HEAD"],
     ["push", "origin", `${A}:refs/heads/feat/x`],
-    ["push", "origin", "HEAD:refs/heads/feat/x"],
+    // The guard does not know protected branches: `branches.protected` is a later layer.
+    ["push", "origin", `${A}:refs/heads/main`],
   ];
   for (const args of accepted) {
     test(JSON.stringify(args), () => {
@@ -75,6 +76,11 @@ describe("git allow-list: forbidden forms are refused", () => {
     ["push :refspec (delete)", ["push", "origin", ":refs/heads/x"]],
     ["push empty source", ["push", "origin", ":x"]],
     ["push branch name as source", ["push", "origin", "main:refs/heads/x"]],
+    ["push HEAD is a moving source", ["push", "origin", "HEAD:refs/heads/x"]],
+    ["push HEAD to main", ["push", "origin", "HEAD:refs/heads/main"]],
+    ["push abbreviated sha", ["push", "origin", `${A.slice(0, 12)}:refs/heads/x`]],
+    ["push uppercase sha", ["push", "origin", `${A.toUpperCase()}:refs/heads/x`]],
+    ["push sha with a suffix", ["push", "origin", `${A}~1:refs/heads/x`]],
     ["push short destination", ["push", "origin", `${A}:x`]],
     ["push to a tag ref", ["push", "origin", `${A}:refs/tags/v1`]],
     ["push set-upstream flag", ["push", "-u", "origin", `${A}:refs/heads/x`]],
@@ -240,6 +246,11 @@ describe("DCO rewrite push", () => {
     await expect(pushDcoRewrite(bad, { remote: "origin" }, { cwd: "." })).rejects.toBeInstanceOf(SafetyError);
   });
 
+  test("no static factory exists, so only the module-private path mints", () => {
+    expect("mint" in DcoCapability).toBe(false);
+    expect(Object.getOwnPropertyNames(DcoCapability)).not.toContain("mint");
+  });
+
   test("only the DCO module may mint a capability", () => {
     const root = join(import.meta.dir, "..");
     const offenders: string[] = [];
@@ -258,7 +269,8 @@ describe("DCO rewrite push", () => {
         if (entry.name === "dco.ts" || entry.name === "dco-capability.ts") {
           continue;
         }
-        if (readFileSync(path, "utf8").includes("mintDcoCapability")) {
+        const source = readFileSync(path, "utf8");
+        if (/mintDcoCapability|\.mint\(|new\s+DcoCapability\b/.test(source)) {
           offenders.push(relative(root, path));
         }
       }

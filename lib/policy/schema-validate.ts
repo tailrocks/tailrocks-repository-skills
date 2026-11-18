@@ -34,6 +34,11 @@ function isJsonArray(value: JsonValue | undefined): value is readonly JsonValue[
   return Array.isArray(value);
 }
 
+/** Own-property read. Inherited names such as `toString` or `constructor` are absent. */
+function own(object: JsonObject, name: string): JsonValue | undefined {
+  return Object.hasOwn(object, name) ? object[name] : undefined;
+}
+
 const KEYWORDS: ReadonlySet<string> = new Set([
   "type",
   "properties",
@@ -151,7 +156,7 @@ function checkSchemaNode(node: JsonValue, root: JsonValue, where: string): void 
     if (typeof ref !== "string") {
       throw new SchemaError(`${where}/$ref: must be a string`);
     }
-    resolveRef(ref, root, where);
+    assertNoRefCycle(ref, root, where);
   }
 }
 
@@ -161,11 +166,26 @@ function resolveRef(ref: string, root: JsonValue, where: string): JsonValue {
     throw new SchemaError(`${where}/$ref: only local "#/$defs/<name>" references are supported`);
   }
   const defs = root["$defs"];
-  const target = isJsonObject(defs) ? defs[match[1] ?? ""] : undefined;
+  const target = isJsonObject(defs) ? own(defs, match[1] ?? "") : undefined;
   if (target === undefined) {
     throw new SchemaError(`${where}/$ref: "${ref}" does not exist`);
   }
   return target;
+}
+
+/** Follow a chain of bare references and throw when it loops. A loop would never consume data. */
+function assertNoRefCycle(ref: string, root: JsonValue, where: string): void {
+  const seen = new Set<string>();
+  let current: string | undefined = ref;
+  while (current !== undefined) {
+    if (seen.has(current)) {
+      throw new SchemaError(`${where}/$ref: "${ref}" refers to itself in a cycle`);
+    }
+    seen.add(current);
+    const target = resolveRef(current, root, where);
+    const next = isJsonObject(target) ? target["$ref"] : undefined;
+    current = typeof next === "string" ? next : undefined;
+  }
 }
 
 // ---------- Validation ----------
@@ -203,7 +223,7 @@ export function jsonEqual(a: JsonValue, b: JsonValue): boolean {
     return (
       keys.length === Object.keys(b).length &&
       keys.every((key) => {
-        const other = b[key];
+        const other = own(b, key);
         return other !== undefined && jsonEqual(a[key] ?? null, other);
       })
     );
@@ -312,7 +332,7 @@ function validateObject(
   const required = node["required"];
   if (isJsonArray(required)) {
     for (const name of required) {
-      if (typeof name === "string" && data[name] === undefined) {
+      if (typeof name === "string" && own(data, name) === undefined) {
         errors.push({ pointer: childPointer(pointer, name), message: "is required" });
       }
     }
@@ -321,7 +341,7 @@ function validateObject(
   const known = isJsonObject(properties) ? properties : {};
   const additional = node["additionalProperties"];
   for (const [name, value] of Object.entries(data)) {
-    const child = known[name];
+    const child = own(known, name);
     if (child !== undefined) {
       validateNode(child, root, value, childPointer(pointer, name), errors);
     } else if (additional === false) {
@@ -373,7 +393,7 @@ function fill(node: JsonValue, root: JsonValue, data: JsonValue): JsonValue {
     }
     const result: { [key: string]: JsonValue } = { ...data };
     for (const [name, child] of Object.entries(properties)) {
-      const present = data[name];
+      const present = own(data, name);
       if (present !== undefined) {
         result[name] = fill(child, root, present);
         continue;
