@@ -34,7 +34,7 @@ describe("recorded fixtures", () => {
     .sort();
 
   test("the required fixtures exist", () => {
-    for (const name of ["unresolved-bot-threads", "queued-with-unresolved-thread", "stale-approval", "ejected-merge-conflict", "stacked", "bot-unsigned"]) {
+    for (const name of ["unresolved-bot-threads", "queued-with-unresolved-thread", "stale-approval", "ejected-merge-conflict", "stacked", "bot-commits-dco-exempt"]) {
       expect(names).toContain(name);
     }
     expect(names.some((n) => n === "ready" || n === "synthetic-ready")).toBe(true);

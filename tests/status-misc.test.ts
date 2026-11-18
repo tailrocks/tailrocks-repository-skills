@@ -265,8 +265,8 @@ describe("anonymizer", () => {
 });
 
 describe("fixtures and policy", () => {
-  test("the bot-unsigned fixture needs dco_missing under bot_commits = rewrite", () => {
-    const snapshot = parseSnapshot(readFileSync(join(root, "tests", "fixtures", "status", "bot-unsigned.json"), "utf8"));
+  test("the bot-commits-dco-exempt fixture needs dco_missing under bot_commits = rewrite", () => {
+    const snapshot = parseSnapshot(readFileSync(join(root, "tests", "fixtures", "status", "bot-commits-dco-exempt.json"), "utf8"));
     const policy = examplePolicy();
     const exempt = evaluate(snapshot, policy).findings.map((f) => f.code);
     expect(exempt).not.toContain("dco_missing");
