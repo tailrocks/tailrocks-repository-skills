@@ -1,8 +1,8 @@
 # Discovery procedure
 
 Read this reference when step 3 discovers Git copies. Use
-[repo-scan](https://github.com/tailrocks/repo-scan) as the scanner.
-Never build a second general repository scanner in this package.
+`repo-scan` as the scanner. Never build a second general repository
+scanner in this package.
 
 Scanner checked: version 0.1.0, commit
 `13e534b5d2ad688a4d05901d36d5afc95bc454ce` (2026-10-03). No releases

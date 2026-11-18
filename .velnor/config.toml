@@ -14,3 +14,14 @@ jobs = ["alint", "strict-json", "frontmatter-id", "link-check"]
 
 [discovery]
 exclude = ["skills/**/templates/**"]
+
+
+[[workflow.tasks]]
+kind = "verification"
+id = "bun-checks"
+mise_task = "ci:bun-checks"
+runner = "linux-x64"
+timeout_minutes = 10
+[workflow.tasks.source]
+mise_config = "mise.toml"
+working_directory = "."
