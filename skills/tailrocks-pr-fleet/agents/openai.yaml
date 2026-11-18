@@ -1,0 +1,6 @@
+interface:
+  display_name: "PR: Fleet"
+  short_description: "Rank open PRs and plan queue and CI work"
+  default_prompt: "Use $tailrocks-pr-fleet to plan the work on all open pull requests. Run plan first and report the ranking, stockpile, queue hygiene, refresh budget, orphan runs, and the next line. Run apply --apply only when the user asked to run the plan. The script output is the authority. Never cancel a run or bypass a freeze."
+policy:
+  allow_implicit_invocation: false

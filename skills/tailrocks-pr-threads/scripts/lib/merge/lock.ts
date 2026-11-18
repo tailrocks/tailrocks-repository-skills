@@ -38,10 +38,16 @@ export interface LockRequest {
   /** The start time of a process, or null when the platform does not show it. */
   readonly startOf: (pid: number) => string | null;
   readonly pid: number;
+  /** File name prefix. Default: the watch lock of pr-merge. */
+  readonly prefix?: string;
+  /** Name of the lock holder in refusal messages. Default: the watcher of pr-merge. */
+  readonly label?: string;
 }
 
-export function lockPath(dir: string, repo: RepoSlug, number: number): string {
-  return join(dir, `pr-merge-watch-${repo.replace("/", "__")}-${number}.lock`);
+export const WATCH_LOCK_PREFIX = "pr-merge-watch";
+
+export function lockPath(dir: string, repo: RepoSlug, number: number, prefix: string = WATCH_LOCK_PREFIX): string {
+  return join(dir, `${prefix}-${repo.replace("/", "__")}-${number}.lock`);
 }
 
 /** Test for a process with signal 0. EPERM means the process exists. */
@@ -151,7 +157,7 @@ function staleReason(held: Held, request: LockRequest): string | null {
 let tombstones = 0;
 
 export function acquireWatchLock(request: LockRequest): LockResult {
-  const path = lockPath(request.dir, request.repo, request.number);
+  const path = lockPath(request.dir, request.repo, request.number, request.prefix);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     if (create(path, request)) {
       return { ok: true, release: releaser(path, request) };
@@ -162,10 +168,17 @@ export function acquireWatchLock(request: LockRequest): LockResult {
     }
     const held = parseHeld(text);
     if (held === null) {
-      return { ok: false, reason: `another watcher holds ${path}, and the file is unreadable; remove that exact file only if no watcher runs` };
+      const who = request.label ?? "watcher";
+      return { ok: false, reason: `another ${who} holds ${path}, and the file is unreadable; remove that exact file only if no ${who} runs` };
     }
     if (staleReason(held, request) === null) {
-      return { ok: false, reason: `another watcher (process ${held.pid}) already watches PR ${request.number}` };
+      return {
+        ok: false,
+        reason:
+          request.label === undefined
+            ? `another watcher (process ${held.pid}) already watches PR ${request.number}`
+            : `another ${request.label} (process ${held.pid}) is running`,
+      };
     }
     tombstones += 1;
     const tomb = `${path}.stale-${request.pid}-${tombstones}-${crypto.randomUUID()}`;

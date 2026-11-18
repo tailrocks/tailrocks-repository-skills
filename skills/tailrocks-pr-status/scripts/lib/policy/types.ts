@@ -108,7 +108,13 @@ export interface Policy {
   readonly regenerate: readonly PolicyRegenerateStep[];
   readonly inventories: readonly PolicyInventory[];
   readonly gates: readonly PolicyGate[];
-  readonly fleet: { readonly freeze: boolean; readonly hold: readonly number[] };
+  readonly fleet: {
+    readonly freeze: boolean;
+    readonly hold: readonly number[];
+    /** Null: the route decides (3 through a merge queue, 1 for direct merges). */
+    readonly max_merges_per_pass: number | null;
+    readonly max_merges_per_pass_congested: number;
+  };
 }
 
 export type PolicySource = "base-branch" | "local" | "default";

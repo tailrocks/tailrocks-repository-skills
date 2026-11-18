@@ -112,3 +112,9 @@ group_depth = 2
 [fleet]
 freeze = false
 hold = []
+# Merges or enqueues that one fleet pass may start. Unset: 3 through a merge
+# queue, 1 for direct merges. A pass also keeps the queue length plus its own
+# enqueues at or below ci.congestion_queue_length.
+max_merges_per_pass = 3
+# The same limit when the queue is at or above ci.congestion_queue_length.
+max_merges_per_pass_congested = 0
