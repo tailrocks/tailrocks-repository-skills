@@ -12,7 +12,7 @@ import { ReadError } from "../github/read.ts";
 import type { PolicyError } from "../policy/types.ts";
 import { hasSignoff } from "../status/text.ts";
 import { parseSha, type Sha } from "../types.ts";
-import { needsSignoff, type CommitInfo } from "./checks.ts";
+import { branchProblem, needsSignoff, type CommitInfo } from "./checks.ts";
 import { StepError } from "./github.ts";
 import { gitOut, gitSha, isAncestor } from "./local.ts";
 import { buildPlan } from "./plan.ts";
@@ -176,6 +176,13 @@ async function signoff(args: CreateArgs, cfg: CreateConfig): Promise<SignoffResu
   const branch = (await gitOut(git, ["branch", "--show-current"])).trim();
   if (branch === "") {
     return refused(3, "HEAD is not on a branch");
+  }
+  // The step moves the checked-out branch and nothing else, and never the default or a protected branch.
+  if (branch !== plan.headBranch) {
+    return refused(3, `signoff moves the checked-out branch ${branch}, but the plan is for ${plan.headBranch ?? "no branch"}. Do not pass --branch to signoff.`);
+  }
+  if (branchProblem(branch, plan.policy, plan.defaultBranch)?.code === "on_protected_branch") {
+    return refused(3, `${branch} is the default branch or a protected branch; signoff never moves it`);
   }
 
   // The range, oldest first, with every commit read as git stored it.

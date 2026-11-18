@@ -99,6 +99,10 @@ cannot change it. You do not read or change the policy.
    - An info finding `dco_missing` means pushed commits lack a sign-off. Go on.
      The PR opens as a draft whatever the policy says. `open` exits 20. Run the
      `pr-refresh dco-fix <N>` step that `open` prints.
+   - A blocker `base_ambiguous` means an open PR shares commits with the branch,
+     but the branch was not cut from its current tip. Do not guess. Pass the
+     `--base` that its `next:` line names, after you check which one the user
+     wants.
    - After `git switch -c` from the base branch, the local base branch keeps its
      extra commits. Tell the user. Do not reset or clean it.
 5. Write the body. This step writes only a file outside the clone. Copy the
@@ -142,7 +146,9 @@ cannot change it. You do not read or change the policy.
 | An added or moved file is missing from an inventory | Blocker. |
 | A pre-push step fails or changes a tracked file | Blocker. |
 | The base is neither the default branch nor the head of an open PR, and not in `branches.bases` | Blocker. |
-| The branch is built on another open PR | The base is that branch. Info: the PR stays stacked until the parent merges. |
+| The branch was cut from the current tip of another open PR | The base is that branch. Info: the PR stays stacked until the parent merges. |
+| An open PR shares commits with the branch, but its head is not part of it | Blocker `base_ambiguous`. Pass `--base`. A PR that holds the whole branch is never the parent. |
+| The remote declines the push (hook, protected branch, permission) | Refusal. A non-fast-forward with an unchanged head is exit 4. |
 | One open PR exists for the branch | Reused. Only new commits are pushed. Its title, body, and state stay. |
 | Two PRs, another author, or another base | Refusal. |
 | The body misses a template section, keeps a placeholder, or holds a credential | Blocker. |

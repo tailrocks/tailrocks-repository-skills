@@ -102,6 +102,18 @@ describe("signoff", () => {
     expect(await repos.head()).toBe(sha);
   });
 
+  test("it never moves the default branch or a branch other than the planned one", async () => {
+    const { repos, fake } = await setup();
+    await repos.git(["checkout", "main"]);
+    const sha = await repos.commit("a.txt", "a\n", "feat: add a", { signoff: false });
+    // --branch names another push name, so the plan does not see the protected checked-out branch.
+    const result = await signoffRange(argsFor("signoff", "--branch", "feat/topic", "--expect-head", sha), configFor(repos, fake));
+    expect(result).toMatchObject({ kind: "refused", code: 3 });
+    expect(result.kind === "refused" ? result.reasons.join(" ") : "").toContain("checked-out branch");
+    expect(await repos.head()).toBe(sha);
+    expect(await repos.git(["rev-parse", "refs/heads/main"])).toContain(sha);
+  });
+
   test("a merge commit in the range is refused", async () => {
     const { repos, fake } = await setup();
     await repos.commit("a.txt", "a\n", "feat: add a", { signoff: false });
@@ -155,6 +167,57 @@ describe("signoff", () => {
     expect(result).toMatchObject({ kind: "refused", code: 3 });
     expect(result.kind === "refused" ? result.reasons[0] : "").toContain("author name, email, or date changed");
     expect(await repos.head()).toBe(sha);
+  });
+
+  test("a mid-range commit whose tree differs stops before the branch moves", async () => {
+    const { repos, fake } = await setup();
+    await repos.commit("a.txt", "a\n", "feat: add a", { signoff: false });
+    const tip = await repos.commit("b.txt", "b\n", "feat: add b", { signoff: false });
+    const other = (await repos.git(["rev-parse", "main^{tree}"])).trim();
+    const config = configFor(repos, fake);
+    let calls = 0;
+    const result = await signoffRange(argsFor("signoff", "--expect-head", tip), {
+      ...config,
+      // The first rebuilt commit gets another tree. The last one keeps its own, so only the per-commit check can see it.
+      runGitEnv: (args, env) => {
+        calls += 1;
+        return config.runGitEnv(calls === 1 ? [args[0] ?? "", other, ...args.slice(2)] : args, env);
+      },
+    });
+    expect(result).toMatchObject({ kind: "refused", code: 3 });
+    expect(result.kind === "refused" ? result.reasons[0] : "").toContain("the tree changed");
+    expect(await repos.head()).toBe(tip);
+  });
+
+  test("a message that differs by more than the trailer stops before the branch moves", async () => {
+    const { repos, fake } = await setup();
+    const sha = await repos.commit("a.txt", "a\n", "feat: add a", { signoff: false });
+    const config = configFor(repos, fake);
+    const result = await signoffRange(argsFor("signoff", "--expect-head", sha), {
+      ...config,
+      runGitEnv: (args, env) => config.runGitEnv(args.map((a) => a.replace("feat: add a", "feat: changed a")), env),
+    });
+    expect(result).toMatchObject({ kind: "refused", code: 3 });
+    expect(result.kind === "refused" ? result.reasons[0] : "").toContain("more than the added trailer");
+    expect(await repos.head()).toBe(sha);
+  });
+
+  test("a commit that needs no trailer must keep its message", async () => {
+    const { repos, fake } = await setup();
+    await repos.commit("a.txt", "a\n", "feat: add a", { signoff: false });
+    const tip = await repos.commit("b.txt", "b\n", "feat: add b");
+    const config = configFor(repos, fake);
+    let calls = 0;
+    const result = await signoffRange(argsFor("signoff", "--expect-head", tip), {
+      ...config,
+      runGitEnv: (args, env) => {
+        calls += 1;
+        return config.runGitEnv(calls === 2 ? args.map((a) => a.replace("feat: add b", "feat: add B")) : args, env);
+      },
+    });
+    expect(result).toMatchObject({ kind: "refused", code: 3 });
+    expect(result.kind === "refused" ? result.reasons[0] : "").toContain("more than the added trailer");
+    expect(await repos.head()).toBe(tip);
   });
 
   test("the command line prints the new head and exits 0; JSON has schema 1", async () => {

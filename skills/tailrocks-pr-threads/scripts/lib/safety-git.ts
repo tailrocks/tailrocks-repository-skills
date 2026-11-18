@@ -192,8 +192,12 @@ function checkCommitTree(rest: readonly string[]): Guard {
 }
 
 /**
- * One shape only: update-ref refs/heads/<branch> <new sha> <old sha>. The old
- * value makes the update a compare-and-swap. The sign-off step moves a local
+ * One shape only: update-ref refs/heads/<branch> <new sha> <old sha>. Both ids
+ * are real commit ids, never all zeros, so the call moves an existing branch and
+ * never deletes or creates one. The old value makes the update a compare-and-swap.
+ * The guard does not know the current or the protected branches: the caller
+ * (the sign-off step) moves only the checked-out branch, and its plan has
+ * refused the default and protected branches already. The sign-off step moves a local
  * branch to a rebuilt history with the same trees, so no checkout follows.
  */
 function checkUpdateRef(rest: readonly string[]): Guard {
@@ -206,6 +210,13 @@ function checkUpdateRef(rest: readonly string[]): Guard {
   }
   if (!isSha(next) || !isSha(previous)) {
     return refuse("git update-ref needs two 40-hex commit ids");
+  }
+  // An all-zero id deletes a ref (as the new value) or creates one (as the old value).
+  if (/^0+$/.test(next) || /^0+$/.test(previous)) {
+    return refuse("git update-ref may not use the all-zero id: that deletes or creates a branch");
+  }
+  if (next === previous) {
+    return refuse("git update-ref needs a new id that differs from the old id");
   }
   return ALLOWED;
 }

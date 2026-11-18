@@ -102,16 +102,22 @@ function withinRoot(root: string, file: string): string | null {
 const MAX_PARENT_PROBES = 30;
 
 interface ParentSearch {
+  /** An open PR whose head is part of this branch: the branch was cut from its current tip. */
   readonly parent: OpenPr | null;
+  /** Open PRs that share commits with this branch but whose head is not part of it. Only without a parent. */
+  readonly ambiguous: readonly OpenPr[];
   readonly skipped: number;
 }
 
 /**
- * The open PR that this branch is built on, or null. A PR is the parent when the
- * merge-base of HEAD and its head is a commit of this branch that the default
- * branch lacks. This holds also when the parent gained commits after the fork.
- * The search first tries a PR whose head is in this branch, then fetches the
- * head branches of the other PRs, at most MAX_PARENT_PROBES of them.
+ * The open PR that this branch is built on, or null. A PR is the parent only
+ * when its head is an ancestor of HEAD and the default branch lacks it: the
+ * branch was cut from the parent's current tip. A PR whose head holds this whole
+ * branch is a child and never counts. A PR that shares some commits with this
+ * branch, but whose head is neither an ancestor of it nor a descendant, is
+ * ambiguous (a child that forked early, or a parent that moved on): the plan
+ * blocks and asks for --base. The search fetches the head branches of at most
+ * MAX_PARENT_PROBES other PRs.
  */
 async function findParent(
   git: CreateConfig["runGit"],
@@ -124,10 +130,10 @@ async function findParent(
   for (const rev of revs) {
     const exact = candidates.find((p) => p.headSha === rev);
     if (exact !== undefined) {
-      return { parent: exact, skipped: 0 };
+      return { parent: exact, ambiguous: [], skipped: 0 };
     }
   }
-  let best: { readonly pr: OpenPr; readonly index: number } | null = null;
+  const ambiguous: OpenPr[] = [];
   for (const pr of candidates.slice(0, MAX_PARENT_PROBES)) {
     if (!(await hasCommit(git, pr.headSha))) {
       try {
@@ -147,12 +153,11 @@ async function findParent(
       continue;
     }
     const base = await mergeBaseOf(git, headSha, pr.headSha);
-    const index = base === null ? -1 : revs.indexOf(base);
-    if (index >= 0 && (best === null || index < best.index)) {
-      best = { pr, index };
+    if (base !== null && revs.includes(base)) {
+      ambiguous.push(pr);
     }
   }
-  return { parent: best?.pr ?? null, skipped: Math.max(0, candidates.length - MAX_PARENT_PROBES) };
+  return { parent: null, ambiguous, skipped: Math.max(0, candidates.length - MAX_PARENT_PROBES) };
 }
 
 export async function buildPlan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
@@ -254,6 +259,14 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
       stackedOn = { number: found.parent.number, ref: found.parent.headRef, sha: found.parent.headSha };
       baseRef = found.parent.headRef;
       baseSha = found.parent.headSha;
+    }
+    for (const other of found.ambiguous) {
+      add(
+        "base_ambiguous",
+        "blocker",
+        `the open PR #${other.number} (${other.headRef}) shares commits with this branch, but its head is not part of it`,
+        `Pass --base ${other.headRef} to stack on that PR's branch, or --base ${defaultBranch} to open against the default branch.`,
+      );
     }
     if (found.skipped > 0) {
       add("stack_probe_capped", "info", `the parent search read ${MAX_PARENT_PROBES} open PRs and skipped ${found.skipped}`, "Pass --base <parent branch> when the branch is built on a PR that was skipped.");

@@ -171,25 +171,48 @@ describe("plan: the base", () => {
     }
   });
 
-  test("a parent PR that gained commits after the fork is still the parent", async () => {
+  test("a parent that moved on after the fork is ambiguous: the plan blocks and asks for --base", async () => {
     const { repos, fake } = await setup();
     await repos.git(["checkout", "-b", "parent"]);
-    const forkPoint = await repos.commit("p.txt", "p\n", "feat: parent");
+    await repos.commit("p.txt", "p\n", "feat: parent");
     await repos.git(["push", "origin", "parent"]);
     await repos.git(["checkout", "-B", "feat/topic"]);
     await repos.commit("c.txt", "c\n", "feat: child");
-    // The parent moves on after the fork.
     await repos.git(["checkout", "parent"]);
     const tip = await repos.commit("p2.txt", "p2\n", "feat: parent again");
     await repos.git(["push", "origin", "parent"]);
     await repos.git(["checkout", "feat/topic"]);
     fake.world.prs.push({ number: 5, id: "PR_5", title: "parent", headRef: "parent", headSha: tip, baseRef: "main", isDraft: true, isCrossRepository: false, author: "dev-a", labels: [], body: "" });
-    fake.world.prs.push({ number: 6, id: "PR_6", title: "other", headRef: "other", headSha: "9".repeat(40), baseRef: "main", isDraft: true, isCrossRepository: false, author: "dev-a", labels: [], body: "" });
-    const plan = await planOf(repos, fake);
-    expect(plan.base.stackedOn).toEqual({ number: 5, ref: "parent" });
-    expect(String(plan.base.sha)).toBe(tip);
-    expect(plan.commitCount).toBe(1);
-    expect(forkPoint.length).toBe(40);
+    const plan = await planOf(repos, fake, "--title", "feat: child");
+    expect(plan.base.ref).toBe("main");
+    expect(plan.base.stackedOn).toBeNull();
+    expect(plan.exit).toBe(20);
+    expect(codes(plan, "blocker")).toEqual(["base_ambiguous"]);
+    expect(plan.findings[0]?.detail).toContain("#5");
+    expect(plan.next).toContain("--base");
+    const chosen = await planOf(repos, fake, "--base", "parent");
+    expect(chosen.base.stackedOn).toEqual({ number: 5, ref: "parent" });
+    expect(String(chosen.base.sha)).toBe(tip);
+    expect(chosen.exit).toBe(0);
+  });
+
+  test("a child PR that shares only the first commits is never picked as the parent", async () => {
+    const { repos, fake } = await setup();
+    await repos.commit("a1.txt", "1\n", "feat: a1");
+    const a1 = await repos.head();
+    await repos.git(["checkout", "-b", "feat/b"]);
+    const b1 = await repos.commit("b1.txt", "b\n", "feat: b1");
+    await repos.git(["push", "origin", "feat/b"]);
+    await repos.git(["checkout", "feat/topic"]);
+    await repos.commit("a2.txt", "2\n", "feat: a2");
+    fake.world.prs.push({ number: 7, id: "PR_7", title: "b", headRef: "feat/b", headSha: b1, baseRef: "main", isDraft: true, isCrossRepository: false, author: "other-dev", labels: [], body: "" });
+    const plan = await planOf(repos, fake, "--title", "feat: a");
+    expect(plan.base.ref).toBe("main");
+    expect(plan.base.stackedOn).toBeNull();
+    expect(plan.commitCount).toBe(2);
+    expect(codes(plan, "blocker")).toEqual(["base_ambiguous"]);
+    expect(plan.findings[0]?.detail).toContain("#7");
+    expect(a1.length).toBe(40);
   });
 
   test("a PR that is built on this branch is not its parent", async () => {

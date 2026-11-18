@@ -41,7 +41,10 @@ function refused(code: 3 | 4, ...reasons: readonly string[]): OpenResult {
   return { kind: "refused", code, reasons };
 }
 
-const PUSH_RACE = /rejected|non-fast-forward|fetch first|stale info/i;
+// Only a non-fast-forward means that the remote branch moved. A hook, a protected branch, or a
+// permission rejection says "[remote rejected]" and does not change with a new plan.
+const NON_FAST_FORWARD = /non-fast-forward|fetch first|stale info/i;
+const REMOTE_REJECTED = /\[remote rejected\]|protected branch|permission|denied|declined/i;
 const PR_URL = /https?:\/\/\S+\/pull\/\d+/;
 
 export async function openPr(args: CreateArgs, cfg: CreateConfig): Promise<OpenResult> {
@@ -149,7 +152,11 @@ async function open(args: CreateArgs, cfg: CreateConfig): Promise<OpenResult> {
     const result = await cfg.runGit(["push", plan.remote, `${plan.headSha}:refs/heads/${branch}`]);
     if (result.code !== 0) {
       const reason = `git push failed, nothing was pushed: ${firstLine(result.stderr) || `exit ${result.code}`}`;
-      return PUSH_RACE.test(result.stderr) ? refused(4, reason, "The remote branch moved. Run plan again.") : refused(3, reason);
+      // Exit 4 needs a non-fast-forward and an unchanged local head. Anything else is not cured by a new plan.
+      const headStill = (await gitSha(cfg.runGit, ["rev-parse", "HEAD"])) === plan.headSha;
+      return NON_FAST_FORWARD.test(result.stderr) && !REMOTE_REJECTED.test(result.stderr) && headStill
+        ? refused(4, reason, "The remote branch moved. Run plan again.")
+        : refused(3, reason);
     }
     pushed = true;
   }

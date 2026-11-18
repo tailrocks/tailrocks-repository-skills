@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { openPr, type OpenResult } from "../lib/create/open.ts";
 import { runCli, argsFor, configFor, fakeWorld, GOOD_BODY, makeRepos, newWorld, writeTemp, type FakeWorld, type Repos, type World } from "./helpers/create.ts";
@@ -161,6 +161,58 @@ describe("open: failure and retry", () => {
     expect(result.kind === "refused" ? result.code : 0).toBe(4);
     expect(fake.world.created).toEqual([]);
     expect(await repos.remoteRef("feat/topic")).not.toBe(sha);
+  });
+});
+
+describe("open: a push failure is classified by its cause", () => {
+  test("a remote that declines the push (a hook or a protected branch) is exit 3, not a re-plan", async () => {
+    const { repos, fake, sha, body } = await setup();
+    const hook = join(repos.remote, "hooks", "pre-receive");
+    writeFileSync(hook, "#!/bin/sh\necho 'protected branch: pushes are declined' >&2\nexit 1\n");
+    chmodSync(hook, 0o755);
+    const result = await open(repos, fake, sha, "--body-file", body);
+    expect(result.kind).toBe("refused");
+    expect(result.kind === "refused" ? result.code : 0).toBe(3);
+    expect(result.kind === "refused" ? result.reasons.join(" ") : "").toContain("git push failed, nothing was pushed");
+    expect(result.kind === "refused" ? result.reasons.join(" ") : "").not.toContain("Run plan again");
+    expect(fake.world.created).toEqual([]);
+  });
+
+  test("a non-fast-forward is exit 4 only while the local head is still the planned head", async () => {
+    const { repos, fake, sha, body } = await setup();
+    const config = configFor(repos, fake);
+    const nonFastForward = " ! [rejected]        x -> feat/topic (non-fast-forward)\nerror: failed to push some refs";
+    const stale = {
+      ...config,
+      runGit: async (args: readonly string[]) => (args[0] === "push" ? { code: 1, stdout: "", stderr: nonFastForward } : config.runGit(args)),
+    };
+    const same = await openPr(argsFor("open", "--expect-head", sha, "--body-file", body), stale);
+    expect(same.kind === "refused" ? same.code : 0).toBe(4);
+    const moved = {
+      ...config,
+      runGit: async (args: readonly string[]) => {
+        if (args[0] === "push") {
+          await repos.commit("late.txt", "x\n", "feat: late");
+          return { code: 1, stdout: "", stderr: nonFastForward };
+        }
+        return config.runGit(args);
+      },
+    };
+    const changed = await openPr(argsFor("open", "--expect-head", sha, "--body-file", body), moved);
+    expect(changed.kind === "refused" ? changed.code : 0).toBe(3);
+    expect(fake.world.created).toEqual([]);
+  });
+
+  test("a [remote rejected] line is exit 3", async () => {
+    const { repos, fake, sha, body } = await setup();
+    const config = configFor(repos, fake);
+    const wrapped = {
+      ...config,
+      runGit: async (args: readonly string[]) =>
+        args[0] === "push" ? { code: 1, stdout: "", stderr: " ! [remote rejected] x -> feat/topic (pre-receive hook declined)" } : config.runGit(args),
+    };
+    const result = await openPr(argsFor("open", "--expect-head", sha, "--body-file", body), wrapped);
+    expect(result.kind === "refused" ? result.code : 0).toBe(3);
   });
 });
 
