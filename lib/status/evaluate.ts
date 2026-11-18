@@ -5,7 +5,7 @@ import { matchesAnyGlob } from "../glob.ts";
 import type { Policy, PolicySource } from "../policy/types.ts";
 import type { RepoSlug } from "../types.ts";
 import { checkFindings } from "./checks.ts";
-import { finding, short, sortFindings } from "./findings.ts";
+import { finding, listCapped, short, sortFindings } from "./findings.ts";
 import { reviewFindings } from "./reviews.ts";
 import { bodyProblems, hasSignoff, parseDoneWhen, sameLogin } from "./text.ts";
 import type { Finding, PrSnapshot, QueueState, Verdict } from "./types.ts";
@@ -83,13 +83,14 @@ function dcoFindings(snapshot: PrSnapshot, policy: Policy): readonly Finding[] {
   if (unsigned.length === 0) {
     return [];
   }
-  const who = [...new Set(unsigned.map((c) => c.authorLogin ?? c.authorEmail))].join(", ");
+  const who = [...new Set(unsigned.map((c) => c.authorLogin ?? c.authorEmail))];
   return [
     finding(
       "dco_missing",
       "blocker",
-      `${unsigned.length} commit${unsigned.length === 1 ? "" : "s"} without Signed-off-by (${unsigned.map((c) => short(c.oid)).join(", ")}; authors: ${who})`,
+      `${unsigned.length} commit${unsigned.length === 1 ? "" : "s"} without Signed-off-by (${listCapped(unsigned.map((c) => short(c.oid)))}; authors: ${listCapped(who)})`,
       "Add the sign-off with pr-refresh dco-fix",
+      unsigned.map((c) => c.oid),
     ),
   ];
 }
@@ -119,8 +120,9 @@ function issueFindings(snapshot: PrSnapshot, policy: Policy): readonly Finding[]
     finding(
       "done_when_unchecked",
       policy.issues.done_when === "block" ? "blocker" : "info",
-      `linked issue Done-when boxes are open: ${parts.join(" | ")}`,
+      `linked issue Done-when boxes are open: ${listCapped(parts)}`,
       "Prove each box in the PR body, or link the issue with Part of instead of Closes",
+      parts,
     ),
   ];
 }
@@ -302,6 +304,17 @@ function build(snapshot: PrSnapshot, policy: Policy, policySource: PolicySource)
     ...bodyFindings(snapshot, policy),
     ...gateFindings(snapshot, policy),
   ];
+  const blocked = findings.filter((f) => f.kind === "blocker" && f.code !== "queue_unmergeable");
+  const queuedAt = findings.findIndex((f) => f.code === "queued");
+  if (queuedAt >= 0 && blocked.length > 0) {
+    const queued = findings[queuedAt];
+    findings.splice(queuedAt, 1, finding(
+      "queued_while_blocked",
+      "blocker",
+      `${queued?.detail ?? "in the merge queue"}, and ${blocked.length} other blocker${blocked.length === 1 ? "" : "s"} remain (${listCapped([...new Set(blocked.map((f) => f.code))])})`,
+      "pr-merge dequeue so the entry does not block the queue, then fix",
+    ));
+  }
   const hasBlocker = findings.some((f) => f.kind === "blocker");
   const hasWait = findings.some((f) => f.kind === "wait");
   if (!hasBlocker && !hasWait) {

@@ -31,6 +31,7 @@ each code means and what to do. The script prints the exact `next` text.
 | `threads_unresolved` | blocker | At least one review thread is unresolved, from a bot or a person. | Fix or defer each thread, reply, and resolve. | pr-threads |
 | `dco_missing` | blocker | A commit that is not exempt has no `Signed-off-by:` trailer. | Add the sign-off. | pr-refresh |
 | `queued` | wait | The PR is in the merge queue and moving (QUEUED, AWAITING_CHECKS, MERGEABLE, or LOCKED). | Watch the entry. | pr-merge |
+| `queued_while_blocked` | blocker | The PR is in the merge queue and has at least one other blocker. The entry can hold up the PRs behind it. | `pr-merge dequeue` so the entry does not block the queue, then fix. | pr-merge |
 | `queue_unmergeable` | blocker | The queue entry is UNMERGEABLE and blocks the entries behind it. | Dequeue it, then refresh the PR. | pr-merge |
 | `queue_ejected` | info | GitHub removed the PR from the queue, and the head has not changed since. The reason is free text. | The blocking findings give the action. | pr-status |
 | `done_when_unchecked` | blocker or info | A linked issue has open Done-when boxes. The kind comes from `issues.done_when`. | Prove each box, or link the issue with `Part of`. | human |
@@ -53,6 +54,32 @@ each code means and what to do. The script prints the exact `next` text.
   the base (`git merge-tree` exits 0 and its tree equals the merge tree), or a
   rewrite that changed only `Signed-off-by:` lines. Any git failure ends the
   chain, and the head needs its own review.
+
+## Headline order
+
+The first line of the verdict gives the `next` of the first blocker in this
+order. Work that changes the head comes first. Review comes last among the code
+steps, because an earlier step changes the head, and the review must be on the
+final head.
+
+1. `pr_not_open`
+2. `unknown_state`
+3. `stacked`, `wrong_base`
+4. `queued_while_blocked`
+5. `conflict`, `queue_unmergeable`, `behind_base`
+6. `dco_missing`
+7. `check_stale_base`
+8. `threads_unresolved`
+9. `check_failed`, `check_not_passing`, `check_wrong_source`
+10. `check_flaky`, `check_cancelled`, `check_missing`, `ci_label_needed`
+11. `review_missing`, `review_changes_requested`, `review_decision`, `review_blocking_finding`, `review_stale`
+12. `draft`
+13. `body_template`, `done_when_unchecked`
+14. `gate_failed`
+15. `github_disagrees`
+
+An `info` finding never blocks. A `wait` finding never blocks either; it ends
+when time passes.
 
 ## Verdict rule
 
