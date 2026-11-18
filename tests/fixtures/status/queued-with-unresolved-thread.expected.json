@@ -1,0 +1,9 @@
+{
+  "state": "BLOCKED",
+  "codes": [
+    "behind_base",
+    "mergeability_pending",
+    "queued",
+    "threads_unresolved"
+  ]
+}

@@ -1,0 +1,1378 @@
+{
+  "schema": 1,
+  "capturedAt": "2026-11-18T21:01:00.133Z",
+  "repo": "example-org/example-repo",
+  "defaultBranch": "main",
+  "number": 1327,
+  "nodeId": "PR_example_1327",
+  "state": "OPEN",
+  "isDraft": false,
+  "isCrossRepository": false,
+  "author": "user-a",
+  "title": "Example change 1327",
+  "body": "Part of #1290\n## Helper-guard bypass fix",
+  "baseRef": "main",
+  "baseSha": "95de9b704b7e6585dd3b1a66b96d9fd08c8b6cd9",
+  "headRef": "feature/1327",
+  "headSha": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+  "mergeable": "CONFLICTING",
+  "mergeStateStatus": "DIRTY",
+  "reviewDecision": null,
+  "behindBy": 12,
+  "labels": [],
+  "checks": [
+    {
+      "name": "Alint",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:43:40Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Build Linux job image candidate",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Job image candidate",
+      "event": "push",
+      "startedAt": "2026-11-18T16:36:17Z",
+      "completedAt": "2026-11-18T16:38:24Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Plan",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:39:11Z",
+      "completedAt": "2026-11-18T16:40:32Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Cargo Deny",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:43:40Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Attest Linux job image candidate",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Job image candidate",
+      "event": "push",
+      "startedAt": "2026-11-18T16:38:24Z",
+      "completedAt": "2026-11-18T16:38:24Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Select source qualification",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:56:32Z",
+      "completedAt": "2026-11-18T16:56:41Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Cargo Machete",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:43:40Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Publish Linux job image",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Job image candidate",
+      "event": "push",
+      "startedAt": "2026-11-18T16:38:25Z",
+      "completedAt": "2026-11-18T16:38:24Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Source qualification ordinary harness",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:56:41Z",
+      "completedAt": "2026-11-18T16:59:36Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Jactionlint",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:43:40Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Source qualification keep harness",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:56:41Z",
+      "completedAt": "2026-11-18T16:59:36Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Source qualification generation and repository checks",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:56:41Z",
+      "completedAt": "2026-11-18T16:59:36Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Ledger CLI",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:56:41Z",
+      "completedAt": "2026-11-18T16:57:36Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Source qualification",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "failure",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "Source qualification",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T17:04:52Z",
+      "completedAt": "2026-11-18T17:05:05Z",
+      "attempts": 1,
+      "failedAttempts": 1
+    },
+    {
+      "name": "Plan",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:43:40Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Check / generator-samples / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Check / maintenance-helpers / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-actionlint / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-ansible / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-bun / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-cli / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-contract / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-dbt / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-gradle / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-mise / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-orchestrator / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-rust / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-tofu / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-actions-workflow-renderer / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-cache-rules / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-ci / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-gen / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-local / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-model / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-release / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-render / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-resource-probe / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-attestation / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-cli / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-core / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-github / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-host / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-host (local-mode) / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-image-manifest / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-runner-qualification / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-rust / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Rust / example-workflows / example Scale Set / Linux x64",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": false,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:38Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Required verdict",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "isRequired": true,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T16:59:39Z",
+      "completedAt": "2026-11-18T16:59:38Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    },
+    {
+      "name": "Required",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "failure",
+      "isRequired": true,
+      "appId": 15368,
+      "workflow": "CI",
+      "event": "pull_request",
+      "startedAt": "2026-11-18T17:03:58Z",
+      "completedAt": "2026-11-18T17:04:03Z",
+      "attempts": 1,
+      "failedAttempts": 1
+    },
+    {
+      "name": "DCO",
+      "kind": "check_run",
+      "status": "completed",
+      "conclusion": "success",
+      "isRequired": false,
+      "appId": 974774,
+      "workflow": null,
+      "event": null,
+      "startedAt": "2026-11-18T16:36:17Z",
+      "completedAt": "2026-11-18T16:36:18Z",
+      "attempts": 1,
+      "failedAttempts": 0
+    }
+  ],
+  "checksTruncated": false,
+  "reviews": [
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "423e97365b960a578ba74609d069baeb0bfaddb5",
+      "submittedAt": "2026-11-18T13:54:12Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "Verdict: approve",
+      "commit": "423e97365b960a578ba74609d069baeb0bfaddb5",
+      "submittedAt": "2026-11-18T13:57:02Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "09aa5d44d8f4aee119d090d53bfa8dc438e74f7e",
+      "submittedAt": "2026-11-18T14:33:07Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "d3d3dac89bf39b28be21d02ddca8db4a06a3810c",
+      "submittedAt": "2026-11-18T15:27:18Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "d3d3dac89bf39b28be21d02ddca8db4a06a3810c",
+      "submittedAt": "2026-11-18T15:27:29Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "67769b95b9fa671d33a382988f8ee0c0499df9dd",
+      "submittedAt": "2026-11-18T15:56:46Z"
+    },
+    {
+      "author": "chatgpt-codex-connector",
+      "association": "NONE",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T16:43:27Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:34Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:35Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:36Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:36Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:37Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:37Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:38Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:40Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:40Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:41Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:43Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:44Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:45Z"
+    },
+    {
+      "author": "user-a",
+      "association": "MEMBER",
+      "state": "COMMENTED",
+      "body": "",
+      "commit": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "submittedAt": "2026-11-18T19:35:46Z"
+    }
+  ],
+  "reviewsTruncated": false,
+  "latestOpinionatedReviews": [],
+  "threads": [
+    {
+      "id": "thread-1",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-1.rs",
+      "line": 173,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject write",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-2",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-2.toml",
+      "line": 965,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Supply the r",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-3",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-3.rs",
+      "line": 6,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Remove the e",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-4",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-4.rs",
+      "line": 161,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject outpu",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-5",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-5.rs",
+      "line": 95,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Guard empty ",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-6",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-6.rs",
+      "line": 25,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Recognize en",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-7",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-7.rs",
+      "line": 55,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Validate con",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-8",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-8.rs",
+      "line": 94,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Compare job ",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-9",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-9.rs",
+      "line": 97,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject dupli",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-10",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-10.rs",
+      "line": 77,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject an em",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-11",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-11.rs",
+      "line": 134,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Verify cache",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-12",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-12.rs",
+      "line": 131,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Force artifa",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-13",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-13.rs",
+      "line": 166,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Disable chec",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-14",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-14.rs",
+      "line": 114,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject empty",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-15",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-15.rs",
+      "line": 271,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Require mand",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-16",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-16.rs",
+      "line": 181,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject envir",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-17",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-17.rs",
+      "line": 166,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Disable Mise",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-18",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-18.rs",
+      "line": 52,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Compare work",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-19",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-19.rs",
+      "line": 122,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject Unico",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-20",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-20.rs",
+      "line": 36,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Cap workflow",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-21",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-21.rs",
+      "line": 96,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject unsup",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-22",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-22.rs",
+      "line": 122,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "<!-- codex-security-review-finding:v1 -->",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-23",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-23.rs",
+      "line": 137,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject malfo",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-24",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-24.rs",
+      "line": 138,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Make workflo",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-25",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-25.rs",
+      "line": 144,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Bound dynami",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    },
+    {
+      "id": "thread-26",
+      "isResolved": true,
+      "isOutdated": false,
+      "path": "src/file-26.rs",
+      "line": 233,
+      "firstAuthor": "chatgpt-codex-connector",
+      "firstBody": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Remove the e",
+      "lastAuthor": "user-a",
+      "commentCount": 2
+    }
+  ],
+  "threadsTruncated": false,
+  "commits": [
+    {
+      "oid": "538c6ec768d0900c923da0d4461a68837ab11d76",
+      "parents": [
+        "487dbd6ac8b0df3c1f344a21665ffd11eb1a0f65"
+      ],
+      "tree": "b4015dbdd39a392badfc311c8505f1a648c77160",
+      "message": "commit 538c6ec\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T10:09:28Z"
+    },
+    {
+      "oid": "28efc18657be18d1ab6e94a7afc4fcebbf74a29a",
+      "parents": [
+        "538c6ec768d0900c923da0d4461a68837ab11d76"
+      ],
+      "tree": "9588bb88ddbdb9f02c52d2d4367969473611dc36",
+      "message": "commit 28efc18\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T10:23:41Z"
+    },
+    {
+      "oid": "aac70d7a0f45440f4602d330436bdc69548d35ec",
+      "parents": [
+        "28efc18657be18d1ab6e94a7afc4fcebbf74a29a"
+      ],
+      "tree": "dee6b79b28589e55905b57922a6f0c766f90ea1c",
+      "message": "commit aac70d7\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T10:45:41Z"
+    },
+    {
+      "oid": "908d7075ff680ac7c3c4103222764ce6eda31f0a",
+      "parents": [
+        "aac70d7a0f45440f4602d330436bdc69548d35ec"
+      ],
+      "tree": "ec4e4769edf32da126d313fde90cb9c966bdc561",
+      "message": "commit 908d707\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T11:11:22Z"
+    },
+    {
+      "oid": "423e97365b960a578ba74609d069baeb0bfaddb5",
+      "parents": [
+        "908d7075ff680ac7c3c4103222764ce6eda31f0a"
+      ],
+      "tree": "6abb43d199d33505ef7618f905b09f734e540f86",
+      "message": "commit 423e973\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T12:54:11Z"
+    },
+    {
+      "oid": "819f3a73f365c461827c52c9d3b20cc538f1540e",
+      "parents": [
+        "423e97365b960a578ba74609d069baeb0bfaddb5",
+        "c0d0b511810773dd8639fcc14c245b196e257115"
+      ],
+      "tree": "0122e75e0d1ff9ce39aecb395809afd27b034114",
+      "message": "commit 819f3a7",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T14:14:33Z"
+    },
+    {
+      "oid": "91ad0d39420d439c58f59be90f11b09ba84ac208",
+      "parents": [
+        "819f3a73f365c461827c52c9d3b20cc538f1540e"
+      ],
+      "tree": "c6940be0f48bb36360f15ae38841b67ce8a24107",
+      "message": "commit 91ad0d3\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T14:20:43Z"
+    },
+    {
+      "oid": "09aa5d44d8f4aee119d090d53bfa8dc438e74f7e",
+      "parents": [
+        "91ad0d39420d439c58f59be90f11b09ba84ac208"
+      ],
+      "tree": "9d5c60c200cef0cb9788f90dbbf0fb330ea0a91d",
+      "message": "commit 09aa5d4\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T14:22:25Z"
+    },
+    {
+      "oid": "d3d3dac89bf39b28be21d02ddca8db4a06a3810c",
+      "parents": [
+        "09aa5d44d8f4aee119d090d53bfa8dc438e74f7e"
+      ],
+      "tree": "70ca2e6c5b1dc1f9565f9a77cac9fbd9a043240b",
+      "message": "commit d3d3dac\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T15:16:02Z"
+    },
+    {
+      "oid": "072d3585d75b45c511d4821e817f22b480167e88",
+      "parents": [
+        "d3d3dac89bf39b28be21d02ddca8db4a06a3810c",
+        "f7843eb3f57297f3efa014b1fc502df1827f039d"
+      ],
+      "tree": "e342c0ddca2c454cfaab4ad95e4b8cf182453e8b",
+      "message": "commit 072d358",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T15:47:27Z"
+    },
+    {
+      "oid": "67769b95b9fa671d33a382988f8ee0c0499df9dd",
+      "parents": [
+        "072d3585d75b45c511d4821e817f22b480167e88"
+      ],
+      "tree": "7392ef7323e17f2130ac0749c209d1eb0dc8a0dd",
+      "message": "commit 67769b9\n\nSigned-off-by: user-a <user-a@example.com>",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T15:48:14Z"
+    },
+    {
+      "oid": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+      "parents": [
+        "67769b95b9fa671d33a382988f8ee0c0499df9dd",
+        "95de9b704b7e6585dd3b1a66b96d9fd08c8b6cd9"
+      ],
+      "tree": "61296bac4cbcc4a1dd4c1736faf862fc3e0feab3",
+      "message": "commit c990493",
+      "authorLogin": "user-a",
+      "authorEmail": "user-a@example.com",
+      "committedDate": "2026-11-18T16:34:22Z"
+    }
+  ],
+  "commitsTruncated": false,
+  "queueEntry": null,
+  "lastQueueRemoval": null,
+  "linkedIssues": [
+    {
+      "number": 1290,
+      "state": "OPEN",
+      "body": "## Done when\n- [ ] open item 1\n- [ ] open item 2\n- [ ] open item 3",
+      "via": "body"
+    }
+  ],
+  "parentPr": null,
+  "rules": {
+    "requiredChecks": [
+      {
+        "name": "Required verdict",
+        "appId": null,
+        "source": "ruleset"
+      },
+      {
+        "name": "Required",
+        "appId": null,
+        "source": "ruleset"
+      }
+    ],
+    "strictUpToDate": false,
+    "mergeQueue": true,
+    "queueLength": 29,
+    "requiredApprovingReviewCount": 0,
+    "requireCodeOwnerReview": false,
+    "dismissStaleReviewsOnPush": true,
+    "threadResolutionRequired": true,
+    "allowedMergeMethods": [
+      "squash"
+    ],
+    "known": true
+  },
+  "bodyTemplate": null,
+  "git": {
+    "available": true,
+    "unavailableBecause": null,
+    "reviewEquivalentHeads": [
+      {
+        "sha": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
+        "via": "head"
+      },
+      {
+        "sha": "67769b95b9fa671d33a382988f8ee0c0499df9dd",
+        "via": "clean_base_merge"
+      }
+    ],
+    "carryStoppedBecause": "commit 67769b9 changes files; no carry-over across a code change"
+  },
+  "problems": []
+}

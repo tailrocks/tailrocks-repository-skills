@@ -1,0 +1,9 @@
+{
+  "state": "BLOCKED",
+  "codes": [
+    "behind_base",
+    "check_cancelled",
+    "check_stale_base",
+    "threads_unresolved"
+  ]
+}
