@@ -111,14 +111,16 @@ Invoke the refresh owner with a mode and a pull-request number:
 /tailrocks-repository-skills:tailrocks-pr-refresh sync 1663
 ```
 
-The skill has three modes: `sync`, `dco-fix`, and `metadata`. It has no
-default mode. `sync` merges the base branch in a temporary worktree,
+The skill has the modes `sync`, `dco-fix`, and `metadata`, and the two
+modes `continue` and `abort` that finish or drop a merge that `sync
+--keep-worktree` kept for a conflict. It has no default mode. `sync` merges the base branch in a temporary worktree,
 regenerates the outputs that the repository policy names, runs the
 pre-push checks, and pushes one commit once. `dco-fix` is the only mode
 that force-pushes. It adds missing sign-off trailers and nothing else.
 `metadata` reconciles the title and body with the diff and pushes
 nothing. The reference `outcome-codes.md` in the skill lists every
 blocked outcome.
+
 ## Example: land a pull request
 
 Invoke the merge owner with a pull-request number:
