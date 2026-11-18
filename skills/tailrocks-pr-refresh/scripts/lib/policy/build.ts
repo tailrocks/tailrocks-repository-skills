@@ -131,6 +131,7 @@ export function buildPolicy(value: JsonValue): Policy {
     review: {
       source: review.choice("source", ["github-approval", "comment-verdict"]),
       reviewers: review.strings("reviewers"),
+      count_author: review.boolean("count_author"),
       approve_pattern: review.string("approve_pattern"),
       changes_pattern: review.string("changes_pattern"),
       blocking_pattern: review.string("blocking_pattern"),

@@ -245,6 +245,7 @@ export const FINDING_CODES = [
   "body_template",
   "gate_failed",
   "cross_repository",
+  "non_required_failing",
   "github_disagrees",
 ] as const;
 
