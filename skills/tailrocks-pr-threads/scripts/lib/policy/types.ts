@@ -76,6 +76,8 @@ export interface Policy {
     readonly jump: "never" | "labelled";
     readonly jump_labels: readonly string[];
     readonly delete_branch: "own-only" | "never";
+    readonly high_risk_paths: readonly string[];
+    readonly watch_interval_seconds: number;
   };
   readonly draft: {
     readonly create_as_draft: boolean;
@@ -119,4 +121,9 @@ export interface PolicyError {
 
 export type PolicyResult =
   | { readonly ok: true; readonly policy: Policy; readonly source: PolicySource }
-  | { readonly ok: false; readonly errors: readonly PolicyError[] };
+  | {
+      readonly ok: false;
+      readonly errors: readonly PolicyError[];
+      /** True when the file could not be read (a transient failure). False: it was read and is invalid. */
+      readonly unreadable?: boolean;
+    };
