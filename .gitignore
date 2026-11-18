@@ -5,3 +5,4 @@ helper/target/
 .local/
 state/
 dist/
+node_modules/
