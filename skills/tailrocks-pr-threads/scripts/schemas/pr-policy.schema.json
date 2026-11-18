@@ -1,0 +1,503 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/pr-policy.schema.json",
+  "title": "Pull request policy",
+  "description": "Policy file .config/pr-policy.toml, schema 1. Every key is optional except schema. Unknown keys are errors.",
+  "type": "object",
+  "required": ["schema"],
+  "additionalProperties": false,
+  "$defs": {
+    "stringList": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "globList": {
+      "description": "List of glob patterns.",
+      "type": "array",
+      "items": { "type": "string", "pattern": "\\S" }
+    },
+    "argv": {
+      "description": "Command as an argument array. No shell runs it.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "\\S" }
+    },
+    "pattern": {
+      "description": "Regular expression, JavaScript flavour. Empty means not set.",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "schema": {
+      "description": "Policy schema version.",
+      "const": 1
+    },
+    "branches": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protected": {
+          "description": "Glob list of branches. The DCO fix and every push are refused on them.",
+          "$ref": "#/$defs/globList",
+          "default": ["main"]
+        },
+        "name_pattern": {
+          "description": "Regular expression for new branch names (used by pr-create).",
+          "$ref": "#/$defs/pattern",
+          "default": "^(feat|fix|docs|chore|refactor|test|ci|build|perf)/[a-z0-9._-]+$"
+        },
+        "bases": {
+          "description": "Extra allowed base branches (globs). The default branch is always allowed.",
+          "$ref": "#/$defs/globList",
+          "default": []
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "description": "Check names that must pass on the head. Union with the ruleset's required checks. Never removes one.",
+          "$ref": "#/$defs/stringList",
+          "default": []
+        },
+        "flaky": {
+          "description": "A failure of these checks is check_flaky (re-run), not check_failed.",
+          "$ref": "#/$defs/stringList",
+          "default": []
+        },
+        "flaky_reruns": {
+          "description": "Attempts beyond this number turn a flaky failure into check_failed.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 1
+        },
+        "accept_skipped": {
+          "description": "Required checks for which skipped or neutral counts as a pass.",
+          "$ref": "#/$defs/stringList",
+          "default": []
+        },
+        "base_sensitive": {
+          "description": "A failure of these checks while the branch is behind the base is check_stale_base (merge the base, no code change).",
+          "$ref": "#/$defs/stringList",
+          "default": []
+        },
+        "cancellation_is_load": {
+          "description": "A cancelled required check with no failure is check_cancelled (re-trigger).",
+          "type": "boolean",
+          "default": true
+        },
+        "watched_workflows": {
+          "description": "Workflow names whose unfinished runs on the head make the verdict WAITING.",
+          "$ref": "#/$defs/stringList",
+          "default": []
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "description": "Where the review verdict comes from.",
+          "type": "string",
+          "enum": ["github-approval", "comment-verdict"],
+          "default": "github-approval"
+        },
+        "reviewers": {
+          "description": "Logins whose verdict counts. Empty means writers (OWNER, MEMBER, COLLABORATOR). The PR author may be a reviewer.",
+          "$ref": "#/$defs/stringList",
+          "default": []
+        },
+        "approve_pattern": {
+          "description": "comment-verdict: regular expression for an approval. Required for comment-verdict.",
+          "$ref": "#/$defs/pattern",
+          "default": ""
+        },
+        "changes_pattern": {
+          "description": "comment-verdict: regular expression for a changes-needed verdict. Required for comment-verdict.",
+          "$ref": "#/$defs/pattern",
+          "default": ""
+        },
+        "blocking_pattern": {
+          "description": "An approving review that also matches this is not an approval.",
+          "$ref": "#/$defs/pattern",
+          "default": ""
+        },
+        "flags": {
+          "description": "Regular expression flags for the review and thread patterns.",
+          "type": "string",
+          "pattern": "^[imsu]*$",
+          "default": "im"
+        },
+        "carry_over": {
+          "description": "none, or clean-base-merge: an approval on an earlier head carries across empty commits and clean merges of the base (comment-verdict only).",
+          "type": "string",
+          "enum": ["none", "clean-base-merge"],
+          "default": "none"
+        },
+        "max_carry_merges": {
+          "description": "Most merges of the base that one approval may carry across.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 3
+        },
+        "rerequest": {
+          "description": "How pr-refresh asks for a new review.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "comment": {
+              "description": "Comment text that asks for a new review. Empty means no comment.",
+              "type": "string",
+              "default": ""
+            },
+            "reviewers": {
+              "description": "Logins to request a review from.",
+              "$ref": "#/$defs/stringList",
+              "default": []
+            }
+          }
+        }
+      }
+    },
+    "threads": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bots": {
+          "description": "Review bot logins. Their threads block like any other thread.",
+          "$ref": "#/$defs/stringList",
+          "default": []
+        },
+        "fix_pattern": {
+          "description": "A thread whose first comment matches this must be fixed (P1). Compiled with review.flags. Empty means no thread must be fixed by rule.",
+          "$ref": "#/$defs/pattern",
+          "default": ""
+        },
+        "defer_reply": {
+          "description": "Reply text for a deferred thread. A thread whose last comment is a human's open question is never resolved.",
+          "type": "string",
+          "default": "Deferred under the repository's review policy: not blocking for this change."
+        }
+      }
+    },
+    "dco": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "description": "Every non-exempt commit needs a Signed-off-by trailer.",
+          "type": "boolean",
+          "default": true
+        },
+        "bot_authors": {
+          "description": "Bot logins (for example dependency bots) whose branches the DCO fix may touch.",
+          "$ref": "#/$defs/stringList",
+          "default": []
+        },
+        "bot_commits": {
+          "description": "exempt: the repository DCO check exempts bot commits. rewrite: add the trailer to them.",
+          "type": "string",
+          "enum": ["exempt", "rewrite"],
+          "default": "exempt"
+        },
+        "fix": {
+          "description": "rewrite-trailers: the DCO-only force-push exception. report: only report.",
+          "type": "string",
+          "enum": ["rewrite-trailers", "report"],
+          "default": "rewrite-trailers"
+        },
+        "dequeue_for_fix": {
+          "description": "May the DCO fix dequeue a queued PR first.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "merge": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "description": "Merge method. The ruleset must allow it.",
+          "type": "string",
+          "enum": ["squash", "merge", "rebase"],
+          "default": "squash"
+        },
+        "queue": {
+          "description": "auto: use the merge queue when the ruleset has one. required: refuse to merge without one. never: never enqueue.",
+          "type": "string",
+          "enum": ["auto", "required", "never"],
+          "default": "auto"
+        },
+        "jump": {
+          "description": "never: no queue jump. labelled: jump when the PR has a label from jump_labels.",
+          "type": "string",
+          "enum": ["never", "labelled"],
+          "default": "never"
+        },
+        "jump_labels": {
+          "description": "Labels that allow a queue jump.",
+          "$ref": "#/$defs/stringList",
+          "default": []
+        },
+        "delete_branch": {
+          "description": "own-only: delete only a branch that this run created. never: delete no branch.",
+          "type": "string",
+          "enum": ["own-only", "never"],
+          "default": "own-only"
+        }
+      }
+    },
+    "draft": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create_as_draft": {
+          "description": "pr-create opens a draft PR.",
+          "type": "boolean",
+          "default": true
+        },
+        "ready_when": {
+          "description": "When a draft becomes ready for review.",
+          "type": "string",
+          "enum": ["immediately", "checks-and-review", "manual"],
+          "default": "checks-and-review"
+        }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pr_ci": {
+          "description": "always: full CI on every PR push. label: full CI only when a label is present.",
+          "type": "string",
+          "enum": ["always", "label"],
+          "default": "always"
+        },
+        "run_once": {
+          "description": "Label that starts one full CI run.",
+          "type": "string",
+          "default": ""
+        },
+        "run_always": {
+          "description": "Label that starts full CI on every push.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "ci": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "congestion_queue_length": {
+          "description": "Queue length at or above which CI counts as congested.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 5
+        },
+        "max_refreshes": {
+          "description": "Refresh pushes per fleet pass when CI is not congested.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 2
+        },
+        "max_refreshes_congested": {
+          "description": "Refresh pushes per fleet pass when CI is congested.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      }
+    },
+    "issues": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "link": {
+          "description": "closes-when-complete: Closes #n when every Done-when box is provable before merge, else Part of #n.",
+          "type": "string",
+          "enum": ["closes-when-complete"],
+          "default": "closes-when-complete"
+        },
+        "done_when_heading": {
+          "description": "Heading of the checklist section in a linked issue.",
+          "type": "string",
+          "pattern": "\\S",
+          "default": "Done when"
+        },
+        "done_when": {
+          "description": "block: unchecked boxes block the merge. warn: they only warn. off: ignore them.",
+          "type": "string",
+          "enum": ["block", "warn", "off"],
+          "default": "warn"
+        }
+      }
+    },
+    "pr_body": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sections": {
+          "description": "Required body sections. A PR template, when present, wins.",
+          "$ref": "#/$defs/stringList",
+          "default": ["Why", "What", "Proof", "Done when"]
+        },
+        "template": {
+          "description": "Path of the PR template in the repository.",
+          "type": "string",
+          "default": ".github/PULL_REQUEST_TEMPLATE.md"
+        },
+        "footer": {
+          "description": "Attribution footer appended verbatim to the body.",
+          "type": "string",
+          "default": ""
+        },
+        "enforce": {
+          "description": "true: a body that misses a section is a body_template blocker.",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "prepush": {
+      "description": "Steps that run in order before every push.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "run"],
+        "properties": {
+          "name": { "type": "string", "pattern": "\\S" },
+          "run": { "$ref": "#/$defs/argv" },
+          "cwd": {
+            "description": "Working directory, relative to the repository root.",
+            "type": "string",
+            "pattern": "\\S",
+            "default": "."
+          },
+          "when_changed": {
+            "description": "Run only when a changed file (against the merge base) matches one of these globs. Empty means always.",
+            "$ref": "#/$defs/globList",
+            "default": []
+          }
+        }
+      }
+    },
+    "regenerate": {
+      "description": "Generated outputs that a base merge regenerates, never hand-merges.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "run", "outputs"],
+        "properties": {
+          "name": { "type": "string", "pattern": "\\S" },
+          "run": { "$ref": "#/$defs/argv" },
+          "cwd": {
+            "description": "Working directory, relative to the repository root.",
+            "type": "string",
+            "pattern": "\\S",
+            "default": "."
+          },
+          "when_changed": {
+            "description": "Regenerate when a changed input matches one of these globs. Empty means on every conflict in outputs.",
+            "$ref": "#/$defs/globList",
+            "default": []
+          },
+          "outputs": {
+            "description": "Globs of generated files. A conflict limited to these paths is resolved by regenerating.",
+            "$ref": "#/$defs/globList",
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "inventories": {
+      "description": "Lists that must name every added file.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "file"],
+        "properties": {
+          "name": { "type": "string", "pattern": "\\S" },
+          "file": {
+            "description": "Path of the inventory file.",
+            "type": "string",
+            "pattern": "\\S"
+          },
+          "added": {
+            "description": "Globs of added files that the inventory must name.",
+            "$ref": "#/$defs/globList",
+            "default": []
+          },
+          "exclude": {
+            "description": "Globs of added files that the inventory ignores.",
+            "$ref": "#/$defs/globList",
+            "default": []
+          },
+          "group_depth": {
+            "description": "Enforce only for groups (the first N path segments) that the inventory already lists.",
+            "type": "integer",
+            "minimum": 1,
+            "default": 2
+          },
+          "update": {
+            "description": "Optional argument array that rewrites the inventory. Empty means none.",
+            "type": "array",
+            "items": { "type": "string", "pattern": "\\S" },
+            "default": []
+          }
+        }
+      }
+    },
+    "gates": {
+      "description": "Extra merge gates that the repository declares.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind", "value"],
+        "properties": {
+          "name": { "type": "string", "pattern": "\\S" },
+          "kind": {
+            "type": "string",
+            "enum": ["label-absent", "label-present", "check-pass"]
+          },
+          "value": {
+            "description": "The label name or the check name.",
+            "type": "string",
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
+    "fleet": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "freeze": {
+          "description": "true (or PR_FLEET_FREEZE=1): the fleet plans nothing that pushes or enqueues.",
+          "type": "boolean",
+          "default": false
+        },
+        "hold": {
+          "description": "Pull request numbers that the fleet must not touch.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "uniqueItems": true,
+          "default": []
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+interface:
+  display_name: "PR: Threads"
+  short_description: "Triage unresolved review threads: fix or defer under the repository policy, reply, and resolve"
+  default_prompt: "Use $tailrocks-pr-threads to triage the unresolved review threads of a pull request. Run the plan, decide each thread, fix and push only what the policy requires, then apply. Never resolve a question that a person asked."
+policy:
+  allow_implicit_invocation: true

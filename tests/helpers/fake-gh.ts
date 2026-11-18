@@ -12,6 +12,7 @@ import {
   PR_QUERY,
   THREADS_PAGE_QUERY,
 } from "../../lib/github/queries.ts";
+import { PR_HEAD_QUERY, THREAD_DETAILS_QUERY } from "../../lib/threads/queries.ts";
 import { HEAD, BASE } from "./status.ts";
 
 export type Vars = Readonly<Record<string, string>>;
@@ -30,6 +31,8 @@ const QUERIES: readonly (readonly [string, string])[] = [
   ["issue", ISSUE_QUERY],
   ["mergeability", MERGEABILITY_QUERY],
   ["open", OPEN_PRS_QUERY],
+  ["threadDetails", THREAD_DETAILS_QUERY],
+  ["prHead", PR_HEAD_QUERY],
 ];
 
 export function fail(stderr: string, exit = 1): Reply {
