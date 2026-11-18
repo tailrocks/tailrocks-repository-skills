@@ -26,7 +26,7 @@ verified only because a different client accepted the same files.
 
 The trial ran on 2026-10-07 with Claude Code 2.1.289 in an
 isolated HOME. Marketplace add passed and install passed. The list
-showed the plugin enabled with all seven skills and no hooks or MCP
+showed the plugin enabled with all seven skills of 0.4.1 and no hooks or MCP
 servers. Uninstall passed and marketplace remove passed. The closing
 list was empty. The trial used a throwaway local marketplace built
 from the branch checkout.
@@ -37,10 +37,11 @@ executed.
 
 This table records documented support, not runtime verification.
 Enforced means the client blocks automatic model invocation of the
-two user-only skills. Limited means the client documents the
+two user-only skills (`tailrocks-repository-recover` and
+`tailrocks-repository-merge`). Limited means the client documents the
 frontmatter but cannot enforce it.
 
-| Client | Recover and merge entry |
+| Client | Recover and repository-merge entry |
 | --- | --- |
 | Claude Code | Enforced (`disable-model-invocation`). |
 | Codex | Enforced (`allow_implicit_invocation: false`). |
@@ -56,10 +57,13 @@ frontmatter but cannot enforce it.
 These facts were observed on 2026-10-07 from the package files. They
 are not install proofs:
 
-- All seven frontmatter names match their skill directories.
-- All names are 28 characters or less. All descriptions are 408
+- All ten frontmatter names match their skill directories.
+- All names are 28 characters or less. All descriptions are 1024
   characters or less. The Amp, OpenCode, and Kimi caps fit.
 - The root manifest carries the Agent Plugins 1.0.0 schema id.
 - The Kimi manifest sets `skills` to `./skills/`.
 - Every payload file under `skills/` is text. No file carries the
   executable bit.
+- Six skills carry a `scripts/` directory with TypeScript files. Bun
+  runs them. A plugin delivers files, not runtimes: the user installs
+  Bun 1.4 or newer. No manifest adds a hook or an MCP server.

@@ -1,9 +1,13 @@
 # tailrocks-repository-skills
 
-One portable package with seven skills. The skills coordinate
-repository work and run the pull-request lifecycle: template, create,
-refresh, review, and guarded merge. Five skills are model-selectable.
-Two skills are user-only and need an explicit human command.
+One portable package with ten skills. The skills coordinate
+repository work and run the pull-request lifecycle: status, create,
+refresh, review threads, guarded merge, and fleet planning, plus a
+review and a template skill. Six skills run scripts with Bun and
+TypeScript. Six skills are model-selectable. Two skills are user-only
+and need an explicit human command. Two write skills, `pr-merge` and
+`pr-fleet`, need an explicit user request, and their scripts write only
+after `--confirm` or `--apply`.
 
 ## Skills
 
@@ -11,10 +15,13 @@ Two skills are user-only and need an explicit human command.
 | --- | --- |
 | [`tailrocks-repository-recover`](skills/tailrocks-repository-recover/SKILL.md) | Preserve local work. User-only. |
 | [`tailrocks-repository-merge`](skills/tailrocks-repository-merge/SKILL.md) | Integrate sources into one target. User-only. |
-| [`tailrocks-create-pr`](skills/tailrocks-create-pr/SKILL.md) | Open one pull request. |
-| [`tailrocks-refresh-pr`](skills/tailrocks-refresh-pr/SKILL.md) | Reconcile title and body. |
+| [`tailrocks-pr-status`](skills/tailrocks-pr-status/SKILL.md) | Report READY, WAITING, or BLOCKED for a PR. Read-only. Script. |
+| [`tailrocks-pr-create`](skills/tailrocks-pr-create/SKILL.md) | Open one draft PR under the policy. Script. |
+| [`tailrocks-pr-refresh`](skills/tailrocks-pr-refresh/SKILL.md) | Sync with the base, fix sign-off, reconcile title and body. Script. |
+| [`tailrocks-pr-threads`](skills/tailrocks-pr-threads/SKILL.md) | Triage, reply to, and resolve review threads. Script. |
+| [`tailrocks-pr-merge`](skills/tailrocks-pr-merge/SKILL.md) | Land one PR through guarded steps. Explicit request only. Script. |
+| [`tailrocks-pr-fleet`](skills/tailrocks-pr-fleet/SKILL.md) | Plan and run work on all open PRs under a CI budget. Explicit request only. Script. |
 | [`tailrocks-review-pr`](skills/tailrocks-review-pr/SKILL.md) | Review and report. Read-only. |
-| [`tailrocks-merge-pr`](skills/tailrocks-merge-pr/SKILL.md) | Land under the guarded policy. |
 | [`tailrocks-pr-template`](skills/tailrocks-pr-template/SKILL.md) | Manage the PR template. |
 
 Each skill body lives in its own directory. Read
@@ -47,7 +54,9 @@ claude plugin install tailrocks-repository-skills@tailrocks --scope user
 
 All repository workflows need Git and `gh`. Hosted pull-request
 work needs an authenticated `gh` session. Only GitHub.com is
-supported.
+supported. The six script-backed skills also need Bun 1.4 or newer.
+They read the repository policy from `.config/pr-policy.toml` on the
+default branch. See `docs/usage.md` and `examples/`.
 
 ## Use
 

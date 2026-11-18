@@ -42,7 +42,7 @@ publication. A review report never substitutes for required human approval or
 CODEOWNERS approval.
 
 If the user asks to fix, approve, or merge, refuse that action. Name the owning
-skill. `tailrocks-merge-pr` owns landing. Still finish the review.
+skill. `tailrocks-pr-merge` owns landing. Still finish the review.
 
 If the PR is closed or merged, report that state. Stop. This skill reviews open
 work.

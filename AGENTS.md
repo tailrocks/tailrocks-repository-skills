@@ -1,7 +1,9 @@
 # AGENTS.md
 
-This package holds seven repository and pull-request skills. Install it
+This package holds ten repository and pull-request skills. Install it
 as one unit. Do not copy one `SKILL.md` file out of its skill directory.
+Six skills (`pr-status`, `pr-create`, `pr-refresh`, `pr-threads`,
+`pr-merge`, `pr-fleet`) carry a `scripts/` directory that runs with Bun.
 
 ## Structure
 
@@ -10,7 +12,10 @@ as one unit. Do not copy one `SKILL.md` file out of its skill directory.
 - `.claude-plugin/plugin.json` and `.kimi-plugin/plugin.json` are
   host manifests. They repeat the same name, version, and description.
 - `skills/` holds one directory per skill id. Each directory holds its
-  own `SKILL.md` file plus its own references.
+  own `SKILL.md` file plus its own references. A script-backed skill
+  also holds `scripts/`. Its `scripts/lib/` and `scripts/schemas/` are
+  copies of `lib/` and `schemas/`. Run `bun run vendor` after a change
+  to either source. Never edit a copy.
 - `docs/` holds the package guides. Start at `docs/README.md`.
 - `lib/`, `schemas/`, `examples/`, `tools/`, and `tests/` hold the
   shared TypeScript library, the policy schema, example policies, the
@@ -34,6 +39,9 @@ Run these checks from the repository root:
 
 ```sh
 alint check
+bun install --frozen-lockfile
+bun run typecheck
+bun test
 ```
 
 See `docs/maintenance.md` for the strict-JSON check, the frontmatter

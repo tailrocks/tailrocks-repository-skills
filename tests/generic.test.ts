@@ -23,12 +23,22 @@ function walk(directory: string): readonly string[] {
     .map((entry) => join(entry.parentPath, entry.name));
 }
 
-/** Directory names under skills/. Each one is a skill id. */
+/**
+ * The ten skill ids of release 0.5.0. A skill that is not merged yet still has its
+ * id named in the kept skills and the guides, so the mask knows the whole release.
+ */
+const RELEASE_SKILL_IDS: readonly string[] = [
+  "pr-status", "pr-create", "pr-refresh", "pr-threads", "pr-merge", "pr-fleet",
+  "review-pr", "pr-template", "repository-merge", "repository-recover",
+].map((id) => `${WORDS[0]}-${id}`);
+
+/** Directory names under skills/, and the ids of the release. Each one is a skill id. */
 function skillIds(): readonly string[] {
   const dir = join(root, "skills");
-  return existsSync(dir)
+  const present = existsSync(dir)
     ? readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)
     : [];
+  return [...new Set([...present, ...RELEASE_SKILL_IDS])];
 }
 
 function escapeRegExp(text: string): string {

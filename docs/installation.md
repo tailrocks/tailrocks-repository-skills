@@ -12,15 +12,20 @@ session. All commands were recorded on 2026-10-07.
 
 ## Runtime requirements
 
-All repository workflows need Git and `gh`. Hosted pull-request
-creation, refresh, review, and landing need an authenticated `gh`
-session with access to the target repository. Only GitHub.com is
-supported. GitHub Enterprise is unsupported. Read-only audits can run
-without authentication.
+All repository workflows need Git and `gh`. Six skills (`pr-status`,
+`pr-create`, `pr-refresh`, `pr-threads`, `pr-merge`, `pr-fleet`) run
+TypeScript scripts, so they also need Bun 1.4 or newer from bun.sh. The
+package does not install Bun. A script-backed skill stops and says so
+when `bun --version` fails. Hosted pull-request creation, refresh,
+review, and landing need an authenticated `gh` session with access to
+the target repository. Only GitHub.com is supported. GitHub Enterprise
+is unsupported. Read-only audits can run without authentication.
 
 Vet the package before install. Read `plugin.json`, the host
-manifests, and the seven files under `skills/`. This package ships
-skills and references only. It adds no hooks and no MCP servers.
+manifests, the ten skill directories under `skills/`, and the
+`scripts/` directory of each script-backed skill. The scripts call `gh`
+and `git` only, make no other network call, and have no runtime
+dependencies. This package adds no hooks and no MCP servers.
 
 ## User-only skills
 
@@ -158,14 +163,15 @@ the docs. Identity is `name@marketplace`: always qualify the id.
   `~/.config/agents/skills/`, or personal and workspace hosted
   scopes.
 
-Shell commands. Clone once, then add each of the seven skill
+Shell commands. Clone once, then add each of the ten skill
 directories:
 
 ```sh
 git clone https://github.com/tailrocks/tailrocks-repository-skills
 for skill in tailrocks-repository-recover tailrocks-repository-merge \
-    tailrocks-create-pr tailrocks-refresh-pr tailrocks-review-pr \
-    tailrocks-merge-pr tailrocks-pr-template; do
+    tailrocks-pr-status tailrocks-pr-create tailrocks-pr-refresh \
+    tailrocks-pr-threads tailrocks-pr-merge tailrocks-pr-fleet \
+    tailrocks-review-pr tailrocks-pr-template; do
   amp skill add ./tailrocks-repository-skills/skills/"$skill" \
     --name "$skill"
 done
@@ -202,9 +208,9 @@ Limits and evidence: hosted installs cap each repository at 200
 skills, 200 files, 10 MiB per file, 25 MiB per skill, text files
 only. A binary file blocks that skill from loading. Names keep 64
 characters or less and match their directory. Descriptions keep 1024
-characters or less. All seven skills in this package fit these caps.
-Names are 28 characters or less. Descriptions are 408 characters or
-less. Every payload file is text (observed 2026-10-07).
+characters or less. All ten skills in this package fit these caps.
+Names are 28 characters or less. Descriptions are 1024 characters or
+less. Every payload file is text.
 Duplicates resolve first-`name`-wins: a local copy masks a repository
 copy, and a personal copy masks a workspace copy. Amp cannot enforce
 per-skill user-only entry: it lists every discovered skill to the
@@ -337,9 +343,8 @@ verb.
 
 Limits and evidence: V1 names use 1 to 64 lowercase hyphenated
 characters and match their directory. Descriptions use 1 to 1024
-characters. All seven skills in this package fit: names are 28
-characters or less, descriptions are 408 characters or less
-(observed 2026-10-07). Never write V2 keys
+characters. All ten skills in this package fit: names are 28
+characters or less, descriptions are 1024 characters or less. Never write V2 keys
 (`metadata.opencode/autoinvoke`, `disable-model-invocation`,
 `permission.skill`) into V1 instructions: the V1 `permission.skill`
 map and the V2 JSONC permissions are different schemas. Keep V1 and
@@ -500,8 +505,10 @@ rejected, and the client re-verifies the sha against the cloned
 head. The `.grok-plugin/plugin-index.json` file is generated: never
 hand-edit it. Grok reads the Claude catalog with zero-config
 compatibility. This package sets `disable-model-invocation` to
-`true` on the two user-only skills and to `false` on the five
-ordinary skills. Do not treat `allowed-tools` metadata as an
+`true` on the two user-only skills and to `false` on `tailrocks-review-pr`
+and `tailrocks-pr-template`. The six script-backed skills carry no such
+key: their frontmatter holds `name`, `description`, and `license`
+only. Do not treat `allowed-tools` metadata as an
 enforced tool-permission boundary.
 
 ## Kimi Code
@@ -630,7 +637,7 @@ Kimi (session):
 
 Then run `/reload` and delete the stale managed copy when needed.
 
-Amp: delete the old installed skill directories, add the seven new
+Amp: delete the old installed skill directories, add the ten new
 skill directories, and run the `reload_skills` tool. OpenCode and
 Antigravity native routes: delete the old copied directories and
 copy the new ones. Antigravity plugin route: run `agy plugin

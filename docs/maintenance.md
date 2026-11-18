@@ -72,7 +72,7 @@ print("OK %d skills: names match, ids valid, descriptions present"
 EOF
 ```
 
-Expected result: `OK 7 skills` plus the verified-facts summary.
+Expected result: `OK 10 skills` plus the verified-facts summary.
 
 Markdown check:
 
@@ -94,8 +94,8 @@ muse skills validate ./skills/tailrocks-review-pr
 Expected result, observed 2026-10-07: `claude plugin validate`
 passes with one author warning (the host manifest carries name,
 version, and description only, per the common structure).
-`muse plugins validate` reports `valid: true`. It finds all seven
-skills through the portable root manifest. It lists warnings only.
+`muse plugins validate` reports `valid: true`. It found all seven
+skills of version 0.4.1 through the portable root manifest. It lists warnings only.
 The warnings are unrecognized skill frontmatter keys, inactive
 `.claude-plugin` overlay fields beside the authoritative root, and
 the generated `.github/CLAUDE.md` symlink. `muse skills validate`
