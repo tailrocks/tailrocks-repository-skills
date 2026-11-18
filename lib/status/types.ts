@@ -239,6 +239,7 @@ export const FINDING_CODES = [
   "threads_unresolved",
   "dco_missing",
   "queued",
+  "queued_while_blocked",
   "queue_unmergeable",
   "queue_ejected",
   "done_when_unchecked",
@@ -257,6 +258,8 @@ export interface Finding {
   readonly detail: string;
   readonly next: string;
   readonly owner: Owner;
+  /** The full list behind a list-valued detail (the detail shows the first five). Empty otherwise. */
+  readonly items: readonly string[];
 }
 
 export interface Verdict {

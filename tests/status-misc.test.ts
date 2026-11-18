@@ -71,7 +71,7 @@ describe("render", () => {
     const parsed: unknown = JSON.parse(toJson(blocked));
     expect(Object.keys(parsed as object)).toEqual(["schema", "repo", "number", "headSha", "state", "next", "policySource", "findings"]);
     const first = (parsed as { findings: object[] }).findings[0];
-    expect(Object.keys(first ?? {})).toEqual(["code", "kind", "owner", "detail", "next"]);
+    expect(Object.keys(first ?? {})).toEqual(["code", "kind", "owner", "detail", "next", "items"]);
   });
   test("a local policy is marked, the default one is not", () => {
     expect(renderText(evaluate(green(), builtinPolicy()))).not.toContain("LOCAL");

@@ -4,7 +4,7 @@
     "behind_base",
     "mergeability_pending",
     "non_required_failing",
-    "queued",
+    "queued_while_blocked",
     "threads_unresolved"
   ]
 }
