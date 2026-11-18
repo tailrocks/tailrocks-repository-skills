@@ -51,6 +51,7 @@ describe("git allow-list: accepted forms", () => {
     ["push", "origin", `${A}:refs/heads/feat/x`],
     // The guard does not know protected branches: `branches.protected` is a later layer.
     ["push", "origin", `${A}:refs/heads/main`],
+    ["update-ref", "refs/heads/feat/x", A, B],
   ];
   for (const args of accepted) {
     test(JSON.stringify(args), () => {
@@ -117,6 +118,15 @@ describe("git allow-list: forbidden forms are refused", () => {
     ["gc", ["gc", "--prune=now"]],
     ["filter-branch", ["filter-branch"]],
     ["update-ref -d", ["update-ref", "-d", "refs/heads/x"]],
+    ["update-ref without the old value", ["update-ref", "refs/heads/x", A]],
+    ["update-ref with a short sha", ["update-ref", "refs/heads/x", A.slice(0, 12), B]],
+    ["update-ref on a tag ref", ["update-ref", "refs/tags/v1", A, B]],
+    ["update-ref on HEAD", ["update-ref", "HEAD", A, B]],
+    ["update-ref with a message flag", ["update-ref", "-m", "x", "refs/heads/x", A, B]],
+    ["update-ref with an all-zero new id (delete)", ["update-ref", "refs/heads/x", "0".repeat(40), A]],
+    ["update-ref with an all-zero old id (create)", ["update-ref", "refs/heads/x", A, "0".repeat(40)]],
+    ["update-ref with the same old and new id", ["update-ref", "refs/heads/x", A, A]],
+    ["update-ref with a bad branch name", ["update-ref", "refs/heads/a..b", A, B]],
     ["cherry-pick", ["cherry-pick", A]],
     ["revert", ["revert", A]],
     ["pull", ["pull"]],

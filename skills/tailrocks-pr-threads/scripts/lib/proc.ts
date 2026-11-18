@@ -60,3 +60,21 @@ export async function run(argv: readonly string[], options: RunOptions): Promise
     return { code: 127, stdout: "", stderr: scrub(`failed to start ${argv[0] ?? ""}: ${reason}`) };
   }
 }
+
+/**
+ * The 1-based numbers of the lines that hold a credential: a GitHub token, a
+ * URL with credentials, or an authorization header. It returns numbers only,
+ * never the match. The labelled-secret pattern of `scrub` is left out: it is
+ * for the output of `gh auth status`, and it would refuse ordinary prose.
+ */
+export function secretLineNumbers(text: string): readonly number[] {
+  const patterns = [URL_CREDENTIALS, GITHUB_TOKEN, AUTH_HEADER];
+  const found: number[] = [];
+  text.split("\n").forEach((line, index) => {
+    // The patterns are global: matchAll starts at 0 and leaves their state alone.
+    if (patterns.some((pattern) => line.matchAll(pattern).next().done === false)) {
+      found.push(index + 1);
+    }
+  });
+  return found;
+}
