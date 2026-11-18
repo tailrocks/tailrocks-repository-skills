@@ -49,6 +49,7 @@ export interface Policy {
   readonly review: {
     readonly source: "github-approval" | "comment-verdict";
     readonly reviewers: readonly string[];
+    readonly count_author: boolean;
     readonly approve_pattern: string;
     readonly changes_pattern: string;
     readonly blocking_pattern: string;

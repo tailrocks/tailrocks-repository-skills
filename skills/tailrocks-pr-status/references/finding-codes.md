@@ -19,7 +19,7 @@ each code means and what to do. The script prints the exact `next` text.
 | `check_cancelled` | blocker | A required check was cancelled and nothing failed. | Re-run the check or push. | ci |
 | `check_not_passing` | blocker | A required check ended skipped or neutral, and the policy does not accept that. | Find out why it did not run. | human |
 | `check_wrong_source` | blocker | A check with the required name comes from another app than the rule names. | Investigate. Do not accept the result. | human |
-| `check_stale_base` | blocker | A base-sensitive check failed while the branch is behind its base. | Merge the base. Make no code change. | pr-refresh |
+| `check_stale_base` | blocker | A base-sensitive check failed while the branch is behind its base. | `pr-refresh sync` (merge the base, no code change). If the check fails again after the merge, it is a real failure (`check_failed`). | pr-refresh |
 | `check_missing` | blocker | A required check has no run on the head. | Trigger CI with a push or the policy label. | ci |
 | `checks_pending` | wait | A required check, or a run of a watched workflow, has not finished. | Watch. Run the script again. | ci |
 | `ci_label_needed` | blocker | The policy runs full CI only with a label, and the label is absent. | Add the run-once label. | ci |
@@ -37,6 +37,7 @@ each code means and what to do. The script prints the exact `next` text.
 | `body_template` | blocker | `pr_body.enforce` is true and the body misses a section or leaves one empty. | Reconcile the body. | pr-refresh |
 | `gate_failed` | blocker | A gate that the policy declares fails. | Per gate. The detail names it. | human |
 | `cross_repository` | info | The head is in a fork. Writing skills refuse it. | Read only. | pr-status |
+| `non_required_failing` | info | Checks that are not required are failing. GitHub reports `mergeStateStatus` UNSTABLE and still allows the merge. | None needed for the merge. | pr-status |
 | `github_disagrees` | blocker | All gates pass, but GitHub does not allow the merge. | Read GitHub's reason. Do not merge. | human |
 
 ## Review rules in short
@@ -56,5 +57,6 @@ each code means and what to do. The script prints the exact `next` text.
 ## Verdict rule
 
 BLOCKED when any blocker exists. WAITING when no blocker exists and a wait
-exists. READY otherwise, and only when `mergeStateStatus` is `CLEAN` or
-`HAS_HOOKS`. A READY verdict is not a merge.
+exists. READY otherwise, and only when `mergeStateStatus` is `CLEAN`, `HAS_HOOKS`, or
+`UNSTABLE` (only checks that are not required fail). `DIRTY`, `BLOCKED`, and
+`BEHIND` do not agree; `UNKNOWN` is a wait. A READY verdict is not a merge.

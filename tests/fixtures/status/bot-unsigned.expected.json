@@ -4,6 +4,7 @@
     "behind_base",
     "check_cancelled",
     "check_stale_base",
+    "non_required_failing",
     "threads_unresolved"
   ]
 }

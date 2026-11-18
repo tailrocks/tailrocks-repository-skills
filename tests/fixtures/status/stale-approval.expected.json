@@ -6,6 +6,7 @@
     "check_stale_base",
     "conflict",
     "done_when_unchecked",
+    "non_required_failing",
     "review_stale"
   ]
 }

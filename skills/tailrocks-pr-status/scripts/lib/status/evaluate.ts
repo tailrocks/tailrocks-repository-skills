@@ -11,14 +11,14 @@ import { bodyProblems, hasSignoff, parseDoneWhen, sameLogin } from "./text.ts";
 import type { Finding, PrSnapshot, QueueState, Verdict } from "./types.ts";
 
 const QUEUE_WAIT_STATES: ReadonlySet<QueueState> = new Set(["QUEUED", "AWAITING_CHECKS", "MERGEABLE", "LOCKED"]);
-const MERGEABLE_STATES: ReadonlySet<string> = new Set(["CLEAN", "HAS_HOOKS"]);
+// UNSTABLE: only checks that are not required fail. GitHub allows the merge.
+const MERGEABLE_STATES: ReadonlySet<string> = new Set(["CLEAN", "HAS_HOOKS", "UNSTABLE"]);
 
 const GITHUB_REASON: Readonly<Record<string, string>> = {
   BLOCKED: "a required check, review, or rule is not satisfied",
   BEHIND: "the head is behind the base and the rules need an up-to-date branch",
   DIRTY: "the branch conflicts with the base",
   DRAFT: "the PR is a draft",
-  UNSTABLE: "a check that is not required is failing",
   UNKNOWN: "GitHub has not computed the state yet",
 };
 

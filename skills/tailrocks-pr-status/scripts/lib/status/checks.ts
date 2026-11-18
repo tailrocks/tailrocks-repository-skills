@@ -4,6 +4,9 @@ import type { Policy } from "../policy/types.ts";
 import { finding, short } from "./findings.ts";
 import type { CheckObservation, Finding, PrSnapshot } from "./types.ts";
 
+// GitHub counts a cancelled or stale run as failing too: it makes mergeStateStatus UNSTABLE.
+const FAILED: ReadonlySet<string> = new Set(["failure", "timed_out", "startup_failure", "action_required", "cancelled", "stale"]);
+
 interface Requirement {
   readonly name: string;
   readonly appId: number | null;
@@ -166,7 +169,7 @@ export function checkFindings(snapshot: PrSnapshot, policy: Policy): readonly Fi
       "check_stale_base",
       "blocker",
       `base-sensitive checks failed while the branch is ${snapshot.behindBy ?? 0} commits behind ${snapshot.baseRef}: ${n}`,
-      "Merge the base branch with pr-refresh (sync); make no code change",
+      "pr-refresh sync (merge the base, no code change); if this check fails again after the merge, it is a real failure (check_failed)",
     ),
   );
   emit("cancelled", (n) =>
@@ -178,6 +181,20 @@ export function checkFindings(snapshot: PrSnapshot, policy: Policy): readonly Fi
   emit("unreadable", (n) =>
     finding("unknown_state", "blocker", `required checks have no readable result: ${n}`, "Run pr-status again"),
   );
+  const requiredNames = new Set(requiredChecks(snapshot, policy).map((r) => r.name));
+  const optionalFailed = snapshot.checks
+    .filter((c) => !c.isRequired && !requiredNames.has(c.name) && c.status === "completed" && c.conclusion !== null && FAILED.has(c.conclusion))
+    .map((c) => `${c.name} (${c.conclusion})`);
+  if (optionalFailed.length > 0) {
+    out.push(
+      finding(
+        "non_required_failing",
+        "info",
+        `checks that are not required are failing: ${list([...new Set(optionalFailed)])}`,
+        "None needed for the merge. Look at them when they point to a real problem",
+      ),
+    );
+  }
   emit("pending", (n) => finding("checks_pending", "wait", `checks are not finished: ${n}`, "Watch the checks; run pr-status again when they end"));
   return out;
 }
