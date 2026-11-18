@@ -25,11 +25,11 @@ function lockDir(): string {
 }
 
 /** Start the watch child and wait until it holds the lock and polls. */
-async function startWatcher(dir: string) {
-  const proc = Bun.spawn({ cmd: [process.execPath, child, dir], stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+async function startWatcher(dir: string, json = false) {
+  const proc = Bun.spawn({ cmd: [process.execPath, child, dir, ...(json ? ["json"] : [])], stdout: "pipe", stderr: "pipe", stdin: "ignore" });
   const reader = proc.stdout.getReader();
   let seen = "";
-  while (!seen.includes("watching every")) {
+  while (!seen.includes("ready")) {
     const chunk = await reader.read();
     if (chunk.done) throw new Error(`the child ended early: ${seen}`);
     seen += new TextDecoder().decode(chunk.value);
@@ -77,6 +77,18 @@ describe("a watcher that is stopped by a signal", () => {
     const next = tryLock(dir, process.pid);
     expect(next.ok).toBe(true);
     if (next.ok) next.release();
+  });
+
+  test("with --json a stop signal prints one JSON object that says the watch was stopped", async () => {
+    const dir = lockDir();
+    const watcher = await startWatcher(dir, true);
+    watcher.proc.kill("SIGTERM");
+    expect(await watcher.proc.exited).toBe(10);
+    const text = (await watcher.rest()).replace(/^ready\s*/, "");
+    const parsed: unknown = JSON.parse(text);
+    expect(parsed).toMatchObject({ schema: 1, step: "watch", number: 7, exit: 10, outcome: "stopped" });
+    expect(text).toContain("stopped by SIGTERM");
+    expect(existsSync(lockPath(dir, repo, 7))).toBe(false);
   });
 
   test("a watcher that is killed without a signal handler leaves a lock of a dead process, and the next watch takes it at once", async () => {

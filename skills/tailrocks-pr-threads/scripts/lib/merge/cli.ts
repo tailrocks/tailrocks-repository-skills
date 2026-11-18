@@ -219,6 +219,10 @@ function jsonResult(args: Args, repo: RepoSlug, outcome: StepResult, events: rea
   );
 }
 
+function finalLine(outcome: StepResult): string {
+  return `result: ${outcome.outcome} (exit ${outcome.exit}) -> ${outcome.next}`;
+}
+
 async function run(argv: readonly string[], options: MainOptions): Promise<number> {
   const out = options.out ?? ((line: string) => console.log(line));
   const err = options.err ?? ((line: string) => console.error(line));
@@ -265,6 +269,12 @@ async function run(argv: readonly string[], options: MainOptions): Promise<numbe
     io,
     shared: newShared(),
     say,
+    // A stop signal skips `finally`, so this closes the run itself: the last output, then the temporary files, then the exit.
+    stop: (stopped) => {
+      out(args.json ? jsonResult(args, slug.value, stopped, events) : finalLine(stopped));
+      removeBodyFiles();
+      io.exit(stopped.exit);
+    },
     confirmed: args.confirm === args.number,
   };
   let outcome: StepResult;
@@ -289,7 +299,7 @@ async function run(argv: readonly string[], options: MainOptions): Promise<numbe
   if (args.json) {
     out(jsonResult(args, slug.value, outcome, events));
   } else {
-    out(`result: ${outcome.outcome} (exit ${outcome.exit}) -> ${outcome.next}`);
+    out(finalLine(outcome));
   }
   return outcome.exit;
 }

@@ -157,15 +157,8 @@ export function mergeRoute(reads: readonly Read[], defaultBranch: string): Merge
 export const DEFAULT_QUEUE_MERGES = 3;
 export const DEFAULT_DIRECT_MERGES = 1;
 
-export function isCongested(policy: Policy, length: number | null): boolean {
-  return length === null || length >= policy.ci.congestion_queue_length;
-}
-
 /** The merge cap before the queue room: the policy value, else 3 through a queue and 1 for direct merges. */
-export function baseMergeCap(policy: Policy, route: MergeRoute, congested: boolean): number {
-  if (congested) {
-    return policy.fleet.max_merges_per_pass_congested;
-  }
+export function baseMergeCap(policy: Policy, route: MergeRoute): number {
   return policy.fleet.max_merges_per_pass ?? (route === "queue" ? DEFAULT_QUEUE_MERGES : DEFAULT_DIRECT_MERGES);
 }
 
@@ -176,7 +169,7 @@ export function queueRoom(policy: Policy, length: number | null): number {
 
 /** Merges or enqueues that one pass may start, for a queue of this length. */
 export function mergeCap(policy: Policy, route: MergeRoute, length: number | null): number {
-  const base = baseMergeCap(policy, route, isCongested(policy, length));
+  const base = baseMergeCap(policy, route);
   return route === "queue" ? Math.min(base, queueRoom(policy, length)) : base;
 }
 

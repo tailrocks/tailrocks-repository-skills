@@ -25,7 +25,7 @@ function policyOf(result: PolicyResult) {
 
 describe("loadPolicy", () => {
   test("fleet merge caps: unset is null, and a negative value is rejected", () => {
-    expect(policyOf(loadPolicy({ text: "schema = 1\n[fleet]\nmax_merges_per_pass = 0\nmax_merges_per_pass_congested = 2\n", source: "local" })).fleet).toMatchObject({ max_merges_per_pass: 0, max_merges_per_pass_congested: 2 });
+    expect(policyOf(loadPolicy({ text: "schema = 1\n[fleet]\nmax_merges_per_pass = 0\n", source: "local" })).fleet).toMatchObject({ max_merges_per_pass: 0 });
     expect(errorsOf("schema = 1\n[fleet]\nmax_merges_per_pass = -1\n")).toHaveLength(1);
     expect(errorsOf("schema = 1\n[fleet]\nmax_merges_per_pass = 1.5\n")).toHaveLength(1);
   });
@@ -46,7 +46,7 @@ describe("loadPolicy", () => {
     expect(policy.issues.done_when).toBe("warn");
     expect(policy.pr_body.sections).toEqual(["Why", "What", "Proof", "Done when"]);
     expect(policy.prepush).toEqual([]);
-    expect(policy.fleet).toEqual({ freeze: false, hold: [], max_merges_per_pass: null, max_merges_per_pass_congested: 0 });
+    expect(policy.fleet).toEqual({ freeze: false, hold: [], max_merges_per_pass: null });
   });
 
   test("the merge section has the high-risk globs and the watch interval", () => {

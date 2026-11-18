@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { StopSignal } from "../../lib/merge/signals.ts";
-import type { MergeIo, StepContext } from "../../lib/merge/types.ts";
+import type { MergeIo, StepContext, StepResult } from "../../lib/merge/types.ts";
 import { newShared } from "../../lib/merge/types.ts";
 import type { RunResult } from "../../lib/proc.ts";
 import { checkGh, ghMutationArgv, type GhMutation } from "../../lib/safety-gh.ts";
@@ -76,6 +76,8 @@ export interface World {
   readonly signalHandlers: ((signal: StopSignal) => void)[];
   /** Exit codes that the watch asked for. */
   readonly exits: number[];
+  /** The results that a stop signal handed to `ctx.stop`. */
+  readonly stopped: StepResult[];
   queue(entry: Partial<QueueEntryData> | null): void;
   removed(reason: string): void;
 }
@@ -117,6 +119,7 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
   const lines: string[] = [];
   const signalHandlers: ((signal: StopSignal) => void)[] = [];
   const exits: number[] = [];
+  const stopped: StepResult[] = [];
   let clock = 1_000_000;
   const lockDir = mkdtempSync(join(tmpdir(), "pr-merge-test-"));
   lockDirs.push(lockDir);
@@ -264,6 +267,10 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
     io,
     shared: newShared(),
     say: (line: string) => void lines.push(line),
+    stop: (outcome) => {
+      stopped.push(outcome);
+      io.exit(outcome.exit);
+    },
     confirmed: true,
     ...extra,
   });
@@ -299,6 +306,7 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
     starts: new Map(),
     signalHandlers,
     exits,
+    stopped,
     ...patch,
     io,
     context,

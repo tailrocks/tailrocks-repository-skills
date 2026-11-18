@@ -15,7 +15,6 @@ import {
   baseMergeCap,
   entryOf,
   isBehindReady,
-  isCongested,
   isMergeCandidate,
   isRefreshCandidate,
   queueLength,
@@ -56,6 +55,8 @@ function contextFor(deps: FleetDeps, repo: RepoSlug, number: number, lines: stri
     io: deps.io,
     shared: deps.shared,
     say: (line) => void lines.push(line),
+    // The fleet never runs the watch step, so no stop signal handler calls this. Still, end the run when one does.
+    stop: (outcome) => deps.io.exit(outcome.exit),
     confirmed: true,
   };
 }
@@ -183,9 +184,7 @@ async function runMerge(deps: FleetDeps, plan: Plan, action: Action, state: Merg
   const route = evaluated.snapshot.rules.mergeQueue ? "queue" : "direct";
   // The queue grows with the fleet's own enqueues, so the merge budget is read again from this read.
   const length = queueLength([readOf(evaluated)], plan.defaultBranch);
-  const congested = isCongested(evaluated.policy, length);
-  const overBudget =
-    state.started >= baseMergeCap(evaluated.policy, route, congested) || (route === "queue" && queueRoom(evaluated.policy, length) < 1);
+  const overBudget = state.started >= baseMergeCap(evaluated.policy, route) || (route === "queue" && queueRoom(evaluated.policy, length) < 1);
   if (overBudget) {
     return { result: result(action, "skipped", "deferred (merge budget)", "Plan again in a later pass.") };
   }

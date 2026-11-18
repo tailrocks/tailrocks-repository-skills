@@ -35,6 +35,7 @@ export type Outcome =
   | "ejected"
   | "closed"
   | "timeout"
+  | "stopped"
   | "policy_error";
 
 export interface StepResult {
@@ -97,6 +98,11 @@ export interface StepContext {
   readonly shared: SharedState;
   /** Progress lines. */
   readonly say: (line: string) => void;
+  /**
+   * Called by a stop-signal handler with the final result. The caller prints it (text or JSON),
+   * removes the temporary files, and ends the process through `io.exit`.
+   */
+  readonly stop: (outcome: StepResult) => void;
   /** The user passed `--confirm <pr>`. Without it a step only prints its plan. */
   readonly confirmed: boolean;
   /** Test seam: a local policy. A verdict that uses it is refused. */

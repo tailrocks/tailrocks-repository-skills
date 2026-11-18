@@ -113,7 +113,6 @@ export interface Policy {
     readonly hold: readonly number[];
     /** Null: the route decides (3 through a merge queue, 1 for direct merges). */
     readonly max_merges_per_pass: number | null;
-    readonly max_merges_per_pass_congested: number;
   };
 }
 

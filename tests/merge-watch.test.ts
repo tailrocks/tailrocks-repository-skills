@@ -147,14 +147,39 @@ describe("watch", () => {
     expect(fallback.sleeps).toEqual([180_000, 180_000, 40_000]);
   });
 
-  test("the watch stops at its deadline, and the settle reads are bounded", async () => {
+  test("the settle reads count inside the deadline: no wait runs past it", async () => {
     const world = queued();
     world.script = (gather, w) => {
       if (gather === 2) w.queue(null);
     };
-    const outcome = await watchStep(world.context(), { intervalSeconds: 5, timeoutSeconds: 10 });
+    const outcome = await watchStep(world.context(), { intervalSeconds: 5, timeoutSeconds: 8 });
+    expect(outcome.exit).toBe(EXIT.waiting);
+    expect(outcome.outcome).toBe("timeout");
+    expect(world.sleeps).toEqual([5000, 3000]);
+    expect(world.sleeps.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(8000);
+    expect(world.lines.join("\n")).toContain("neither seen merged nor judged");
+    expect(world.mutations).toEqual([]);
+  });
+
+  test("a merge that shows up in the last settle read is still reported as merged", async () => {
+    const world = queued();
+    world.script = (gather, w) => {
+      if (gather === 2) w.queue(null);
+      if (gather === 3) w.prState = "MERGED";
+    };
+    const outcome = await watchStep(world.context(), { intervalSeconds: 5, timeoutSeconds: 8 });
+    expect(outcome.outcome).toBe("merged");
+    expect(world.sleeps).toEqual([5000, 3000]);
+  });
+
+  test("the settle reads stay bounded when the deadline is far away", async () => {
+    const world = queued();
+    world.script = (gather, w) => {
+      if (gather === 2) w.queue(null);
+    };
+    const outcome = await watchStep(world.context(), { intervalSeconds: 5, timeoutSeconds: 600 });
     expect(outcome.outcome).toBe("ejected");
-    expect(world.sleeps.length).toBeLessThanOrEqual(4);
+    expect(world.sleeps).toEqual([5000, 5000, 5000, 5000]);
   });
 
   test("a closed PR is blocked", async () => {

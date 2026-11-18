@@ -67,11 +67,10 @@ against the budget when it starts, whatever its result.
 | Merge queue | 3 enqueues |
 | Direct merges | 1 merge |
 
-`fleet.max_merges_per_pass` replaces the default. At or above
-`ci.congestion_queue_length` the cap is `fleet.max_merges_per_pass_congested`
-(default 0). On a merge queue, the cap is also limited so that the queue length
-plus the enqueues of the pass stays at or below `ci.congestion_queue_length`.
-A queue of unknown length has no room. The READY PRs over the cap are listed as
+`fleet.max_merges_per_pass` replaces the default. On a merge queue, the cap is
+also limited so that the queue length plus the enqueues of the pass stays at or
+below `ci.congestion_queue_length`. At or above that length the room is 0, so
+nothing is enqueued. A queue of unknown length has no room. The READY PRs over the cap are listed as
 `deferred (merge budget)` in ranked order.
 
 `apply` reads the queue and the policy again before each merge. After a direct
