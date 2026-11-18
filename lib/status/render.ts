@@ -39,6 +39,7 @@ export function verdictObject(verdict: Verdict) {
       owner: f.owner,
       detail: f.detail,
       next: f.next,
+      items: f.items,
     })),
   };
 }

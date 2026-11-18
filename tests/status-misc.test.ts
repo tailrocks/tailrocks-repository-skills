@@ -71,7 +71,7 @@ describe("render", () => {
     const parsed: unknown = JSON.parse(toJson(blocked));
     expect(Object.keys(parsed as object)).toEqual(["schema", "repo", "number", "headSha", "state", "next", "policySource", "findings"]);
     const first = (parsed as { findings: object[] }).findings[0];
-    expect(Object.keys(first ?? {})).toEqual(["code", "kind", "owner", "detail", "next"]);
+    expect(Object.keys(first ?? {})).toEqual(["code", "kind", "owner", "detail", "next", "items"]);
   });
   test("a local policy is marked, the default one is not", () => {
     expect(renderText(evaluate(green(), builtinPolicy()))).not.toContain("LOCAL");
@@ -160,6 +160,31 @@ describe("command line", () => {
     expect(lines.join("\n")).toContain("unknown_state");
   });
 
+  test("--help and -h print the usage with every option and exit 0", async () => {
+    for (const flag of ["--help", "-h"]) {
+      const lines: string[] = [];
+      const code = await main([flag], { out: (l) => lines.push(l), err: (l) => lines.push(l) });
+      expect(code).toBe(0);
+      const text = lines.join("\n");
+      for (const option of ["--repo", "--json", "--git-dir", "--policy", "--all", "--wait"]) {
+        expect(text).toContain(option);
+      }
+      expect(text).toContain("20");
+    }
+    expect(await main(["7", "--help"], { out: () => undefined, err: () => undefined })).toBe(0);
+  });
+
+  test("an unexpected failure exits 1 with one stderr line, not a stack", async () => {
+    const lines: string[] = [];
+    const boom = (): never => {
+      throw new Error("disk on fire");
+    };
+    const code = await main(["7", "--repo", "example-org/example-repo"], { runGh: baseFake(prResponse()).run, out: boom, err: (l) => lines.push(l) });
+    expect(code).toBe(1);
+    expect(lines.join("\n")).toContain("disk on fire");
+    expect(lines.length).toBe(1);
+  });
+
   test("usage errors exit 2", async () => {
     const lines: string[] = [];
     expect(await main([], { out: (l) => lines.push(l), err: (l) => lines.push(l) })).toBe(2);
@@ -240,8 +265,8 @@ describe("anonymizer", () => {
 });
 
 describe("fixtures and policy", () => {
-  test("the bot-unsigned fixture needs dco_missing under bot_commits = rewrite", () => {
-    const snapshot = parseSnapshot(readFileSync(join(root, "tests", "fixtures", "status", "bot-unsigned.json"), "utf8"));
+  test("the bot-commits-dco-exempt fixture needs dco_missing under bot_commits = rewrite", () => {
+    const snapshot = parseSnapshot(readFileSync(join(root, "tests", "fixtures", "status", "bot-commits-dco-exempt.json"), "utf8"));
     const policy = examplePolicy();
     const exempt = evaluate(snapshot, policy).findings.map((f) => f.code);
     expect(exempt).not.toContain("dco_missing");
@@ -309,6 +334,29 @@ describe("skill package", () => {
     expect(skill).toContain("bun --version");
     expect(skill).toContain("bun run <skill-dir>/scripts/status.ts");
     expect(skill).toContain("never conclude READY yourself");
+    expect(skill).toContain("--help");
+    expect(skill).toContain("[--policy <file>]");
+  });
+  test("the skill says read-only and hands off, with the exit codes and the priority order", () => {
+    expect(skill).toContain("strictly read-only");
+    expect(skill).toContain("hands off");
+    expect(skill).not.toMatch(/Act on `next`/i);
+    for (const code of ["| 0 |", "| 10 |", "| 20 |", "| 2 |", "127"]) {
+      expect(skill).toContain(code);
+    }
+    expect(skill).toContain("readiness is unknown");
+    expect(skill).toContain("queued_while_blocked");
+    expect(skill).toContain("at least 60 seconds");
+    expect(skill).toContain("up to one hour");
+    expect(skill).toContain("LOCAL-policy");
+  });
+  test("short_description is 25 to 64 characters and the prompt forbids changes", () => {
+    const yaml = readFileSync(join(dir, "agents", "openai.yaml"), "utf8");
+    const short = /short_description: "(.*)"/.exec(yaml)?.[1] ?? "";
+    expect(short.length).toBeGreaterThanOrEqual(25);
+    expect(short.length).toBeLessThanOrEqual(64);
+    expect(yaml).toContain("Do not change the PR");
+    expect(yaml).not.toMatch(/act on each next/i);
   });
   test("every finding code is documented", () => {
     const table = readFileSync(join(dir, "references", "finding-codes.md"), "utf8");

@@ -74,7 +74,12 @@ export function parseRulesetRules(text: string): Partial<RulesFacts> {
   return facts;
 }
 
-/** Parse `GET repos/{r}/branches/{base}`. An absent `protection` object gives no facts. */
+/**
+ * Parse `GET repos/{r}/branches/{base}`. An absent `protection` object gives no facts.
+ * This endpoint shows `required_status_checks` only. The review and thread rules of classic
+ * protection need admin access (`branches/{b}/protection`), so those fields stay at their
+ * defaults here. The review rule still shows through GitHub's `reviewDecision`.
+ */
 export function parseClassicProtection(text: string): Partial<RulesFacts> {
   const protection = path(parseJson(text, "branch"), "protection");
   if (!isObj(protection)) {

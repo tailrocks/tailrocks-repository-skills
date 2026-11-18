@@ -25,6 +25,33 @@ const USAGE_EXIT = 2;
 
 export const USAGE = `usage: status.ts <pr-number | --all> [--repo owner/name] [--json] [--git-dir path] [--policy path] [--wait]`;
 
+export const HELP = `${USAGE}
+
+Reads one pull request, or every open pull request with --all, and prints a
+merge-readiness verdict: READY, WAITING, or BLOCKED. Each blocker has a code, an
+owner, and the next action. The script is read-only.
+
+Options:
+  <pr-number>        The pull request to read. A leading # is allowed.
+  --all              Read every open pull request. One line each.
+  --repo owner/name  The repository. Default: the repository of the current directory.
+  --json             Print JSON, schema 1. List findings keep every item in "items".
+  --git-dir path     A local clone. It proves review carry-over. Without it, an
+                     approval on an older head does not carry.
+  --policy path      A local policy file, for policy checks and tests only. The
+                     verdict says so, and the merge skill refuses it.
+  --wait             With --all: when the GraphQL budget is low, sleep until the
+                     reset (up to one hour). Without it, the script stops.
+  -h, --help         Print this text and exit 0.
+
+Exit codes:
+  0   READY
+  10  WAITING
+  20  BLOCKED (with --all, the worst state)
+  2   No verdict: usage error, invalid policy, repository not found, Bun too
+      old, or the GraphQL budget is too low.
+  1   No verdict: the script failed. Any other code means no verdict as well.`;
+
 export interface Args {
   readonly target: { readonly kind: "one"; readonly number: number } | { readonly kind: "all" };
   readonly repo: string | null;
@@ -174,9 +201,13 @@ async function collect(
   return results.flatMap((v) => (v === undefined ? [] : [v]));
 }
 
-export async function main(argv: readonly string[], options: MainOptions = {}): Promise<number> {
+async function run(argv: readonly string[], options: MainOptions): Promise<number> {
   const out = options.out ?? ((line: string) => console.log(line));
   const err = options.err ?? ((line: string) => console.error(line));
+  if (argv.includes("--help") || argv.includes("-h")) {
+    out(HELP);
+    return 0;
+  }
   try {
     assertBun();
   } catch (error) {
@@ -250,4 +281,15 @@ export async function main(argv: readonly string[], options: MainOptions = {}): 
     out(JSON.stringify(payload, null, 2));
   }
   return worst(verdicts);
+}
+
+/** Run the command line. An unexpected failure exits 1 with one line on stderr. */
+export async function main(argv: readonly string[], options: MainOptions = {}): Promise<number> {
+  try {
+    return await run(argv, options);
+  } catch (error) {
+    const err = options.err ?? ((line: string) => console.error(line));
+    err(`status.ts failed: ${error instanceof Error ? error.message : "unknown error"}`);
+    return 1;
+  }
 }

@@ -1,7 +1,7 @@
 // Check findings: required checks from every source, then the failure classes.
 
 import type { Policy } from "../policy/types.ts";
-import { finding, short } from "./findings.ts";
+import { finding, listCapped, short } from "./findings.ts";
 import type { CheckObservation, Finding, PrSnapshot } from "./types.ts";
 
 // GitHub counts a cancelled or stale run as failing too: it makes mergeStateStatus UNSTABLE.
@@ -79,7 +79,7 @@ function classify(check: CheckObservation, snapshot: PrSnapshot, policy: Policy)
 }
 
 function list(names: readonly string[]): string {
-  return names.join(", ");
+  return listCapped(names);
 }
 
 export function checkFindings(snapshot: PrSnapshot, policy: Policy): readonly Finding[] {
@@ -131,6 +131,7 @@ export function checkFindings(snapshot: PrSnapshot, policy: Policy): readonly Fi
           "blocker",
           `the full suite did not run; required checks missing on ${short(snapshot.headSha)}: ${list(missing)}`,
           `Add the label "${policy.labels.run_once !== "" ? policy.labels.run_once : policy.labels.run_always}" to start the full CI run`,
+          missing,
         ),
       );
     } else {
@@ -140,6 +141,7 @@ export function checkFindings(snapshot: PrSnapshot, policy: Policy): readonly Fi
           "blocker",
           `required checks have no run on ${short(snapshot.headSha)}: ${list(missing)}`,
           "Trigger CI with a push or the policy label, then run pr-status again",
+          missing,
         ),
       );
     }
@@ -151,13 +153,14 @@ export function checkFindings(snapshot: PrSnapshot, policy: Policy): readonly Fi
         "blocker",
         `a check with the required name comes from another app: ${list(wrongSource)}`,
         "Investigate which app reports the check; do not accept the result",
+        wrongSource,
       ),
     );
   }
   const emit = (bucket: Bucket, build: (names: string) => Finding): void => {
     const names = buckets.get(bucket);
     if (names !== undefined && names.length > 0) {
-      out.push(build(list(names)));
+      out.push({ ...build(list(names)), items: names });
     }
   };
   emit("failed", (n) => finding("check_failed", "blocker", `required checks failed: ${n}`, "Read the failing log and fix the cause"));
@@ -192,6 +195,7 @@ export function checkFindings(snapshot: PrSnapshot, policy: Policy): readonly Fi
         "info",
         `checks that are not required are failing: ${list([...new Set(optionalFailed)])}`,
         "None needed for the merge. Look at them when they point to a real problem",
+        [...new Set(optionalFailed)],
       ),
     );
   }

@@ -132,12 +132,37 @@ next:     the single most important next action
   decision that no skill may take).
 - BLOCKED when any blocker exists. WAITING when no blocker exists and a wait
   exists. READY otherwise.
-- READY also requires GitHub to agree: `mergeStateStatus` is `CLEAN` or
-  `HAS_HOOKS`, or the PR can enter a required merge queue. When all gates pass
-  but GitHub disagrees, the verdict is BLOCKED with `github_disagrees`. The
-  skill never overrules GitHub toward READY.
+- READY also requires GitHub to agree: `mergeStateStatus` is `CLEAN`,
+  `HAS_HOOKS`, or `UNSTABLE`, or the PR can enter a required merge queue.
+  `UNSTABLE` means that only checks that are not required fail. Every required
+  check is judged before this point, so `UNSTABLE` is safe. The verdict then
+  lists the failing checks in the info finding `non_required_failing`.
+  `DIRTY`, `BLOCKED`, and `BEHIND` are not agreement, and `UNKNOWN` is a wait.
+  When all gates pass but GitHub disagrees, the verdict is BLOCKED with
+  `github_disagrees`. The skill never overrules GitHub toward READY.
 - WAITING means that only time is necessary: checks are running, or a queue
   entry is moving.
+
+Headline order. The verdict `next` is the `next` of the first blocker in this
+order. Work that changes the head comes first, and review on the final head
+comes last among the code steps. `info` and `wait` findings follow the
+blockers.
+
+1. `pr_not_open`
+2. `unknown_state`
+3. `stacked`, `wrong_base`
+4. `queued_while_blocked`
+5. `conflict`, `queue_unmergeable`, `behind_base`
+6. `dco_missing`
+7. `check_stale_base`
+8. `threads_unresolved`
+9. `check_failed`, `check_not_passing`, `check_wrong_source`
+10. `check_flaky`, `check_cancelled`, `check_missing`, `ci_label_needed`
+11. `review_*`
+12. `draft`
+13. `body_template`, `done_when_unchecked`
+14. `gate_failed`
+15. `github_disagrees`
 
 Finding codes:
 
@@ -160,17 +185,19 @@ Finding codes:
 | `ci_label_needed` | blocker | Label-triggered CI and the full suite did not run | Add the run-once label |
 | `review_missing` | blocker | No verdict on the head or on a carry-over equivalent | Request review |
 | `review_changes_requested` | blocker | The latest review of any counted reviewer asks for changes | `pr-threads`, then fix |
-| `review_decision` | blocker | Branch rules require approvals or code-owner review and `reviewDecision != APPROVED` | Request review |
+| `review_decision` | blocker | Branch rules require approvals or code-owner review, or GitHub reports `REVIEW_REQUIRED`, and `reviewDecision != APPROVED` | Request review |
 | `review_blocking_finding` | blocker | Approval or a later review lists a blocking finding | `pr-threads` |
 | `review_stale` | blocker | Verdict is on an older head and carry-over does not apply | Request review |
 | `threads_unresolved` | blocker | Any unresolved thread, bot or human | `pr-threads` |
 | `dco_missing` | blocker | A non-exempt commit has no `Signed-off-by:` trailer | `pr-refresh dco-fix` |
 | `queued` | wait | In the queue, state is QUEUED, AWAITING_CHECKS, MERGEABLE, or LOCKED | Watch |
 | `queue_unmergeable` | blocker | Queue entry is UNMERGEABLE | `pr-merge dequeue`, then `pr-refresh` |
+| `queued_while_blocked` | blocker | In the queue (state QUEUED, AWAITING_CHECKS, MERGEABLE, or LOCKED) and at least one other blocker exists. It replaces `queued` | `pr-merge dequeue` so the entry does not block the queue, then fix |
 | `queue_ejected` | info | Removed from the queue after the last push. The reason is free text from GitHub | The matching blocker gives the action |
 | `done_when_unchecked` | blocker or info | Linked issue (closing reference, or `Part of`/`Refs` link in the body) has unchecked Done-when boxes; kind from `issues.done_when` | Prove or link |
 | `body_template` | blocker | `pr_body.enforce` is true and the body misses a required section or has a placeholder | `pr-refresh metadata` |
-| `github_disagrees` | blocker | All gates pass but `mergeStateStatus` does not allow a merge | Read GitHub's reason; do not merge |
+| `non_required_failing` | info | Checks that are not required fail, cancelled and stale runs included. GitHub reports `UNSTABLE` and allows the merge. The detail shows five items and `and N more`; the JSON keeps all of them | None needed for the merge |
+| `github_disagrees` | blocker | All gates pass but `mergeStateStatus` is not `CLEAN`, `HAS_HOOKS`, or `UNSTABLE` | Read GitHub's reason; do not merge |
 | `gate_failed` | blocker | A policy `[[gates]]` entry fails | Per gate |
 | `pr_not_open` | blocker | PR is closed or merged | None; report the state |
 | `cross_repository` | info | Head is in a fork | Writing skills refuse; status only |
@@ -227,9 +254,13 @@ regenerated goldens, and an inventory. The example names no repository.
   approvals itself when the rule says so, so no carry-over applies.
 - Source `comment-verdict`: the latest verdict review per counted reviewer.
   Counted reviewers are `review.reviewers` when set, else authors with write
-  access (`authorAssociation` OWNER, MEMBER, or COLLABORATOR). Any counted
-  reviewer whose latest verdict asks for changes blocks. An approval that also
-  matches `blocking_pattern` is not an approval.
+  access (`authorAssociation` OWNER, MEMBER, or COLLABORATOR). The PR author
+  never counts, unless `review.count_author` is true. That key fits processes
+  in which agent reviews are posted under the owner's account. A review whose
+  GitHub state is CHANGES_REQUESTED is a changes verdict, whatever its body
+  says, and a later approval overrides it. Any counted reviewer whose latest
+  verdict asks for changes blocks. An approval that also matches
+  `blocking_pattern` is not an approval.
 - Carry-over (`review.carry_over = "clean-base-merge"`, comment-verdict only)
   walks back from the head over three kinds of step, at most `max_carry_merges`
   times:

@@ -29,6 +29,7 @@ export const OWNER: Readonly<Record<FindingCode, Owner>> = {
   threads_unresolved: "pr-threads",
   dco_missing: "pr-refresh",
   queued: "pr-merge",
+  queued_while_blocked: "pr-merge",
   queue_unmergeable: "pr-merge",
   queue_ejected: "pr-status",
   done_when_unchecked: "human",
@@ -39,15 +40,54 @@ export const OWNER: Readonly<Record<FindingCode, Owner>> = {
   github_disagrees: "human",
 };
 
-export function finding(code: FindingCode, kind: FindingKind, detail: string, next: string): Finding {
-  return { code, kind, detail, next, owner: OWNER[code] };
+export function finding(code: FindingCode, kind: FindingKind, detail: string, next: string, items: readonly string[] = []): Finding {
+  return { code, kind, detail, next, owner: OWNER[code], items };
+}
+
+const LIST_LIMIT = 5;
+
+/** The first five items, then "and N more". The finding keeps the full list in `items`. */
+export function listCapped(items: readonly string[]): string {
+  return items.length <= LIST_LIMIT
+    ? items.join(", ")
+    : `${items.slice(0, LIST_LIMIT).join(", ")}, and ${items.length - LIST_LIMIT} more`;
 }
 
 const KIND_RANK: Readonly<Record<FindingKind, number>> = { blocker: 0, wait: 1, info: 2 };
 
-/** Blockers first, then waits, then info. Inside a kind, the order of FINDING_CODES. Stable. */
+/**
+ * Headline order of blockers. The first blocker gives the verdict's `next`.
+ * Work that changes the head comes first. Review comes last among the code
+ * steps, because an earlier step changes the head and the review must be on the
+ * final head. Codes in one group have equal rank.
+ */
+export const HEADLINE_ORDER: readonly (readonly FindingCode[])[] = [
+  ["pr_not_open"],
+  ["unknown_state"],
+  ["stacked", "wrong_base"],
+  ["queued_while_blocked"],
+  ["conflict", "queue_unmergeable", "behind_base"],
+  ["dco_missing"],
+  ["check_stale_base"],
+  ["threads_unresolved"],
+  ["check_failed", "check_not_passing", "check_wrong_source"],
+  ["check_flaky", "check_cancelled", "check_missing", "ci_label_needed"],
+  ["review_missing", "review_changes_requested", "review_decision", "review_blocking_finding", "review_stale"],
+  ["draft"],
+  ["body_template", "done_when_unchecked"],
+  ["gate_failed"],
+  ["github_disagrees"],
+];
+
+function headlineRank(code: FindingCode): number {
+  const rank = HEADLINE_ORDER.findIndex((group) => group.includes(code));
+  return rank < 0 ? HEADLINE_ORDER.length : rank;
+}
+
+/** Blockers in headline order, then waits, then info. Inside a rank, the order of FINDING_CODES. Stable. */
 export function sortFindings(findings: readonly Finding[]): readonly Finding[] {
-  const rank = (f: Finding): number => KIND_RANK[f.kind] * 1000 + FINDING_CODES.indexOf(f.code);
+  const rank = (f: Finding): number =>
+    KIND_RANK[f.kind] * 100_000 + (f.kind === "blocker" ? headlineRank(f.code) * 1000 : 0) + FINDING_CODES.indexOf(f.code);
   return findings
     .map((f, index) => ({ f, index }))
     .sort((a, b) => rank(a.f) - rank(b.f) || a.index - b.index)

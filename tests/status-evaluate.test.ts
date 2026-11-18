@@ -34,7 +34,7 @@ describe("recorded fixtures", () => {
     .sort();
 
   test("the required fixtures exist", () => {
-    for (const name of ["unresolved-bot-threads", "queued-with-unresolved-thread", "stale-approval", "ejected-merge-conflict", "stacked", "bot-unsigned"]) {
+    for (const name of ["unresolved-bot-threads", "queued-with-unresolved-thread", "stale-approval", "ejected-merge-conflict", "stacked", "bot-commits-dco-exempt"]) {
       expect(names).toContain(name);
     }
     expect(names.some((n) => n === "ready" || n === "synthetic-ready")).toBe(true);
@@ -68,7 +68,7 @@ describe("baseline", () => {
 
   test("every finding code has an owner and a place in the table", () => {
     expect(new Set(FINDING_CODES).size).toBe(FINDING_CODES.length);
-    expect(FINDING_CODES.length).toBe(33);
+    expect(FINDING_CODES.length).toBe(34);
   });
 
   test("blockers sort before waits before info", () => {
@@ -284,6 +284,23 @@ describe("reviews: comment-verdict", () => {
       expect(new RegExp(b, flags).test(text)).toBe(false);
     }
   });
+  test("a native CHANGES_REQUESTED review is a changes verdict whatever its body says", () => {
+    const native = { ...verdictReview("user-b", "please look again, see inline comments", HEAD, "2026-01-01T13:00:00Z"), state: "CHANGES_REQUESTED" as const };
+    const verdict = run(green({ reviews: [approve(), native] }));
+    expect(codes(verdict)).toEqual(["review_changes_requested"]);
+    expect(find(verdict, "review_changes_requested").detail).toContain("user-b");
+  });
+  test("a later approval overrides a native CHANGES_REQUESTED review", () => {
+    const native = { ...verdictReview("user-b", "no verdict line here", HEAD, "2026-01-01T13:00:00Z"), state: "CHANGES_REQUESTED" as const };
+    expect(run(green({ reviews: [native, approve(HEAD, "2026-01-01T14:00:00Z")] })).state).toBe("READY");
+  });
+  test("a native CHANGES_REQUESTED review from an uncounted reviewer or from the author when count_author is false does not block", () => {
+    const outsider = { ...verdictReview("user-z", "x", HEAD, "2026-01-01T13:00:00Z"), state: "CHANGES_REQUESTED" as const, association: "NONE" as const };
+    expect(run(green({ reviews: [approve(), outsider] })).state).toBe("READY");
+    const own = { ...verdictReview("user-b", "x", HEAD, "2026-01-01T13:00:00Z"), state: "CHANGES_REQUESTED" as const };
+    const strict = { ...example, review: { ...example.review, count_author: false } };
+    expect(run(green({ author: "user-b", reviews: [approve(HEAD, "2026-01-01T12:00:00Z", "user-c"), own] }), strict).state).toBe("READY");
+  });
   test("a changes-needed verdict with bold markup blocks", () => {
     const changes = verdictReview("user-b", "**Verdict: changes needed**", HEAD, "2026-01-01T13:00:00Z");
     expect(codes(run(green({ reviews: [changes] })))).toEqual(["review_changes_requested"]);
@@ -372,6 +389,12 @@ describe("reviews: github-approval", () => {
     }
     expect(evaluate(green({ reviewDecision: "APPROVED", ...strict({ requiredApprovingReviewCount: 1 }) }), policy).state).toBe("READY");
   });
+  test("review_decision when GitHub says REVIEW_REQUIRED and the rule facts are empty (classic protection)", () => {
+    const verdict = evaluate(green({ reviewDecision: "REVIEW_REQUIRED" }), policy);
+    expect(codes(verdict)).toEqual(["review_decision"]);
+    expect(find(verdict, "review_decision").detail).toContain("REVIEW_REQUIRED");
+    expect(find(verdict, "review_decision").next).toBe("Request a review from an eligible reviewer");
+  });
   test("review_decision for a code-owner rule", () => {
     expect(codes(evaluate(green({ reviewDecision: "REVIEW_REQUIRED", ...strict({ requireCodeOwnerReview: true }) }), policy))).toEqual(["review_decision"]);
   });
@@ -424,11 +447,21 @@ describe("threads, DCO, queue, issues, body, gates", () => {
       expect(codes(verdict)).toEqual(["queued"]);
     }
   });
-  test("a queued PR with an unresolved thread is BLOCKED and still shows queued", () => {
+  test("a queued PR with another blocker is queued_while_blocked, not a plain wait", () => {
     const entry = { id: "MQE_1", position: 2, state: "QUEUED" as const, jump: false, enqueuedAt: "2026-01-01T00:00:00Z" };
     const verdict = run(green({ queueEntry: entry, threads: [thread(1)] }));
     expect(verdict.state).toBe("BLOCKED");
-    expect(codes(verdict)).toEqual(["queued", "threads_unresolved"]);
+    expect(codes(verdict)).toEqual(["queued_while_blocked", "threads_unresolved"]);
+    const f = find(verdict, "queued_while_blocked");
+    expect(f.kind).toBe("blocker");
+    expect(f.owner).toBe("pr-merge");
+    expect(f.next).toBe("pr-merge dequeue so the entry does not block the queue, then fix");
+    expect(verdict.next).toBe(f.next);
+  });
+  test("a queued PR with no other blocker stays a wait", () => {
+    const entry = { id: "MQE_1", position: 2, state: "AWAITING_CHECKS" as const, jump: false, enqueuedAt: "2026-01-01T00:00:00Z" };
+    expect(codes(run(green({ queueEntry: entry })))).toEqual(["queued"]);
+    expect(codes(run(green({ queueEntry: entry, mergeable: "UNKNOWN" })))).toEqual(["mergeability_pending", "queued"]);
   });
   test("queue_unmergeable is a blocker", () => {
     const entry = { id: "MQE_1", position: 1, state: "UNMERGEABLE" as const, jump: false, enqueuedAt: "2026-01-01T00:00:00Z" };
@@ -486,6 +519,66 @@ describe("threads, DCO, queue, issues, body, gates", () => {
     expect(run(green(), gates("check-pass", "Required")).state).toBe("READY");
     const running = green({ checks: [...green().checks, check("Extra", { status: "in_progress", conclusion: null })] });
     expect(codes(run(running, gates("check-pass", "Extra")))).toEqual(["checks_pending"]);
+  });
+});
+
+describe("headline priority", () => {
+  const entry = { id: "MQE_1", position: 2, state: "QUEUED" as const, jump: false, enqueuedAt: "2026-01-01T00:00:00Z" };
+  const thread1 = { id: "t", isResolved: false, isOutdated: false, path: null, line: null, firstAuthor: "a", firstBody: "x", lastAuthor: "a", commentCount: 1 };
+  const unsigned = { oid: sha("e"), parents: [OLD], tree: sha("1"), message: "chore", authorLogin: "user-a", authorEmail: "a@example.com", committedDate: "2026-01-01T00:00:00Z" };
+
+  test("blockers come in the documented order and the next action is the first", () => {
+    const base = green();
+    const snapshot = green({
+      isDraft: true,
+      mergeable: "CONFLICTING",
+      reviews: [],
+      threads: [thread1],
+      commits: [unsigned],
+      queueEntry: entry,
+      parentPr: 3,
+      baseRef: "topic",
+      checks: [check("Required", { isRequired: true, conclusion: "failure" }), check("Required verdict", { isRequired: true, conclusion: "cancelled" })],
+      behindBy: 2,
+      rules: base.rules,
+      problems: ["something odd"],
+    });
+    const verdict = run(snapshot);
+    expect(verdict.findings.filter((f) => f.kind === "blocker").map((f) => f.code)).toEqual([
+      "unknown_state",
+      "stacked",
+      "queued_while_blocked",
+      "conflict",
+      "dco_missing",
+      "check_stale_base",
+      "threads_unresolved",
+      "check_cancelled",
+      "review_missing",
+      "draft",
+    ]);
+    expect(verdict.next).toBe(find(verdict, "unknown_state").next);
+  });
+  test("head-changing work comes before review", () => {
+    const verdict = run(green({ reviews: [], threads: [thread1], isDraft: true }));
+    expect(verdict.findings.map((f) => f.code)).toEqual(["threads_unresolved", "review_missing", "draft"]);
+    expect(verdict.next).toBe(find(verdict, "threads_unresolved").next);
+  });
+  test("conflict outranks threads, and a failed check outranks review and draft", () => {
+    expect(run(green({ mergeable: "CONFLICTING", threads: [thread1] })).next).toBe("Merge the base with pr-refresh sync and resolve through the policy commands");
+    const failed = run(green({ reviews: [], isDraft: true, checks: [check("Required", { isRequired: true, conclusion: "timed_out" }), check("Required verdict", { isRequired: true })] }));
+    expect(failed.findings.map((f) => f.code)).toEqual(["check_failed", "review_missing", "draft"]);
+  });
+  test("a long list in a detail is capped at five items, and the finding keeps all of them", () => {
+    const base = green();
+    const optional = Array.from({ length: 8 }, (_, i) => check(`Optional ${i + 1}`, { conclusion: "failure" }));
+    const verdict = run(green({ checks: [...base.checks, ...optional] }));
+    const f = find(verdict, "non_required_failing");
+    expect(f.detail).toContain("Optional 5");
+    expect(f.detail).not.toContain("Optional 6");
+    expect(f.detail).toContain("and 3 more");
+    expect(f.items.length).toBe(8);
+    const small = find(run(green({ checks: [...base.checks, optional[0] ?? check("x")] })), "non_required_failing");
+    expect(small.detail).not.toContain("more");
   });
 });
 
