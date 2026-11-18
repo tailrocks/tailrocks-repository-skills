@@ -118,6 +118,51 @@ Expected result: empty diff. Observed 2026-10-07: the comparison
 was empty. The 0.1.0 generator preserves the template. No restore
 step is necessary. See the CI source section below.
 
+## TypeScript tooling
+
+The script-backed skills use Bun and TypeScript. `mise.toml` and the
+`packageManager` key in `package.json` pin Bun 1.4.4. The only
+dependencies are `typescript` and `@types/bun`, both development
+dependencies with exact versions. Run each command from the repository
+root. Every command must exit 0.
+
+Install the dependencies:
+
+```sh
+bun install --frozen-lockfile
+```
+
+Type check:
+
+```sh
+bun run typecheck
+```
+
+Expected result: no errors.
+
+Tests:
+
+```sh
+bun test
+```
+
+Expected result: all tests pass. The tests cover the process layer, the
+safety guards, the policy loader, the vendored copies, and the
+generic-name rule.
+
+Copy the shared library into each script-backed skill:
+
+```sh
+bun run vendor
+```
+
+The source is `lib/` and `schemas/`. A skill is script-backed when
+`skills/<id>/scripts/` holds a `.ts` file. The command writes
+`skills/<id>/scripts/lib/` and `skills/<id>/scripts/schemas/`. Never
+edit a copy by hand. `bun test` fails when a copy differs from its
+source. Run `bun run tools/vendor-lib.ts --check` to list the
+differences without a write.
+
 ## Policy version and update
 
 - alint: v0.17.0.

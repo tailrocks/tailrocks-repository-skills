@@ -12,6 +12,9 @@ as one unit. Do not copy one `SKILL.md` file out of its skill directory.
 - `skills/` holds one directory per skill id. Each directory holds its
   own `SKILL.md` file plus its own references.
 - `docs/` holds the package guides. Start at `docs/README.md`.
+- `lib/`, `schemas/`, `examples/`, `tools/`, and `tests/` hold the
+  shared TypeScript library, the policy schema, example policies, the
+  vendoring tool, and the tests. See `docs/maintenance.md`.
 
 ## Rules for changes
 
