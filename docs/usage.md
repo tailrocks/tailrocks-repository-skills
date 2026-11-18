@@ -103,6 +103,24 @@ and the skill that owns it. The skill is read-only. A READY verdict is
 not a merge. The agent never decides READY itself. The reference
 `finding-codes.md` in the skill lists every finding code.
 
+## Example: refresh a pull request
+
+Invoke the refresh owner with a mode and a pull-request number:
+
+```text
+/tailrocks-repository-skills:tailrocks-pr-refresh sync 1663
+```
+
+The skill has the modes `sync`, `dco-fix`, and `metadata`, and the two
+modes `continue` and `abort` that finish or drop a merge that `sync
+--keep-worktree` kept for a conflict. It has no default mode. `sync` merges the base branch in a temporary worktree,
+regenerates the outputs that the repository policy names, runs the
+pre-push checks, and pushes one commit once. `dco-fix` is the only mode
+that force-pushes. It adds missing sign-off trailers and nothing else.
+`metadata` reconciles the title and body with the diff and pushes
+nothing. The reference `outcome-codes.md` in the skill lists every
+blocked outcome.
+
 ## Example: open a pull request under the repository policy
 
 Invoke the create owner on a branch that holds committed work:

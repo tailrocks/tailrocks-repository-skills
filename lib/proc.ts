@@ -35,6 +35,43 @@ export function scrub(text: string): string {
     .replace(LABELLED_SECRET, "$1***");
 }
 
+/** True when `scrub` would change the text: it holds a token, an auth header, or URL credentials. */
+export function containsCredential(text: string): boolean {
+  return scrub(text) !== text;
+}
+
+export interface BytesResult {
+  readonly code: number;
+  readonly stdout: Uint8Array;
+  readonly stderr: string;
+}
+
+/** Like `run`, but stdout comes back as raw bytes, so a caller can compare what git stored. */
+export async function runBytes(argv: readonly string[], options: RunOptions): Promise<BytesResult> {
+  if (argv.length === 0) {
+    return { code: 127, stdout: new Uint8Array(), stderr: "empty argv" };
+  }
+  try {
+    const proc = Bun.spawn({
+      cmd: [...argv],
+      cwd: options.cwd,
+      env: { ...process.env, ...options.env },
+      stdin: options.stdin === undefined ? "ignore" : new Blob([options.stdin]),
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [stdout, stderr, code] = await Promise.all([
+      new Response(proc.stdout).bytes(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    return { code, stdout, stderr: scrub(stderr) };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return { code: 127, stdout: new Uint8Array(), stderr: scrub(`failed to start ${argv[0] ?? ""}: ${reason}`) };
+  }
+}
+
 /** Run argv without a shell. Stderr and error messages are scrubbed; stdout is returned as is. */
 export async function run(argv: readonly string[], options: RunOptions): Promise<RunResult> {
   if (argv.length === 0) {

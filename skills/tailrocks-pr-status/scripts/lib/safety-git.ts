@@ -262,6 +262,9 @@ function checkNewBranch(sub: string, flag: string, rest: readonly string[]): Gua
 
 function checkWorktree(rest: readonly string[]): Guard {
   const [action, ...tail] = rest;
+  if (action === "list") {
+    return tail.length === 1 && tail[0] === "--porcelain" ? ALLOWED : refuse("git worktree list may only run: worktree list --porcelain");
+  }
   if (action === "remove") {
     const [path, extra] = tail;
     if (path === undefined || extra !== undefined || !isExactAbsolutePath(path)) {
@@ -292,7 +295,7 @@ function checkWorktree(rest: readonly string[]): Guard {
     }
     return ALLOWED;
   }
-  return refuse("git worktree allows only add and remove");
+  return refuse("git worktree allows only add, remove, and list --porcelain");
 }
 
 function checkFetch(rest: readonly string[]): Guard {

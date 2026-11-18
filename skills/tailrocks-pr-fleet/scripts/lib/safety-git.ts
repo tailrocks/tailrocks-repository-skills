@@ -191,6 +191,36 @@ function checkCommitTree(rest: readonly string[]): Guard {
   return tree === null ? refuse("git commit-tree needs a tree id") : ALLOWED;
 }
 
+/**
+ * One shape only: update-ref refs/heads/<branch> <new sha> <old sha>. Both ids
+ * are real commit ids, never all zeros, so the call moves an existing branch and
+ * never deletes or creates one. The old value makes the update a compare-and-swap.
+ * The guard does not know the current or the protected branches: the caller
+ * (the sign-off step) moves only the checked-out branch, and its plan has
+ * refused the default and protected branches already. The sign-off step moves a local
+ * branch to a rebuilt history with the same trees, so no checkout follows.
+ */
+function checkUpdateRef(rest: readonly string[]): Guard {
+  const [ref, next, previous, extra] = rest;
+  if (ref === undefined || next === undefined || previous === undefined || extra !== undefined) {
+    return refuse("git update-ref must be exactly: update-ref refs/heads/<branch> <new sha> <old sha>");
+  }
+  if (!ref.startsWith("refs/heads/") || !isBranchName(ref.slice("refs/heads/".length))) {
+    return refuse("git update-ref may only move refs/heads/<branch>");
+  }
+  if (!isSha(next) || !isSha(previous)) {
+    return refuse("git update-ref needs two 40-hex commit ids");
+  }
+  // An all-zero id deletes a ref (as the new value) or creates one (as the old value).
+  if (/^0+$/.test(next) || /^0+$/.test(previous)) {
+    return refuse("git update-ref may not use the all-zero id: that deletes or creates a branch");
+  }
+  if (next === previous) {
+    return refuse("git update-ref needs a new id that differs from the old id");
+  }
+  return ALLOWED;
+}
+
 function checkAdd(rest: readonly string[]): Guard {
   const paths = rest[0] === "--" ? rest.slice(1) : rest;
   if (paths.length === 0) {
@@ -232,6 +262,9 @@ function checkNewBranch(sub: string, flag: string, rest: readonly string[]): Gua
 
 function checkWorktree(rest: readonly string[]): Guard {
   const [action, ...tail] = rest;
+  if (action === "list") {
+    return tail.length === 1 && tail[0] === "--porcelain" ? ALLOWED : refuse("git worktree list may only run: worktree list --porcelain");
+  }
   if (action === "remove") {
     const [path, extra] = tail;
     if (path === undefined || extra !== undefined || !isExactAbsolutePath(path)) {
@@ -262,7 +295,7 @@ function checkWorktree(rest: readonly string[]): Guard {
     }
     return ALLOWED;
   }
-  return refuse("git worktree allows only add and remove");
+  return refuse("git worktree allows only add, remove, and list --porcelain");
 }
 
 function checkFetch(rest: readonly string[]): Guard {
@@ -334,6 +367,8 @@ export function checkGit(args: readonly string[]): Guard {
       return checkCommitTree(rest);
     case "add":
       return checkAdd(rest);
+    case "update-ref":
+      return checkUpdateRef(rest);
     case "checkout":
       return checkNewBranch(sub, "-b", rest);
     case "switch":
