@@ -120,11 +120,42 @@ export type ChangedFiles =
   | { readonly known: true; readonly files: readonly string[] }
   | { readonly known: false; readonly reason: string };
 
-/** `gh pr diff --name-only`. A diff that GitHub refuses to list is unknown. */
+const FILES_PER_PAGE = 100;
+// GitHub lists at most 3000 files of one PR.
+const FILES_MAX_PAGES = 30;
+
+/**
+ * The files of a PR from the REST files API. Each changed file gives its new
+ * path and, for a rename, its old path too. A list that is not complete is
+ * unknown: GitHub stops at 3000 files, and any failed page ends the read.
+ */
 export async function readChangedFiles(run: GhRun, repo: RepoSlug, number: number): Promise<ChangedFiles> {
-  const reply = await run(["pr", "diff", String(number), "--repo", repo, "--name-only"]);
-  if (reply.code !== 0) {
-    return { known: false, reason: oneLine(reply.stderr.split("\n")[0] ?? "the diff could not be listed") };
+  const paths: string[] = [];
+  for (let page = 1; page <= FILES_MAX_PAGES; page += 1) {
+    const reply = await run(["api", "-X", "GET", `repos/${repo}/pulls/${number}/files?per_page=${FILES_PER_PAGE}&page=${page}`]);
+    if (reply.code !== 0) {
+      return { known: false, reason: oneLine(reply.stderr.split("\n")[0] ?? "the file list could not be read") };
+    }
+    let items: readonly unknown[];
+    try {
+      items = arr(parseJson(reply.stdout, "pull request files"), "pull request files");
+      for (const item of items) {
+        const file = obj(item, "file");
+        paths.push(str(member(file, "filename"), "filename"));
+        const previous = member(file, "previous_filename");
+        if (typeof previous === "string") {
+          paths.push(previous);
+        }
+      }
+    } catch (error) {
+      if (error instanceof ReadError) {
+        return { known: false, reason: "the file list is unreadable" };
+      }
+      throw error;
+    }
+    if (items.length < FILES_PER_PAGE) {
+      return { known: true, files: paths };
+    }
   }
-  return { known: true, files: reply.stdout.split("\n").map((l) => l.trim()).filter((l) => l !== "") };
+  return { known: false, reason: `the PR has ${FILES_PER_PAGE * FILES_MAX_PAGES} files or more, and GitHub lists no more` };
 }

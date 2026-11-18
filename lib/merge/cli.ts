@@ -4,9 +4,11 @@
 //            [--json] [--git-dir path] [--accept-risk] [--reason r]
 //            [--interval seconds] [--timeout seconds]
 //
-// Exit codes: 0 merged or done, 10 waiting, 20 blocked, 3 refused with nothing
-// written, 2 usage or policy error. Any other code means the script crashed.
+// Exit codes: 0 merged or done, 10 waiting, 20 blocked, 3 refused (do not retry),
+// 4 plan shown (run again with --confirm), 2 usage or policy error. Any other
+// code means the script crashed.
 
+import { tmpdir } from "node:os";
 import { removeBodyFiles } from "../body-file.ts";
 import { defaultGh, type GhRun } from "../github/graphql.ts";
 import { ghMutate } from "../gh.ts";
@@ -17,7 +19,8 @@ import { DEQUEUE_REASONS, dequeueStep, type DequeueReason } from "./dequeue.ts";
 import { mergeStep } from "./merge.ts";
 import { readyStep } from "./ready.ts";
 import { EXIT, newShared, type MergeIo, type Step, type StepContext, type StepResult } from "./types.ts";
-import { DEFAULT_INTERVAL_SECONDS, DEFAULT_TIMEOUT_SECONDS, MIN_INTERVAL_SECONDS, watchStep } from "./watch.ts";
+import { processExists } from "./lock.ts";
+import { DEFAULT_TIMEOUT_SECONDS, MIN_INTERVAL_SECONDS, watchStep } from "./watch.ts";
 
 export const USAGE = `usage: merge.ts <ready|merge|dequeue|watch> <pr-number> --confirm <pr-number> [--repo owner/name] [--json] [--git-dir path] [--accept-risk] [--reason changes-needed|blocked|unmergeable|manual] [--interval seconds] [--timeout seconds]`;
 
@@ -36,13 +39,15 @@ Steps:
 
 Options:
   --confirm <pr>     Required for every step. It must equal the PR number. Without
-                     it the step prints its plan and writes nothing (exit 3).
+                     it the step prints its plan and writes nothing (exit 4). A
+                     number that differs from the PR number is refused (exit 3).
   --repo owner/name  The repository. Default: the repository of the current directory.
   --json             Print one JSON object (schema 1) instead of text.
   --git-dir path     A local clone. It proves review carry-over for the verdict.
   --accept-risk      merge only: the user accepts a change in high-risk paths.
   --reason r         dequeue only. Default: taken from the verdict.
-  --interval s       watch only: seconds between polls. Default ${DEFAULT_INTERVAL_SECONDS}, minimum ${MIN_INTERVAL_SECONDS}.
+  --interval s       watch only: seconds between polls. Default: merge.watch_interval_seconds
+                     of the policy (180). Minimum ${MIN_INTERVAL_SECONDS}.
   --timeout s        watch only: seconds before the watch stops. Default ${DEFAULT_TIMEOUT_SECONDS}.
   -h, --help         Print this text and exit 0.
 
@@ -50,7 +55,8 @@ Exit codes:
   0   merged, or the step is done (ready, dequeued, nothing to do)
   10  waiting: queued, or the time bound of watch passed
   20  blocked: the PR or GitHub stops the step
-  3   refused: the call is not allowed; nothing was written
+  3   refused: the call is not allowed; do not retry; nothing was written
+  4   plan: the plan is shown and nothing was written; run again with --confirm
   2   usage or policy error
   1   the script crashed. Any other code means a crash as well.`;
 
@@ -63,7 +69,7 @@ export interface Args {
   readonly gitDir: string | null;
   readonly acceptRisk: boolean;
   readonly reason: DequeueReason | null;
-  readonly intervalSeconds: number;
+  readonly intervalSeconds: number | null;
   readonly timeoutSeconds: number;
 }
 
@@ -93,7 +99,7 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
   let reason: DequeueReason | null = null;
   let json = false;
   let acceptRisk = false;
-  let intervalSeconds = DEFAULT_INTERVAL_SECONDS;
+  let intervalSeconds: number | null = null;
   let timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] ?? "";
@@ -166,6 +172,9 @@ export function defaultIo(cwd: string): MergeIo {
     mutate: (op) => ghMutate(op, { cwd }),
     sleep: (ms) => Bun.sleep(ms),
     now: () => Date.now(),
+    lockDir: tmpdir(),
+    pid: process.pid,
+    isAlive: processExists,
   };
 }
 

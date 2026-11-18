@@ -2,7 +2,9 @@
 // real gather, evaluate, policy, and step code run on top of it. The world is
 // mutable, so a write (enqueue, dequeue, merge) changes what the next read sees.
 
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { MergeIo, StepContext } from "../../lib/merge/types.ts";
 import { newShared } from "../../lib/merge/types.ts";
 import type { RunResult } from "../../lib/proc.ts";
@@ -40,14 +42,16 @@ export interface World {
   /** False: the base branch has no merge queue. */
   hasQueue: boolean;
   allowedMethods: readonly string[];
-  /** Changed files, or "fail" when `gh pr diff` fails. */
-  files: readonly string[] | "fail";
+  /** Changed files (a rename has a previous name), or "fail" when the files API fails. */
+  files: readonly (string | { readonly filename: string; readonly previous_filename: string })[] | "fail";
   /** Make the PR query fail: number of reads that fail from now on. */
   failReads: number;
   /** Runs before each mutation is applied. */
   beforeMutation: ((op: GhMutation, world: World) => void) | null;
   /** Replies for mutations. A function that returns a result replaces the default. */
   mutationReply: Partial<Record<GhMutation["kind"], (op: GhMutation) => RunResult>>;
+  /** The next reads of the policy file fail with a 502. Counts down. */
+  policyFails: number;
   /** `gh pr merge` fails with this text. */
   mergeFails: string | null;
   /** `gh pr comment` fails. */
@@ -59,6 +63,10 @@ export interface World {
   readonly merges: string[][];
   readonly sleeps: number[];
   readonly lines: string[];
+  /** Directory of the watch locks. */
+  readonly lockDir: string;
+  /** Pids that count as alive. Pid 4242 is the pid of this run. */
+  alivePids: Set<number>;
   queue(entry: Partial<QueueEntryData> | null): void;
   removed(reason: string): void;
 }
@@ -69,6 +77,18 @@ export function headPatch(oid: Sha): Record<string, unknown> {
     commits: { totalCount: 1, pageInfo: { hasPreviousPage: false, startCursor: null }, nodes: [commitNode(oid, [OLD])] },
   };
 }
+
+const lockDirs: string[] = [];
+
+/** Remove the lock directories that the worlds made. Call it in afterEach. */
+export function removeWorlds(): void {
+  for (const dir of lockDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** A runaway loop in a fake clock fails the test instead of hanging the suite. */
+const MAX_SLEEPS = 2000;
 
 export function ok(data: unknown = {}): RunResult {
   return { code: 0, stdout: JSON.stringify({ data }), stderr: "" };
@@ -87,6 +107,8 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
   const sleeps: number[] = [];
   const lines: string[] = [];
   let clock = 1_000_000;
+  const lockDir = mkdtempSync(join(tmpdir(), "pr-merge-test-"));
+  lockDirs.push(lockDir);
 
   // The closures below read `world` when they run, after it is built.
   const graphqlGh = fakeGh({
@@ -128,10 +150,6 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
             stdout: JSON.stringify({ state: world.prState, mergeCommit: world.prState === "MERGED" ? { oid: world.mergeCommit } : null, headRefOid: world.head }),
             stderr: "",
           };
-        case "diff":
-          return world.files === "fail"
-            ? { code: 1, stdout: "", stderr: "gh: diff too large (HTTP 406)" }
-            : { code: 0, stdout: world.files.join("\n"), stderr: "" };
         case "comment": {
           const file = args[args.indexOf("--body-file") + 1] ?? "";
           if (world.commentFails) {
@@ -147,7 +165,20 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
     if (args[0] === "api" && args[1] !== "graphql") {
       const endpoint = args.find((a, i) => i > 0 && !a.startsWith("-") && args[i - 1] !== "-X" && args[i - 1] !== "-H") ?? "";
       if (endpoint.startsWith(`repos/${REPO}/contents/.config/pr-policy.toml`)) {
+        if (world.policyFails > 0) {
+          world.policyFails -= 1;
+          return { code: 1, stdout: "", stderr: "gh: HTTP 502: Bad Gateway" };
+        }
         return world.policyToml === null ? notFound(endpoint) : { code: 0, stdout: /^schema\s*=/m.test(world.policyToml) ? world.policyToml : `schema = 1\n${world.policyToml}`, stderr: "" };
+      }
+      if (endpoint.startsWith(`repos/${REPO}/pulls/7/files`)) {
+        if (world.files === "fail") {
+          return { code: 1, stdout: "", stderr: "gh: Server Error (HTTP 500)" };
+        }
+        const page = Number(/[?&]page=(\d+)/.exec(endpoint)?.[1] ?? "1");
+        const perPage = Number(/[?&]per_page=(\d+)/.exec(endpoint)?.[1] ?? "30");
+        const items = world.files.slice((page - 1) * perPage, page * perPage).map((f) => (typeof f === "string" ? { filename: f, status: "modified" } : { ...f, status: "renamed" }));
+        return { code: 0, stdout: JSON.stringify(items), stderr: "" };
       }
       if (endpoint === `repos/${REPO}/rules/branches/main`) {
         const rules: unknown[] = [
@@ -198,9 +229,15 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
     mutate,
     sleep: async (ms) => {
       sleeps.push(ms);
+      if (sleeps.length > MAX_SLEEPS) {
+        throw new Error("runaway loop: the fake clock slept more than the bound");
+      }
       clock += ms;
     },
     now: () => clock,
+    lockDir,
+    pid: 4242,
+    isAlive: (pid) => world.alivePids.has(pid),
   };
   const context = (extra: Partial<StepContext> = {}): StepContext => ({
     repo: slug.value,
@@ -229,6 +266,7 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
     failReads: 0,
     beforeMutation: null,
     mutationReply: {},
+    policyFails: 0,
     mergeFails: null,
     commentFails: false,
     calls,
@@ -238,6 +276,8 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
     merges,
     sleeps,
     lines,
+    lockDir,
+    alivePids: new Set([4242]),
     ...patch,
     io,
     context,

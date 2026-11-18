@@ -158,6 +158,8 @@ export function buildPolicy(value: JsonValue): Policy {
       jump: merge.choice("jump", ["never", "labelled"]),
       jump_labels: merge.strings("jump_labels"),
       delete_branch: merge.choice("delete_branch", ["own-only", "never"]),
+      high_risk_paths: merge.strings("high_risk_paths"),
+      watch_interval_seconds: merge.integer("watch_interval_seconds"),
     },
     draft: {
       create_as_draft: draft.boolean("create_as_draft"),

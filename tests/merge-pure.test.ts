@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { dequeueComment, deriveReason, hasChangesNeeded } from "../lib/merge/dequeue.ts";
 import { parseMutationReply, readChangedFiles, readQueueMethod } from "../lib/merge/github.ts";
 import { readyGate } from "../lib/merge/ready.ts";
-import { classifyRisk, HIGH_RISK_GLOBS } from "../lib/merge/risk.ts";
+import { classifyRisk } from "../lib/merge/risk.ts";
 import { describeRoute, jumpDecision } from "../lib/merge/route.ts";
 import type { Evaluated } from "../lib/merge/types.ts";
 import { EXIT } from "../lib/merge/types.ts";
@@ -117,28 +117,36 @@ describe("readyGate", () => {
 });
 
 describe("high-risk paths", () => {
+  const globs = builtinPolicy().merge.high_risk_paths;
+
   test.each([".github/workflows/ci.yml", "release/1.2/notes.md", "services/api/auth/login.ts", "db/migrations/0001_init.sql", "crates/x/release/plan.toml"])(
     "%s is high risk",
     (file) => {
-      expect(classifyRisk({ known: true, files: ["src/lib.rs", file] }).level).toBe("high");
+      expect(classifyRisk({ known: true, files: ["src/lib.rs", file] }, globs).level).toBe("high");
     },
   );
 
   test.each(["src/lib.rs", "docs/readme.md", "src/author.ts", "src/github/client.ts"])("%s is not high risk", (file) => {
-    expect(classifyRisk({ known: true, files: [file] })).toEqual({ level: "none" });
+    expect(classifyRisk({ known: true, files: [file] }, globs)).toEqual({ level: "none" });
   });
 
   test("an unknown change list is high risk", () => {
-    const risk = classifyRisk({ known: false, reason: "too large" });
+    const risk = classifyRisk({ known: false, reason: "too large" }, globs);
     expect(risk.level).toBe("high");
     if (risk.level === "high") expect(risk.reason).toContain("too large");
   });
 
-  test("the list names the four generic areas", () => {
-    expect(HIGH_RISK_GLOBS.some((g) => g.startsWith(".github"))).toBe(true);
-    expect(HIGH_RISK_GLOBS.some((g) => g.includes("release"))).toBe(true);
-    expect(HIGH_RISK_GLOBS.some((g) => g.includes("auth"))).toBe(true);
-    expect(HIGH_RISK_GLOBS.some((g) => g.includes("migrat"))).toBe(true);
+  test("the policy default names the four generic areas", () => {
+    expect(globs.some((g) => g.startsWith(".github"))).toBe(true);
+    expect(globs.some((g) => g.includes("release"))).toBe(true);
+    expect(globs.some((g) => g.includes("auth"))).toBe(true);
+    expect(globs.some((g) => g.includes("migrat"))).toBe(true);
+  });
+
+  test("the globs of the policy replace the default; an empty list turns the check off", () => {
+    expect(classifyRisk({ known: true, files: ["infra/prod.tf"] }, ["infra/**"]).level).toBe("high");
+    expect(classifyRisk({ known: true, files: [".github/ci.yml"] }, ["infra/**"]).level).toBe("none");
+    expect(classifyRisk({ known: true, files: [".github/ci.yml"] }, []).level).toBe("none");
   });
 });
 
@@ -189,9 +197,29 @@ describe("GitHub readers", () => {
     expect((await readQueueMethod(run(1, "", "boom"), repo, "main")).known).toBe(false);
   });
 
-  test("readChangedFiles splits lines and reports a failure", async () => {
-    expect(await readChangedFiles(run(0, "a.rs\n\n b/c.ts \n"), repo, 7)).toEqual({ known: true, files: ["a.rs", "b/c.ts"] });
-    const failed = await readChangedFiles(run(1, "", "gh: too large\nx"), repo, 7);
-    expect(failed).toEqual({ known: false, reason: "gh: too large" });
+  test("readChangedFiles gives the new and the old path of each file", async () => {
+    const page = JSON.stringify([{ filename: "ci-old/gate.yml", previous_filename: ".github/workflows/gate.yml" }, { filename: "src/a.rs" }]);
+    expect(await readChangedFiles(run(0, page), repo, 7)).toEqual({ known: true, files: ["ci-old/gate.yml", ".github/workflows/gate.yml", "src/a.rs"] });
+  });
+
+  test("readChangedFiles follows pages and gives up at 3000 files", async () => {
+    const pages: string[] = [];
+    const fullPage = (n: number) => JSON.stringify(Array.from({ length: 100 }, (_, i) => ({ filename: `f${n}-${i}` })));
+    const reader = async (args: readonly string[]) => {
+      pages.push(args[3] ?? "");
+      const page = Number(/[?&]page=(\d+)/.exec(args[3] ?? "")?.[1]);
+      return { code: 0, stdout: page === 3 ? JSON.stringify([{ filename: "last" }]) : fullPage(page), stderr: "" };
+    };
+    const found = await readChangedFiles(reader, repo, 7);
+    expect(found.known && found.files.length).toBe(201);
+    expect(pages).toHaveLength(3);
+    const endless = await readChangedFiles(async () => ({ code: 0, stdout: fullPage(1), stderr: "" }), repo, 7);
+    expect(endless.known).toBe(false);
+  });
+
+  test("readChangedFiles reports a failed or unreadable page as unknown", async () => {
+    expect(await readChangedFiles(run(1, "", "gh: Server Error\nx"), repo, 7)).toEqual({ known: false, reason: "gh: Server Error" });
+    expect((await readChangedFiles(run(0, "not json"), repo, 7)).known).toBe(false);
+    expect((await readChangedFiles(run(0, JSON.stringify([{ nope: 1 }])), repo, 7)).known).toBe(false);
   });
 });

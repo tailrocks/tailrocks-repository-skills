@@ -1,11 +1,12 @@
-// Step `watch`: one bounded poller for a queued PR. It never runs twice in
-// parallel, and it never merges. It ends when the PR merges, leaves the queue,
-// closes, needs a dequeue, or the time bound passes.
+// Step `watch`: one bounded poller for a queued PR. A lock file per repository
+// and PR keeps a second watcher out. The watcher never merges. It ends when the
+// PR merges, leaves the queue, closes, needs a dequeue, or the time bound passes.
 
 import { renderText } from "../status/render.ts";
 import { dequeueWrite, hasChangesNeeded } from "./dequeue.ts";
 import { blockerCodes, codesOf, evaluateFresh } from "./evaluate.ts";
-import { planOnly, scopeCheck } from "./common.ts";
+import { planOnly, refuse, scopeCheck } from "./common.ts";
+import { acquireWatchLock } from "./lock.ts";
 import { mergedSuffix, readPrState } from "./github.ts";
 import { EXIT, result, type Evaluated, type StepContext, type StepResult } from "./types.ts";
 
@@ -51,7 +52,8 @@ export function classifyWatch(evaluated: Evaluated): WatchView {
 }
 
 export interface WatchOptions {
-  readonly intervalSeconds: number;
+  /** Null: use `merge.watch_interval_seconds` of the policy. */
+  readonly intervalSeconds: number | null;
   readonly timeoutSeconds: number;
 }
 
@@ -81,19 +83,40 @@ export async function watchStep(ctx: StepContext, options: WatchOptions): Promis
   if (scoped !== null) {
     return scoped;
   }
+  const intervalSeconds = options.intervalSeconds ?? first.evaluated.policy.merge.watch_interval_seconds;
   if (!ctx.confirmed) {
     ctx.say(`now: ${first.evaluated.snapshot.state}${first.evaluated.snapshot.queueEntry === null ? ", not queued" : `, queue position ${first.evaluated.snapshot.queueEntry.position}`}`);
     return planOnly(
       ctx,
-      `poll every ${options.intervalSeconds}s for up to ${options.timeoutSeconds}s, and dequeue when a review asks for changes`,
+      `poll every ${intervalSeconds}s for up to ${options.timeoutSeconds}s, and dequeue when a review asks for changes`,
       first.evaluated,
     );
   }
-  const intervalMs = options.intervalSeconds * 1000;
-  const deadline = ctx.io.now() + options.timeoutSeconds * 1000;
-  ctx.say(`watching every ${options.intervalSeconds}s for up to ${options.timeoutSeconds}s`);
+  const lock = acquireWatchLock({
+    dir: ctx.io.lockDir,
+    repo: ctx.repo,
+    number: ctx.number,
+    timeoutSeconds: options.timeoutSeconds,
+    now: ctx.io.now,
+    isAlive: ctx.io.isAlive,
+    pid: ctx.io.pid,
+  });
+  if (!lock.ok) {
+    return refuse(ctx, lock.reason, "Wait for the other watcher. Do not start a second one.", first.evaluated);
+  }
+  try {
+    return await poll(ctx, first.evaluated, intervalSeconds, options.timeoutSeconds);
+  } finally {
+    lock.release();
+  }
+}
 
-  let current: Evaluated | null = first.evaluated;
+async function poll(ctx: StepContext, first: Evaluated, intervalSeconds: number, timeoutSeconds: number): Promise<StepResult> {
+  const intervalMs = intervalSeconds * 1000;
+  const deadline = ctx.io.now() + timeoutSeconds * 1000;
+  ctx.say(`watching every ${intervalSeconds}s for up to ${timeoutSeconds}s`);
+
+  let current: Evaluated | null = first;
   let seenQueued = false;
   let lastLine = "";
   let unreadable = 0;
@@ -164,7 +187,7 @@ export async function watchStep(ctx: StepContext, options: WatchOptions): Promis
     const left = deadline - ctx.io.now();
     if (left <= 0) {
       ctx.say(`the time bound passed; the PR is still ${seenQueued ? "in the queue" : "not merged"}`);
-      return result(EXIT.waiting, "timeout", `Run merge.ts watch ${ctx.number} --confirm ${ctx.number} again to keep watching.`, current);
+      return result(EXIT.waiting, "timeout", `Report the queue position to the user. Start another watch only when the user asks.`, current);
     }
     current = null;
     await ctx.io.sleep(Math.min(intervalMs, left));

@@ -42,6 +42,7 @@ export async function fetchBasePolicy(
   const detail = result.stderr.trim().split("\n")[0] ?? "";
   return {
     ok: false,
+    unreadable: true,
     errors: [{ pointer: "", message: `could not read ${POLICY_PATH} at ${baseSha}: ${detail}` }],
   };
 }

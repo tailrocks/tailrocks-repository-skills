@@ -1,14 +1,17 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { removeBodyFiles } from "../lib/body-file.ts";
 import { EXIT } from "../lib/merge/types.ts";
-import { watchStep } from "../lib/merge/watch.ts";
+import { watchStep, type WatchOptions } from "../lib/merge/watch.ts";
 import { thread } from "./helpers/fake-gh.ts";
-import { graphqlError, makeWorld, type World } from "./helpers/merge-world.ts";
-import { HEAD } from "./helpers/status.ts";
+import { graphqlError, makeWorld, removeWorlds, type World } from "./helpers/merge-world.ts";
+import { HEAD, sha } from "./helpers/status.ts";
 
-afterEach(() => removeBodyFiles());
+afterEach(() => {
+  removeBodyFiles();
+  removeWorlds();
+});
 
-const options = { intervalSeconds: 180, timeoutSeconds: 5400 };
+const options: WatchOptions = { intervalSeconds: 180, timeoutSeconds: 5400 };
 const openThread = { reviewThreads: { totalCount: 1, pageInfo: { hasNextPage: false, endCursor: null }, nodes: [thread(1)] } };
 const changesNeeded = {
   latestOpinionatedReviews: {
@@ -130,6 +133,30 @@ describe("watch", () => {
     expect(world.lines.join("\n")).toContain("nothing to watch");
   });
 
+  test("the interval comes from merge.watch_interval_seconds, and --interval overrides it", async () => {
+    const policy = makeWorld({ policyToml: "[merge]\nwatch_interval_seconds = 60\n" });
+    policy.queue({});
+    await watchStep(policy.context(), { intervalSeconds: null, timeoutSeconds: 150 });
+    expect(policy.sleeps).toEqual([60_000, 60_000, 30_000]);
+    const flag = makeWorld({ policyToml: "[merge]\nwatch_interval_seconds = 60\n" });
+    flag.queue({});
+    await watchStep(flag.context(), { intervalSeconds: 100, timeoutSeconds: 250 });
+    expect(flag.sleeps).toEqual([100_000, 100_000, 50_000]);
+    const fallback = queued();
+    await watchStep(fallback.context(), { intervalSeconds: null, timeoutSeconds: 400 });
+    expect(fallback.sleeps).toEqual([180_000, 180_000, 40_000]);
+  });
+
+  test("the watch stops at its deadline, and the settle reads are bounded", async () => {
+    const world = queued();
+    world.script = (gather, w) => {
+      if (gather === 2) w.queue(null);
+    };
+    const outcome = await watchStep(world.context(), { intervalSeconds: 5, timeoutSeconds: 10 });
+    expect(outcome.outcome).toBe("ejected");
+    expect(world.sleeps.length).toBeLessThanOrEqual(4);
+  });
+
   test("a closed PR is blocked", async () => {
     const world = queued();
     world.script = (gather, w) => {
@@ -161,6 +188,49 @@ describe("watch", () => {
     expect(world.mutations).toEqual([]);
   });
 
+  test("one 502 on the policy read after the base moves does not end the watch", async () => {
+    const world = queued();
+    world.script = (gather, w) => {
+      if (gather === 2) {
+        w.pr = { ...w.pr, baseRefOid: sha("d") };
+        w.policyFails = 1;
+      }
+      if (gather === 4) w.prState = "MERGED";
+    };
+    const outcome = await watchStep(world.context(), options);
+    expect(outcome.outcome).toBe("merged");
+    expect(outcome.exit).toBe(EXIT.done);
+    expect(world.policyFails).toBe(0);
+    expect(world.mutations).toEqual([]);
+  });
+
+  test("three policy read failures in a row stop the watch with exit 20, not exit 2", async () => {
+    const world = queued();
+    world.script = (gather, w) => {
+      if (gather === 2) {
+        w.pr = { ...w.pr, baseRefOid: sha("d") };
+        w.policyFails = 3;
+      }
+    };
+    const outcome = await watchStep(world.context(), options);
+    expect(outcome.exit).toBe(EXIT.blocked);
+    expect(outcome.outcome).toBe("blocked");
+    expect(world.lines.join("\n")).toContain("could not be read");
+  });
+
+  test("a policy file that is read and invalid still ends the watch with exit 2", async () => {
+    const world = queued();
+    world.script = (gather, w) => {
+      if (gather === 2) {
+        w.pr = { ...w.pr, baseRefOid: sha("d") };
+        w.policyToml = "schema = 9\n";
+      }
+    };
+    const outcome = await watchStep(world.context(), options);
+    expect(outcome.exit).toBe(EXIT.usage);
+    expect(outcome.outcome).toBe("policy_error");
+  });
+
   test("a failed read that recovers does not stop the watch", async () => {
     const world = queued();
     world.script = (gather, w) => {
@@ -171,10 +241,17 @@ describe("watch", () => {
     expect(outcome.outcome).toBe("merged");
   });
 
+  test("the plan names the interval of the policy", async () => {
+    const world = makeWorld({ policyToml: "[merge]\nwatch_interval_seconds = 45\n" });
+    world.queue({});
+    await watchStep(world.context({ confirmed: false }), { intervalSeconds: null, timeoutSeconds: 600 });
+    expect(world.lines.join("\n")).toContain("poll every 45s");
+  });
+
   test("without --confirm it reads once and prints the plan", async () => {
     const world = queued();
     const outcome = await watchStep(world.context({ confirmed: false }), options);
-    expect(outcome.exit).toBe(EXIT.refused);
+    expect(outcome.exit).toBe(EXIT.plan);
     expect(outcome.outcome).toBe("plan");
     expect(world.gathers).toBe(1);
     expect(world.sleeps).toEqual([]);

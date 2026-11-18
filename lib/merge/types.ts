@@ -4,7 +4,8 @@
 //   0   merged, or the step is done (ready, dequeued, or nothing to do)
 //   10  waiting: the PR is queued, or a check or a watch still runs
 //   20  blocked: the state of the PR or of GitHub stops the step
-//   3   refused: the call is not allowed; nothing was written
+//   3   refused: the call is not allowed; do not retry; nothing was written
+//   4   plan: the plan is shown and nothing was written; run again with --confirm
 //   2   usage or policy error
 
 import type { GhRun } from "../github/graphql.ts";
@@ -15,7 +16,7 @@ import type { PolicyLoad } from "../status/run.ts";
 import type { PrSnapshot, Verdict } from "../status/types.ts";
 import type { RepoSlug, Sha } from "../types.ts";
 
-export const EXIT = { done: 0, usage: 2, refused: 3, waiting: 10, blocked: 20 } as const;
+export const EXIT = { done: 0, usage: 2, refused: 3, plan: 4, waiting: 10, blocked: 20 } as const;
 
 export type Step = "ready" | "merge" | "dequeue" | "watch";
 
@@ -53,6 +54,12 @@ export interface MergeIo {
   readonly sleep: (ms: number) => Promise<void>;
   /** Milliseconds, monotonic enough for a deadline. */
   readonly now: () => number;
+  /** Directory of the watch lock files. */
+  readonly lockDir: string;
+  /** Process id of this run, recorded in the watch lock. */
+  readonly pid: number;
+  /** True when a process exists. Used only to judge a stale watch lock. */
+  readonly isAlive: (pid: number) => boolean;
 }
 
 export interface Evaluated {

@@ -43,6 +43,19 @@ describe("loadPolicy", () => {
     expect(policy.fleet).toEqual({ freeze: false, hold: [] });
   });
 
+  test("the merge section has the high-risk globs and the watch interval", () => {
+    const policy = policyOf(loadPolicy({ text: "schema = 1\n", source: "base-branch" }));
+    expect(policy.merge.watch_interval_seconds).toBe(180);
+    expect(policy.merge.high_risk_paths).toContain(".github/**");
+    expect(policy.merge.high_risk_paths.some((g) => g.includes("migrations"))).toBe(true);
+    const custom = policyOf(loadPolicy({ text: 'schema = 1\n[merge]\nhigh_risk_paths = ["infra/**"]\nwatch_interval_seconds = 5\n', source: "base-branch" }));
+    expect(custom.merge.high_risk_paths).toEqual(["infra/**"]);
+    expect(custom.merge.watch_interval_seconds).toBe(5);
+    expect(errorsOf("schema = 1\n[merge]\nwatch_interval_seconds = 4\n")).toHaveLength(1);
+    expect(errorsOf("schema = 1\n[merge]\nhigh_risk_paths = [\"\"]\n")).toHaveLength(1);
+    expect(errorsOf("schema = 1\n[merge]\nwatch_interval = 60\n")).toHaveLength(1);
+  });
+
   test("defaultPolicy equals the minimal file", () => {
     const fromFile = policyOf(loadPolicy({ text: "schema = 1\n", source: "local" }));
     expect(policyOf(defaultPolicy())).toEqual(fromFile);

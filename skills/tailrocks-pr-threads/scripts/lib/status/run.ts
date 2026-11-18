@@ -31,13 +31,13 @@ export interface StatusConfig {
 
 export type PolicyLoad =
   | { readonly ok: true; readonly policy: Policy; readonly source: PolicySource }
-  | { readonly ok: false; readonly errors: readonly PolicyError[] };
+  | { readonly ok: false; readonly unreadable: boolean; readonly errors: readonly PolicyError[] };
 
 export type StatusResult =
   | { readonly kind: "verdict"; readonly verdict: Verdict; readonly snapshot: PrSnapshot | null }
   | { readonly kind: "policy-error"; readonly errors: readonly PolicyError[] };
 
-function policyFor(repo: RepoSlug, baseSha: Sha, config: StatusConfig, runGh: GhRun): Promise<PolicyLoad> {
+export function policyFor(repo: RepoSlug, baseSha: Sha, config: StatusConfig, runGh: GhRun): Promise<PolicyLoad> {
   if (config.localPolicy !== undefined) {
     return Promise.resolve({ ok: true, policy: config.localPolicy.policy, source: "local" });
   }
@@ -46,8 +46,21 @@ function policyFor(repo: RepoSlug, baseSha: Sha, config: StatusConfig, runGh: Gh
   if (known !== undefined) {
     return known;
   }
+  // A load that failed to read is never kept: the next read tries again.
+  const unreadable = (message: string): PolicyLoad => {
+    config.policies.delete(key);
+    return { ok: false, unreadable: true, errors: [{ pointer: "", message }] };
+  };
   const pending = fetchBasePolicy(repo, baseSha, { cwd: config.cwd, runGh }).then(
-    (result): PolicyLoad => (result.ok ? { ok: true, policy: result.policy, source: result.source } : { ok: false, errors: result.errors }),
+    (result): PolicyLoad => {
+      if (result.ok) {
+        return { ok: true, policy: result.policy, source: result.source };
+      }
+      return result.unreadable === true
+        ? unreadable(result.errors[0]?.message ?? "the policy could not be read")
+        : { ok: false, unreadable: false, errors: result.errors };
+    },
+    (error: unknown): PolicyLoad => unreadable(`could not read the policy: ${error instanceof Error ? error.message : "unknown error"}`),
   );
   config.policies.set(key, pending);
   return pending;
@@ -69,6 +82,11 @@ export async function statusFor(repo: RepoSlug, number: number, config: StatusCo
   let snapshot = gathered.snapshot;
   const loaded = await policyFor(repo, snapshot.baseSha, config, runGh);
   if (!loaded.ok) {
+    if (loaded.unreadable) {
+      // A failed read is not a verdict on the policy. Report it as an unknown state, so a caller can try again.
+      const reason = loaded.errors[0]?.message ?? "the policy could not be read";
+      return { kind: "verdict", verdict: unknownVerdict(repo, number, reason), snapshot: null };
+    }
     return { kind: "policy-error", errors: loaded.errors };
   }
   const { policy, source } = loaded;

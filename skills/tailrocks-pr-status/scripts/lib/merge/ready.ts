@@ -3,7 +3,7 @@
 import { renderText } from "../status/render.ts";
 import { parseMutationReply } from "./github.ts";
 import { planOnly, reread, refuse, scopeCheck, unexpectedAfter } from "./common.ts";
-import { evaluateFresh, verdictExit } from "./evaluate.ts";
+import { evaluateFresh } from "./evaluate.ts";
 import { EXIT, result, type Evaluated, type StepContext, type StepResult } from "./types.ts";
 
 /**
@@ -68,7 +68,9 @@ export async function readyStep(ctx: StepContext): Promise<StepResult> {
   const recheck = readyGate(again.evaluated);
   if (!again.evaluated.snapshot.isDraft || !recheck.allowed) {
     ctx.say("the PR changed between the plan and the write; nothing was written");
-    return result(verdictExit(again.evaluated), "blocked", "Run this step again.", again.evaluated);
+    const exit = !again.evaluated.snapshot.isDraft ? EXIT.done : recheck.allowed ? EXIT.blocked : recheck.exit;
+    const outcome = exit === EXIT.done ? "nothing_to_do" : exit === EXIT.waiting ? "waiting" : exit === EXIT.refused ? "refused" : "blocked";
+    return result(exit, outcome, "Run this step again.", again.evaluated);
   }
   const reply = parseMutationReply(
     await ctx.io.mutate({ kind: "markPullRequestReadyForReview", pullRequestId: again.evaluated.snapshot.nodeId }),

@@ -4,10 +4,13 @@ import { join } from "node:path";
 import { removeBodyFiles } from "../lib/body-file.ts";
 import { HELP, main, parseArgs } from "../lib/merge/cli.ts";
 import { EXIT } from "../lib/merge/types.ts";
-import { graphqlError, makeWorld, type World } from "./helpers/merge-world.ts";
+import { graphqlError, makeWorld, removeWorlds, type World } from "./helpers/merge-world.ts";
 import { root } from "./helpers/status.ts";
 
-afterEach(() => removeBodyFiles());
+afterEach(() => {
+  removeBodyFiles();
+  removeWorlds();
+});
 
 interface Run {
   readonly code: number;
@@ -89,12 +92,12 @@ describe("command line", () => {
     expect(world.mutations).toEqual([]);
   });
 
-  test.each(["ready", "merge", "dequeue", "watch"] as const)("%s without --confirm writes nothing and exits 3", async (step) => {
+  test.each(["ready", "merge", "dequeue", "watch"] as const)("%s without --confirm writes nothing and exits 4", async (step) => {
     const world = makeWorld();
     world.pr = { isDraft: step === "ready" };
     if (step === "dequeue" || step === "watch") world.queue({});
     const result = await run(world, [step, "7", ...REPO]);
-    expect(result.code).toBe(EXIT.refused);
+    expect(result.code).toBe(EXIT.plan);
     expect(result.out.join("\n")).toContain("plan:");
     expect(world.mutations).toEqual([]);
     expect(world.merges).toEqual([]);
@@ -172,13 +175,14 @@ describe("command line", () => {
     expect(existsSync(path)).toBe(false);
   });
 
-  test("every documented exit code is one of 0, 10, 20, 3, 2", async () => {
+  test("every exit code is one of 0, 10, 20, 3, 4, 2", async () => {
     const seen = new Set<number>();
     const scenarios: readonly (readonly [(w: World) => void, readonly string[]])[] = [
       [() => undefined, ["merge", "7", "--confirm", "7"]],
       [() => undefined, ["merge", "7"]],
       [(w) => void (w.pr = { isDraft: true }), ["merge", "7", "--confirm", "7"]],
       [(w) => void w.queue({}), ["dequeue", "7", "--confirm", "7"]],
+      [() => undefined, ["merge", "7", "--confirm", "8"]],
       [() => undefined, ["merge", "7", "--bogus"]],
       [(w) => void (w.policyToml = "schema = 9"), ["merge", "7", "--confirm", "7"]],
     ];
@@ -187,7 +191,7 @@ describe("command line", () => {
       setup(world);
       seen.add((await run(world, [...argv, ...REPO])).code);
     }
-    expect([...seen].sort((a, b) => a - b)).toEqual([0, 2, 3, 10, 20]);
+    expect([...seen].sort((a, b) => a - b)).toEqual([0, 2, 3, 4, 10, 20]);
   });
 });
 

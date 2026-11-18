@@ -5,10 +5,13 @@ import { mergeStep } from "../lib/merge/merge.ts";
 import { readyStep } from "../lib/merge/ready.ts";
 import { EXIT } from "../lib/merge/types.ts";
 import { ctxRun, thread } from "./helpers/fake-gh.ts";
-import { graphqlError, makeWorld, type World } from "./helpers/merge-world.ts";
+import { graphqlError, makeWorld, removeWorlds, type World } from "./helpers/merge-world.ts";
 import { builtinPolicy, HEAD, sha } from "./helpers/status.ts";
 
-afterEach(() => removeBodyFiles());
+afterEach(() => {
+  removeBodyFiles();
+  removeWorlds();
+});
 
 const openThread = { reviewThreads: { totalCount: 1, pageInfo: { hasNextPage: false, endCursor: null }, nodes: [thread(1)] } };
 const pending = {
@@ -108,12 +111,13 @@ describe("merge: jump", () => {
     expect(world.mutationArgv[0]).toContain("jump=true");
   });
 
-  test("the policy without a jump gives a normal enqueue, with a note", async () => {
-    const world = makeWorld();
+  test("jump = never with a jump label on the PR gives a normal enqueue and a note", async () => {
+    const world = makeWorld({ policyToml: '[merge]\njump = "never"\njump_labels = ["queue:jump"]\n' });
     world.pr = labels("ci:auto", "queue:jump");
     await mergeStep(world.context(), { acceptRisk: false });
-    expect(world.mutations).toHaveLength(1);
-    expect(world.mutations[0]).toMatchObject({ jump: false });
+    expect(world.mutations).toEqual([{ kind: "enqueuePullRequest", pullRequestId: "PR_node_1", expectedHeadOid: HEAD, jump: false }]);
+    expect(world.mutationArgv[0]).toContain("jump=false");
+    expect(world.lines.join("\n")).toContain('has the jump label "queue:jump", but the policy has merge.jump = "never"');
   });
 
   test("the policy with a jump and no label gives a normal enqueue", async () => {
@@ -254,7 +258,7 @@ describe("merge: gates before any write", () => {
   test("without --confirm the step prints its plan and writes nothing", async () => {
     const world = makeWorld();
     const outcome = await mergeStep(world.context({ confirmed: false }), { acceptRisk: false });
-    expect(outcome.exit).toBe(EXIT.refused);
+    expect(outcome.exit).toBe(EXIT.plan);
     expect(outcome.outcome).toBe("plan");
     expect(world.lines.join("\n")).toContain("route: enqueue");
     expect(world.lines.join("\n")).toContain("--confirm 7");
@@ -285,7 +289,71 @@ describe("merge: gates before any write", () => {
   });
 });
 
+describe("merge: the route is checked again before the write", () => {
+  test("a jump label that appears between the plan and the write stops the write", async () => {
+    const world = makeWorld({ policyToml: jumpPolicy });
+    world.script = (gather, w) => {
+      if (gather === 2) w.pr = labels("ci:auto", "queue:jump");
+    };
+    const outcome = await mergeStep(world.context(), { acceptRisk: false });
+    expect(outcome.exit).toBe(EXIT.blocked);
+    expect(world.lines.join("\n")).toContain("the route changed between the plan and the write");
+    nothingWritten(world);
+  });
+
+  test("a queue method that changes between the plan and the write stops the write", async () => {
+    const world = makeWorld();
+    world.script = (gather, w) => {
+      if (gather === 2) w.queueMethod = "MERGE";
+    };
+    const outcome = await mergeStep(world.context(), { acceptRisk: false });
+    expect(outcome.exit).toBe(EXIT.blocked);
+    expect(world.lines.join("\n")).toContain("the route changed between the plan and the write");
+    nothingWritten(world);
+  });
+
+  test("a queue that disappears between the plan and the write stops the write", async () => {
+    const world = makeWorld();
+    world.script = (gather, w) => {
+      if (gather === 2) w.hasQueue = false;
+    };
+    const outcome = await mergeStep(world.context(), { acceptRisk: false });
+    expect(outcome.exit).toBe(EXIT.blocked);
+    nothingWritten(world);
+  });
+});
+
 describe("merge: high-risk paths", () => {
+  test("a rename out of .github is high risk, by the old path", async () => {
+    const world = makeWorld({ files: [{ filename: "ci-old/gate.yml", previous_filename: ".github/workflows/gate.yml" }] });
+    const outcome = await mergeStep(world.context(), { acceptRisk: false });
+    expect(outcome.exit).toBe(EXIT.refused);
+    expect(world.lines.join("\n")).toContain("high-risk path: .github/workflows/gate.yml");
+    nothingWritten(world);
+  });
+
+  test("a rename into .github is high risk, by the new path", async () => {
+    const world = makeWorld({ files: [{ filename: ".github/workflows/gate.yml", previous_filename: "ci-old/gate.yml" }] });
+    expect((await mergeStep(world.context(), { acceptRisk: false })).exit).toBe(EXIT.refused);
+    nothingWritten(world);
+  });
+
+  test("the policy globs replace the default list", async () => {
+    const custom = makeWorld({ policyToml: '[merge]\nhigh_risk_paths = ["infra/**"]\n', files: ["infra/prod.tf"] });
+    expect((await mergeStep(custom.context(), { acceptRisk: false })).exit).toBe(EXIT.refused);
+    const ignored = makeWorld({ policyToml: '[merge]\nhigh_risk_paths = ["infra/**"]\n', files: [".github/workflows/ci.yml"] });
+    expect((await mergeStep(ignored.context(), { acceptRisk: false })).outcome).toBe("queued");
+    const off = makeWorld({ policyToml: "[merge]\nhigh_risk_paths = []\n", files: [".github/workflows/ci.yml"] });
+    expect((await mergeStep(off.context(), { acceptRisk: false })).outcome).toBe("queued");
+  });
+
+  test("a list of 3000 files is incomplete and counts as high risk", async () => {
+    const world = makeWorld({ files: Array.from({ length: 3000 }, (_, i) => `src/f${i}.rs`) });
+    const outcome = await mergeStep(world.context(), { acceptRisk: false });
+    expect(outcome.exit).toBe(EXIT.refused);
+    expect(world.lines.join("\n")).toContain("changed files are unknown");
+  });
+
   test("a change in .github needs --accept-risk", async () => {
     const world = makeWorld({ files: ["src/a.rs", ".github/workflows/ci.yml"] });
     const refused = await mergeStep(world.context(), { acceptRisk: false });
@@ -394,7 +462,7 @@ describe("ready", () => {
   test("without --confirm it prints the plan", async () => {
     const world = draft();
     const outcome = await readyStep(world.context({ confirmed: false }));
-    expect(outcome.exit).toBe(EXIT.refused);
+    expect(outcome.exit).toBe(EXIT.plan);
     expect(outcome.outcome).toBe("plan");
     nothingWritten(world);
   });
@@ -406,6 +474,53 @@ describe("ready", () => {
     };
     const outcome = await readyStep(world.context());
     expect(outcome.exit).toBe(EXIT.blocked);
+    nothingWritten(world);
+  });
+
+  test("a blocker that appears between the plan and the write stops the write", async () => {
+    const world = draft();
+    world.script = (gather, w) => {
+      if (gather === 2) w.pr = { ...w.pr, ...openThread };
+    };
+    const outcome = await readyStep(world.context());
+    expect(outcome.exit).toBe(EXIT.blocked);
+    expect(outcome.outcome).toBe("blocked");
+    nothingWritten(world);
+  });
+
+  test("a check that starts between the plan and the write gives waiting, not blocked", async () => {
+    const world = draft();
+    world.script = (gather, w) => {
+      if (gather === 2) w.pr = { ...w.pr, ...pending };
+    };
+    const outcome = await readyStep(world.context());
+    expect(outcome.exit).toBe(EXIT.waiting);
+    expect(outcome.outcome).toBe("waiting");
+    nothingWritten(world);
+  });
+
+  test("a PR that someone marked ready between the reads needs no write", async () => {
+    const world = draft();
+    world.script = (gather, w) => {
+      if (gather === 2) w.pr = { ...w.pr, isDraft: false };
+    };
+    const outcome = await readyStep(world.context());
+    expect(outcome.exit).toBe(EXIT.done);
+    expect(outcome.outcome).toBe("nothing_to_do");
+    nothingWritten(world);
+  });
+
+  test("a policy that turns manual between the reads stops the write", async () => {
+    const world = draft();
+    world.script = (gather, w) => {
+      if (gather === 2) {
+        w.policyToml = '[draft]\nready_when = "manual"\n';
+        w.pr = { ...w.pr, baseRefOid: sha("d") };
+      }
+    };
+    const outcome = await readyStep(world.context());
+    expect(outcome.exit).toBe(EXIT.refused);
+    expect(outcome.outcome).toBe("refused");
     nothingWritten(world);
   });
 
@@ -465,7 +580,7 @@ describe("dequeue", () => {
   test("without --confirm it prints the plan", async () => {
     const world = queuedBlocked();
     const outcome = await dequeueStep(world.context({ confirmed: false }), null);
-    expect(outcome.exit).toBe(EXIT.refused);
+    expect(outcome.exit).toBe(EXIT.plan);
     expect(outcome.outcome).toBe("plan");
     nothingWritten(world);
   });

@@ -106,7 +106,7 @@ export async function mergeStep(ctx: StepContext, options: MergeOptions): Promis
   }
   ctx.say(`READY (head ${plan.snapshot.headSha.slice(0, 7)}, policy: ${plan.verdict.policySource})`);
 
-  const risk = classifyRisk(await readChangedFiles(ctx.io.runGh, ctx.repo, ctx.number));
+  const risk = classifyRisk(await readChangedFiles(ctx.io.runGh, ctx.repo, ctx.number), plan.policy.merge.high_risk_paths);
   if (risk.level === "high" && !options.acceptRisk) {
     for (const path of risk.paths.slice(0, 10)) {
       ctx.say(`  high-risk path: ${path}`);
@@ -125,7 +125,7 @@ export async function mergeStep(ctx: StepContext, options: MergeOptions): Promis
   const route = await decideRoute(ctx.io.runGh, plan);
   if (route.kind === "blocked") {
     ctx.say(`blocked: ${route.reason}`);
-    return result(EXIT.blocked, "blocked", "A person with admin rights fixes the policy or the branch rules. Do not work around it.", plan);
+    return result(EXIT.blocked, "blocked", "Fix the policy or the branch rules outside this skill. Do not work around it.", plan);
   }
   const jump = jumpDecision(plan.policy, plan.snapshot);
   if (jump.note !== null) {

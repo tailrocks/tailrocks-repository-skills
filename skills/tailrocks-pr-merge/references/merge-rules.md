@@ -5,7 +5,7 @@
 The script runs these gates in order. The first failure ends the step.
 
 1. `--confirm` equals the PR number. A different number exits 3 before any read.
-   No `--confirm` prints the plan and exits 3.
+   No `--confirm` prints the plan and exits 4.
 2. The PR head is in the same repository. A fork PR exits 3.
 3. The verdict uses the base-branch policy (or the built-in default when the
    base branch has no policy file). A verdict from a local policy exits 3.
@@ -42,13 +42,27 @@ the queue without the jump. The user decides.
 
 ## High-risk paths
 
-The policy schema has no key for these paths. The script uses a built-in list:
+The policy key `merge.high_risk_paths` lists the globs. The default list holds
 `.github/`, release directories, authentication and authorization directories,
-and migration directories. The match is on any path segment, so the list can
-flag more than it should. It never flags less.
+and migration directories. An empty list turns the check off. The match is on
+any path segment, so the default list can flag more than it should.
+
+The script reads the files of the PR from the REST files API. For a rename it
+checks both the old path and the new path. A list that is not complete counts as
+unknown, and unknown counts as high risk. GitHub lists at most 3000 files.
 
 ## Watch
 
+- The poll interval is `merge.watch_interval_seconds` of the policy (default 180,
+  minimum 5). The flag `--interval` overrides it.
+- A lock file per repository and PR, in the temporary directory of the system,
+  keeps a second watcher out. A second watcher exits 3. The lock is removed when
+  the watch ends. A lock is replaced only when it is older than its time bound
+  plus ten minutes and its process no longer exists. The script never kills a
+  process.
+- A failed read of the PR or of the policy file counts as one unreadable poll. The
+  failed policy read is not kept: the next poll tries again. A policy file that
+  was read and is invalid ends the watch with exit 2.
 - One poll reads the whole verdict again. The poll output shows a line only when
   the queue view changes.
 - A review that asks for changes (`review_changes_requested` or

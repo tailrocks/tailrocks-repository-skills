@@ -25,7 +25,7 @@ export function scopeCheck(ctx: StepContext, evaluated: Evaluated): StepResult |
 export function planOnly(ctx: StepContext, action: string, evaluated: Evaluated): StepResult {
   ctx.say(`plan: ${action}`);
   ctx.say(`nothing was written; add --confirm ${ctx.number} to run it`);
-  return result(EXIT.refused, "plan", `Run again with --confirm ${ctx.number} to ${action}.`, evaluated);
+  return result(EXIT.plan, "plan", `Run again with --confirm ${ctx.number} to ${action}.`, evaluated);
 }
 
 /** The verdict is not READY: print it and stop. WAITING gives 10, BLOCKED gives 20. */
