@@ -1,8 +1,11 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test, setDefaultTimeout } from "bun:test";
 import { git as guardedGit } from "../lib/git.ts";
 import { dcoComment } from "../lib/refresh/dco-fix.ts";
 import { main } from "../lib/refresh/cli.ts";
 import { fakeGithub, policyToml, REPO, sandbox, testDeps, worktreeLeftovers, type FakeOptions, type Sandbox } from "./helpers/refresh-env.ts";
+
+// Each test makes several git repositories; give it room.
+setDefaultTimeout(60_000);
 
 const made: Sandbox[] = [];
 afterEach(() => {
@@ -96,7 +99,7 @@ describe("dco-fix rewrite", () => {
     }
     // The comment has the exact text.
     expect(result.gh.mutations).toEqual([
-      { kind: "issue-comment", repo: REPO, number: 7, body: `Added missing DCO sign-off to 2 commits; trees unchanged (old ${t.c4} → new ${newHead})` },
+      { kind: "issue-comment", repo: REPO, number: 7, body: `Added missing DCO sign-off to 2 commits; trees unchanged (old \`${t.c4}\` → new \`${newHead}\`)` },
     ]);
     // The user's checkout is untouched, and the temporary worktree is gone.
     expect(sb.git(["rev-parse", "HEAD"]).trim()).toBe(userHead);
@@ -340,9 +343,60 @@ describe("dco-fix refusals and aborts", () => {
   });
 });
 
+function rawCommit(sb: Sandbox, parent: string, tree: string, message: Buffer, author = "Dev A <dev-a@example.com>"): string {
+  const head = Buffer.from(`tree ${tree}\nparent ${parent}\nauthor ${author} 1700000000 +0000\ncommitter ${author} 1700000000 +0000\n\n`);
+  const proc = Bun.spawnSync({ cmd: ["git", "hash-object", "-t", "commit", "-w", "--literally", "--stdin"], cwd: sb.clone, stdin: Buffer.concat([head, message]), stdout: "pipe", stderr: "pipe" });
+  if (proc.exitCode !== 0) throw new Error(proc.stderr.toString());
+  const sha = proc.stdout.toString().trim();
+  sb.git(["update-ref", "refs/heads/feat/topic", sha]);
+  sb.git(["push", "origin", "feat/topic"]);
+  return sha;
+}
+
+function treeOf(sb: Sandbox, rev: string): string {
+  return sb.git(["rev-parse", `${rev}^{tree}`]).trim();
+}
+
+describe("dco-fix message bytes and sign-off identity", () => {
+  test("a message that is not valid UTF-8 is refused and nothing is pushed", async () => {
+    const sb = box();
+    const base = sb.git(["rev-parse", "HEAD"]).trim();
+    const sha = rawCommit(sb, base, treeOf(sb, "HEAD"), Buffer.concat([Buffer.from("feat: caf"), Buffer.from([0xe9]), Buffer.from("\n")]));
+    const result = await run(sb, { policy: policyToml() });
+    expect(result.code).toBe(20);
+    expect(result.json().code).toBe("non_utf8_commit");
+    expect(sb.remoteRev("refs/heads/feat/topic")).toBe(sha as never);
+    expect(result.gh.mutations).toEqual([]);
+  });
+
+  test("a valid UTF-8 message keeps its bytes and gains only the trailer bytes", async () => {
+    const sb = box();
+    const base = sb.git(["rev-parse", "HEAD"]).trim();
+    const original = Buffer.from("feat: caf\u00e9 \ud83d\ude80\n\nbody \u00fc\n");
+    rawCommit(sb, base, treeOf(sb, "HEAD"), original);
+    const result = await run(sb, { policy: policyToml() });
+    expect(result.code).toBe(0);
+    const head = sb.remoteRev("refs/heads/feat/topic");
+    const bytes = Bun.spawnSync(["git", "cat-file", "commit", head], { cwd: sb.remote }).stdout;
+    const message = Buffer.from(bytes).subarray(Buffer.from(bytes).indexOf("\n\n") + 2);
+    expect(message.equals(Buffer.concat([original.subarray(0, original.length - 1), Buffer.from(`\n\n${TRAILER}\n`)]))).toBe(true);
+  });
+
+  test("a sign-off of another identity counts as signed, and the report names the commit", async () => {
+    const sb = box();
+    const sha = sb.commit({ "a.txt": "one\n" }, "feat: one\n\nSigned-off-by: Someone Else <else@example.com>", { signoff: false, author: "Other Dev <other@example.com>" });
+    sb.git(["push", "origin", "feat/topic"]);
+    const result = await run(sb, { policy: policyToml() });
+    expect(result.code).toBe(0);
+    expect(sb.remoteRev("refs/heads/feat/topic")).toBe(sha as never);
+    expect(result.json().data["signoffMismatch"]).toEqual([sha.slice(0, 12)]);
+    expect(result.text).toContain("another identity than the author");
+  });
+});
+
 describe("dco comment text", () => {
   test("uses the exact words", () => {
-    expect(dcoComment(3, "aaa", "bbb")).toBe("Added missing DCO sign-off to 3 commits; trees unchanged (old aaa → new bbb)");
+    expect(dcoComment(3, "aaa", "bbb")).toBe("Added missing DCO sign-off to 3 commits; trees unchanged (old `aaa` → new `bbb`)");
     expect(dcoComment(1, "aaa", "bbb")).toContain("to 1 commit;");
   });
 });

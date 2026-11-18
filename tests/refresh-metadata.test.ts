@@ -1,9 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test, setDefaultTimeout } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main } from "../lib/refresh/cli.ts";
 import { fakeGithub, policyToml, REPO, sandbox, testDeps, type FakeOptions, type Sandbox } from "./helpers/refresh-env.ts";
+
+// Each test makes several git repositories; give it room.
+setDefaultTimeout(60_000);
 
 const made: Sandbox[] = [];
 const dirs: string[] = [];
@@ -99,7 +102,7 @@ describe("metadata write", () => {
     const sb = box();
     const seen = await head(sb, { policy: policyToml() });
     const file = bodyFile("## Why\nbecause\n");
-    const run = await meta(sb, {}, ["write", "--title", "feat: topic", "--body-file", file, "--expect-head", seen.head], seen.gh);
+    const run = await meta(sb, {}, ["write", "--title", "feat: topic", "--body-file", file, "--expect-head", seen.head, "--expect-state", seen.state], seen.gh);
     expect(run.code).toBe(0);
     expect(run.json.data["written"]).toBe(false);
     expect(seen.gh.edits).toEqual([]);
@@ -112,7 +115,7 @@ describe("metadata write", () => {
     sb.git(["checkout", "-b", "feat/topic", "origin/feat/topic"], other);
     sb.commit({ "z.txt": "z\n" }, "feat: more", { cwd: other });
     sb.git(["push", "origin", "feat/topic"], other);
-    const run = await meta(sb, {}, ["write", "--title", "feat: new", "--expect-head", seen.head], seen.gh);
+    const run = await meta(sb, {}, ["write", "--title", "feat: new", "--expect-head", seen.head, "--expect-state", seen.state], seen.gh);
     expect(run.code).toBe(20);
     expect(run.json.code).toBe("drift");
     expect(seen.gh.edits).toEqual([]);
@@ -128,11 +131,35 @@ describe("metadata write", () => {
     expect(seen.gh.edits).toEqual([]);
   });
 
+  test("a body that holds a token is refused, and so is a title", async () => {
+    const sb = box();
+    const seen = await head(sb, { policy: policyToml() });
+    const file = bodyFile("hosts:\n  oauth_token: gho_0123456789abcdefghijABCDEFGHIJ\n");
+    const run = await meta(sb, {}, ["write", "--body-file", file, "--expect-head", seen.head, "--expect-state", seen.state], seen.gh);
+    expect(run.code).toBe(20);
+    expect(run.json.code).toBe("credential_in_text");
+    expect(seen.gh.edits).toEqual([]);
+    const title = await meta(sb, {}, ["write", "--title", "see https://user:hunter2@example.com/x", "--expect-head", seen.head, "--expect-state", seen.state], seen.gh);
+    expect(title.json.code).toBe("credential_in_text");
+    expect(seen.gh.edits).toEqual([]);
+  });
+
+  test("a lost edit is reported as an uncertain outcome", async () => {
+    const sb = box();
+    const options = { policy: policyToml(), dropEdits: true };
+    const seen = await head(sb, options);
+    const file = bodyFile("## Why\nnew text\n");
+    const run = await meta(sb, {}, ["write", "--title", "feat: new title", "--body-file", file, "--expect-head", seen.head, "--expect-state", seen.state], seen.gh);
+    expect(run.code).toBe(20);
+    expect(run.json.code).toBe("uncertain_outcome");
+    expect(seen.gh.edits).toHaveLength(1);
+  });
+
   test("a closed PR is not edited", async () => {
     const sb = box();
     const seen = await head(sb, { policy: policyToml() });
     seen.gh.state.state = "CLOSED";
-    const run = await meta(sb, {}, ["write", "--title", "feat: new", "--expect-head", seen.head], seen.gh);
+    const run = await meta(sb, {}, ["write", "--title", "feat: new", "--expect-head", seen.head, "--expect-state", seen.state], seen.gh);
     expect(run.json.code).toBe("pr_not_open");
     expect(seen.gh.edits).toEqual([]);
   });
@@ -140,7 +167,7 @@ describe("metadata write", () => {
   test("a title with a line break is refused by the guard", async () => {
     const sb = box();
     const seen = await head(sb, { policy: policyToml() });
-    const run = await meta(sb, {}, ["write", "--title", "feat: a\nb", "--expect-head", seen.head], seen.gh);
+    const run = await meta(sb, {}, ["write", "--title", "feat: a\nb", "--expect-head", seen.head, "--expect-state", seen.state], seen.gh);
     expect(run.code).toBe(20);
     expect(seen.gh.edits).toEqual([]);
   });
@@ -152,7 +179,7 @@ describe("metadata write", () => {
     dirs.push(dir);
     writeFileSync(join(dir, "real.md"), "text\n");
     Bun.spawnSync(["ln", "-s", join(dir, "real.md"), join(dir, "link.md")]);
-    const run = await meta(sb, {}, ["write", "--body-file", join(dir, "link.md"), "--expect-head", seen.head], seen.gh);
+    const run = await meta(sb, {}, ["write", "--body-file", join(dir, "link.md"), "--expect-head", seen.head, "--expect-state", seen.state], seen.gh);
     expect(run.code).toBe(20);
     expect(run.json.code).toBe("invalid_text");
     expect(seen.gh.edits).toEqual([]);

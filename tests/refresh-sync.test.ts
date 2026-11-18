@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test, setDefaultTimeout } from "bun:test";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { main } from "../lib/refresh/cli.ts";
@@ -14,6 +14,9 @@ import {
   type FakeOptions,
   type Sandbox,
 } from "./helpers/refresh-env.ts";
+
+// Each test makes several git repositories; give it room.
+setDefaultTimeout(60_000);
 
 const made: Sandbox[] = [];
 afterEach(() => {
@@ -188,7 +191,8 @@ describe("sync", () => {
     expect(run.code).toBe(20);
     expect(run.json.state).toBe("BLOCKED");
     expect(run.json.code).toBe("conflict");
-    expect(run.json.next).toBe("resolve keeping both sides; never hand-merge generated files");
+    expect(run.json.next).toContain("never hand-merge generated files");
+    expect(run.json.next).toContain("--keep-worktree");
     expect(run.json.data["conflicts"]).toEqual(["README.md", "out/generated.txt"]);
     expect(run.json.details).toContain("conflict: README.md");
     expect(run.json.details).toContain("generated: out/generated.txt");
@@ -253,6 +257,37 @@ describe("sync", () => {
     expect(run.json.details.join("\n")).toContain("src/a/two.txt");
     expect(pushes(run)).toBe(0);
     expect(sb.remoteRev("refs/heads/feat/topic")).toBe(before as never);
+  });
+
+  test("a moved file counts as added for the inventory", async () => {
+    const sb = box();
+    sb.commit({ "docs/inventory.txt": "src/a/one.txt\n", "src/a/one.txt": "1\n" }, "chore: inventory");
+    sb.git(["push", "origin", "HEAD:main"]);
+    const before = sb.commit({ "src/a/one.txt": null, "src/a/moved.txt": "1\n" }, "refactor: move one");
+    sb.git(["push", "origin", "feat/topic"]);
+    advanceBase(sb);
+    const run = await sync(sb, { policy: policyToml(INVENTORY) });
+    expect(run.code).toBe(20);
+    expect(run.json.code).toBe("inventory_miss");
+    expect(run.json.details.join("\n")).toContain("src/a/moved.txt");
+    expect(pushes(run)).toBe(0);
+    expect(sb.remoteRev("refs/heads/feat/topic")).toBe(before as never);
+  });
+
+  test("a generator that leaves conflict markers in an output is a failure", async () => {
+    const sb = box();
+    sb.commit({ "out/generated.txt": "BRANCH\n" }, "feat: output");
+    sb.git(["push", "origin", "feat/topic"]);
+    const before = sb.remoteRev("refs/heads/feat/topic");
+    advanceBase(sb, { "out/generated.txt": "BASE\n" });
+    const script = `require("fs").mkdirSync("out", {recursive: true}); require("fs").writeFileSync("out/generated.txt", "<<<<<<< ours\\nx\\n=======\\ny\\n>>>>>>> theirs\\n")`;
+    const marker = ["[[regenerate]]", 'name = "gen"', `run = [${JSON.stringify(BUN)}, "-e", ${JSON.stringify(script)}]`, 'outputs = ["out/**"]'].join("\n");
+    const run = await sync(sb, { policy: policyToml(marker) });
+    expect(run.code).toBe(20);
+    expect(run.json.code).toBe("regenerate_failed");
+    expect(run.json.headline).toContain("conflict markers");
+    expect(pushes(run)).toBe(0);
+    expect(sb.remoteRev("refs/heads/feat/topic")).toBe(before);
   });
 
   test("an inventory that names the file, or a new group, passes", async () => {

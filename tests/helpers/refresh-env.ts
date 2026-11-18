@@ -170,6 +170,8 @@ export interface FakeGithub {
   readonly state: PrState;
   readonly mutations: GhMutation[];
   readonly edits: string[][];
+  /** Bodies of `gh pr comment --body-file` calls. */
+  readonly comments: string[];
   readonly calls: string[][];
   readonly runGh: (args: readonly string[]) => Promise<RunResult>;
 }
@@ -207,6 +209,8 @@ export interface FakeOptions {
   readonly template?: string | null;
   readonly files?: readonly unknown[];
   readonly state?: Partial<PrState>;
+  /** The fake accepts `gh pr edit` but changes nothing (a lost edit). */
+  readonly dropEdits?: boolean;
   /** Extra REST replies, by endpoint. */
   readonly rest?: Readonly<Record<string, unknown>>;
 }
@@ -229,6 +233,7 @@ export function fakeGithub(sb: Sandbox, options: FakeOptions = {}): FakeGithub {
   };
   const mutations: GhMutation[] = [];
   const edits: string[][] = [];
+  const comments: string[] = [];
   const rulesReply = [
     {
       type: "pull_request",
@@ -287,12 +292,23 @@ export function fakeGithub(sb: Sandbox, options: FakeOptions = {}): FakeGithub {
     rest,
   );
   const runGh = async (args: readonly string[]): Promise<RunResult> => {
+    if (args[0] === "pr" && args[1] === "comment") {
+      const guard = checkGh(args);
+      if (!guard.allowed) {
+        throw new Error(`the guard refused gh pr comment: ${guard.reason}`);
+      }
+      comments.push(readFileSync(args[args.indexOf("--body-file") + 1] ?? "", "utf8"));
+      return { code: 0, stdout: "", stderr: "" };
+    }
     if (args[0] === "pr" && args[1] === "edit") {
       const guard = checkGh(args);
       if (!guard.allowed) {
         throw new Error(`the guard refused gh pr edit: ${guard.reason}`);
       }
       edits.push([...args]);
+      if (options.dropEdits === true) {
+        return { code: 0, stdout: "", stderr: "" };
+      }
       const title = args.indexOf("--title");
       if (title >= 0) {
         state.title = args[title + 1] ?? state.title;
@@ -309,7 +325,7 @@ export function fakeGithub(sb: Sandbox, options: FakeOptions = {}): FakeGithub {
     }
     return fake.run(args);
   };
-  return { state, mutations, edits, calls: fake.calls, runGh };
+  return { state, mutations, edits, comments, calls: fake.calls, runGh };
 }
 
 export interface TestDeps {

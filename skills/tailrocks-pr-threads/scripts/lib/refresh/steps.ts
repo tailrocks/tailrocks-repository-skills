@@ -21,11 +21,14 @@ export interface StepProblem {
 
 // ---------- Changed files ----------
 
-/** Files changed by the PR against the base, plus files changed since the old head. */
+/**
+ * Files changed by the PR against the base, plus files changed since the old
+ * head. `--no-renames` lists both the old and the new name of a moved file.
+ */
 export async function changedFiles(repo: Repo, base: Sha, oldHead: Sha): Promise<readonly string[]> {
   const names = new Set<string>();
   for (const from of [base, oldHead]) {
-    for (const name of splitNul(await must(repo, ["diff", "--name-only", "-z", from, "HEAD"]))) {
+    for (const name of splitNul(await must(repo, ["diff", "--name-only", "--no-renames", "-z", from, "HEAD"]))) {
       names.add(name);
     }
   }
@@ -145,7 +148,7 @@ export async function checkInventories(repo: Repo, policy: Policy, base: Sha): P
   if (policy.inventories.length === 0) {
     return [];
   }
-  const added = splitNul(await must(repo, ["diff", "--name-only", "-z", "--diff-filter=A", base, "HEAD"]));
+  const added = splitNul(await must(repo, ["diff", "--name-only", "--no-renames", "-z", "--diff-filter=A", base, "HEAD"]));
   const problems: StepProblem[] = [];
   for (const inventory of policy.inventories) {
     const file = join(repo.cwd, inventory.file);

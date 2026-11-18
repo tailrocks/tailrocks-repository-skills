@@ -1,6 +1,6 @@
 interface:
   display_name: "PR: Refresh"
-  short_description: "Sync a pull request with its base, fix missing DCO sign-off, or reconcile its title and body"
+  short_description: "Sync a PR with its base, fix DCO sign-off, or fix its title/body"
   default_prompt: "Use $tailrocks-pr-refresh to bring this pull request up to date. Choose the mode (sync, dco-fix, or metadata), run the script, and act on each next step. Never skip a step."
 policy:
   allow_implicit_invocation: true

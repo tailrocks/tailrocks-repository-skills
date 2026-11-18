@@ -10,16 +10,18 @@ import type { Sha } from "../types.ts";
 import { confirmHead, reread, type PrContext, type RefreshDeps } from "./context.ts";
 import { GitFailure, mustSha, repoAt, yesNo } from "./gitx.ts";
 import { blocked, done, type Outcome } from "./outcome.ts";
+import { withNotes } from "./sync.ts";
 import { withWorktree } from "./worktree.ts";
 
 export function dcoComment(count: number, oldHead: string, newHead: string): string {
-  return `Added missing DCO sign-off to ${count} commit${count === 1 ? "" : "s"}; trees unchanged (old ${oldHead} → new ${newHead})`;
+  return `Added missing DCO sign-off to ${count} commit${count === 1 ? "" : "s"}; trees unchanged (old \`${oldHead}\` → new \`${newHead}\`)`;
 }
 
 /** Run the DCO fix. Never throws: a failure is a blocked outcome. */
 export async function runDcoFix(deps: RefreshDeps, ctx: PrContext): Promise<Outcome> {
+  const notes: string[] = [];
   try {
-    return await dcoFix(deps, ctx);
+    return withNotes(await dcoFix(deps, ctx, notes), notes);
   } catch (error) {
     const reason = error instanceof Error ? scrub(error.message) : "failed";
     const code = error instanceof SafetyError ? "safety_refused" : error instanceof GitFailure ? "git_failed" : "failed";
@@ -27,7 +29,7 @@ export async function runDcoFix(deps: RefreshDeps, ctx: PrContext): Promise<Outc
   }
 }
 
-async function dcoFix(deps: RefreshDeps, ctx: PrContext): Promise<Outcome> {
+async function dcoFix(deps: RefreshDeps, ctx: PrContext, notes: string[]): Promise<Outcome> {
   const { snapshot, policy } = ctx;
   const refusal = dcoRefusal(snapshot, policy, ctx.ghUser);
   if (refusal !== null) {
@@ -46,7 +48,7 @@ async function dcoFix(deps: RefreshDeps, ctx: PrContext): Promise<Outcome> {
     return blocked("base_missing", "the base commit is not in the local clone after the fetch", "run pr-status, then try again");
   }
 
-  const result = await withWorktree({ cwd: deps.cwd, root: deps.worktreeRoot, runner: deps.git }, snapshot.headSha, ({ repo }) =>
+  const result = await withWorktree({ cwd: deps.cwd, root: deps.worktreeRoot, runner: deps.git, onProblem: (note) => notes.push(note) }, snapshot.headSha, ({ repo }) =>
     executeDcoFix({
       snapshot,
       policy,
@@ -74,8 +76,16 @@ async function dcoFix(deps: RefreshDeps, ctx: PrContext): Promise<Outcome> {
   switch (result.kind) {
     case "refused":
       return blocked(result.refusal.code, result.refusal.headline, result.refusal.next, result.details);
-    case "unchanged":
-      return done(result.headline, [], { pushed: false, head: snapshot.headSha });
+    case "unchanged": {
+      const mismatched = result.mismatched ?? [];
+      return done(
+        result.headline,
+        mismatched.length === 0
+          ? []
+          : [`${mismatched.length} commit(s) carry a sign-off of another identity than the author: ${mismatched.join(", ")}`, "a DCO check that matches the sign-off to the author can still fail for them; ask the author to sign off"],
+        { pushed: false, head: snapshot.headSha, signoffMismatch: [...mismatched] },
+      );
+    }
     case "aborted":
       return blocked(result.code, result.headline, result.next, result.details);
     case "rewritten": {
@@ -84,6 +94,7 @@ async function dcoFix(deps: RefreshDeps, ctx: PrContext): Promise<Outcome> {
         `new head ${result.newHead}`,
         `added the trailer to ${result.trailersAdded} commit(s); ${result.reparented} more commit(s) got new parents with the same message`,
         ...result.warnings,
+        ...(result.mismatched.length === 0 ? [] : [`${result.mismatched.length} commit(s) keep a sign-off of another identity than the author: ${result.mismatched.join(", ")}`]),
       ];
       const carry = policy.review.source === "comment-verdict" && policy.review.carry_over === "clean-base-merge";
       details.push(

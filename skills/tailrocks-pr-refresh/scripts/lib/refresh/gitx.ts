@@ -1,8 +1,8 @@
 // Small helpers around the guarded git runner. Every call still passes the
 // allow-list in lib/safety-git.ts.
 
-import { git } from "../git.ts";
-import type { RunOptions, RunResult } from "../proc.ts";
+import { git, gitBytes } from "../git.ts";
+import type { BytesResult, RunOptions, RunResult } from "../proc.ts";
 import { parseSha, type Sha } from "../types.ts";
 
 /** The guarded runner, or a test wrapper that delegates to it. */
@@ -10,14 +10,18 @@ export type GitRunner = (args: readonly string[], options: RunOptions) => Promis
 
 export const guardedGit: GitRunner = git;
 
+export type GitBytesRunner = (args: readonly string[], options: RunOptions) => Promise<BytesResult>;
+
+export const guardedGitBytes: GitBytesRunner = gitBytes;
+
 // A refresh runs unattended in a temporary worktree. It never runs the hooks
-// of the user's repository, and it never waits for a signing prompt.
+// of the user's repository: the policy `[[prepush]]` steps replace them. It
+// keeps the rest of the user's git configuration, so commit signing stays as
+// the user set it.
 export const REFRESH_GIT_ENV: Readonly<Record<string, string>> = {
-  GIT_CONFIG_COUNT: "2",
+  GIT_CONFIG_COUNT: "1",
   GIT_CONFIG_KEY_0: "core.hooksPath",
   GIT_CONFIG_VALUE_0: "/dev/null",
-  GIT_CONFIG_KEY_1: "commit.gpgsign",
-  GIT_CONFIG_VALUE_1: "false",
 };
 
 export class GitFailure extends Error {
@@ -32,11 +36,14 @@ export interface ExtraOptions {
 export interface Repo {
   readonly cwd: string;
   readonly run: (args: readonly string[], extra?: ExtraOptions) => Promise<RunResult>;
+  /** Like `run`, with stdout as raw bytes. */
+  readonly bytes: (args: readonly string[]) => Promise<BytesResult>;
 }
 
-export function repoAt(cwd: string, runner: GitRunner): Repo {
+export function repoAt(cwd: string, runner: GitRunner, bytesRunner: GitBytesRunner = guardedGitBytes): Repo {
   return {
     cwd,
+    bytes: (args) => bytesRunner(args, { cwd, env: REFRESH_GIT_ENV }),
     run: (args, extra = {}) =>
       runner(args, {
         cwd,

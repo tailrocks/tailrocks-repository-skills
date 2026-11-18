@@ -7,6 +7,7 @@ import { SafetyError } from "../guard.ts";
 import { isNotFound, rest, type GhRun } from "../github/graphql.ts";
 import { arr, isObj, member, num, parseJson, ReadError, str } from "../github/read.ts";
 import { removeBodyFiles, writeBodyFile } from "../body-file.ts";
+import { containsCredential } from "../proc.ts";
 import type { PrSnapshot } from "../status/types.ts";
 import { bodyProblems } from "../status/text.ts";
 import { readSnapshot, type PrContext, type RefreshDeps } from "./context.ts";
@@ -106,7 +107,8 @@ export interface MetadataWrite {
   readonly title: string | null;
   readonly bodyFile: string | null;
   readonly expectHead: string;
-  readonly expectState: string | null;
+  /** The state id that `metadata show` printed. Required: it detects an edit by someone else. */
+  readonly expectState: string;
 }
 
 const MAX_BODY_FILE_BYTES = 262_144;
@@ -154,7 +156,7 @@ async function write(deps: RefreshDeps, ctx: PrContext, request: MetadataWrite):
       "run metadata show again and reconcile against the new diff",
     );
   }
-  if (request.expectState !== null && request.expectState !== stateId(snapshot)) {
+  if (request.expectState !== stateId(snapshot)) {
     return blocked(
       "drift",
       "the title, body, or base changed since metadata show; nothing was written",
@@ -162,6 +164,13 @@ async function write(deps: RefreshDeps, ctx: PrContext, request: MetadataWrite):
     );
   }
   const bodyText = request.bodyFile === null ? null : readBodyText(request.bodyFile);
+  if ((bodyText !== null && containsCredential(bodyText)) || (request.title !== null && containsCredential(request.title))) {
+    return blocked(
+      "credential_in_text",
+      "the new title or body looks like it holds a credential (a token, an auth header, or a URL with a password); nothing was written",
+      "remove the secret from the text, then run metadata write again",
+    );
+  }
   const titleChanged = request.title !== null && request.title !== snapshot.title;
   const bodyChanged = bodyText !== null && normalize(bodyText) !== normalize(snapshot.body);
   if (!titleChanged && !bodyChanged) {

@@ -2,7 +2,7 @@
 
 import type { DcoCapability } from "./dco-capability.ts";
 import { assertAllowed } from "./guard.ts";
-import { run, type RunOptions, type RunResult } from "./proc.ts";
+import { run, runBytes, type BytesResult, type RunOptions, type RunResult } from "./proc.ts";
 import { checkGit, checkGitDcoPush } from "./safety-git.ts";
 
 // Never wait for a prompt or an editor.
@@ -16,6 +16,12 @@ const GIT_ENV: Readonly<Record<string, string>> = {
 export async function git(args: readonly string[], options: RunOptions): Promise<RunResult> {
   assertAllowed(checkGit(args), `git ${args[0] ?? ""}`);
   return run(["git", ...args], { ...options, env: { ...GIT_ENV, ...options.env } });
+}
+
+/** Run an allow-listed `git` command and return stdout as raw bytes. */
+export async function gitBytes(args: readonly string[], options: RunOptions): Promise<BytesResult> {
+  assertAllowed(checkGit(args), `git ${args[0] ?? ""}`);
+  return runBytes(["git", ...args], { ...options, env: { ...GIT_ENV, ...options.env } });
 }
 
 export interface DcoPushRequest {

@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { afterEach, describe, expect, test, setDefaultTimeout } from "bun:test";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import {
@@ -11,7 +11,7 @@ import {
   verifyRewrite,
   type RangeCommit,
 } from "../lib/dco.ts";
-import { parseArgs } from "../lib/refresh/cli.ts";
+import { main, parseArgs } from "../lib/refresh/cli.ts";
 import { writeRefusal } from "../lib/refresh/gate.ts";
 import { guardedGit, repoAt } from "../lib/refresh/gitx.ts";
 import { inventoryMisses } from "../lib/refresh/steps.ts";
@@ -19,6 +19,9 @@ import { withWorktree } from "../lib/refresh/worktree.ts";
 import type { Sha } from "../lib/types.ts";
 import { sandbox, type Sandbox } from "./helpers/refresh-env.ts";
 import { green, policyFromText, sha } from "./helpers/status.ts";
+
+// Each test makes several git repositories; give it room.
+setDefaultTimeout(60_000);
 
 const TRAILER = "Signed-off-by: Dev A <dev-a@example.com>";
 const made: Sandbox[] = [];
@@ -142,6 +145,20 @@ describe("planRewrite and verifyRewrite", () => {
     expect(verifyRewrite(plan, rebuilt, mapping, TRAILER, sha("3"))).toContain(word);
   });
 
+  test("rejects a merge whose second parent changed or whose parents are swapped or extra", () => {
+    const merge = [commit("1", ["0"], `a\n\n${TRAILER}\n`), commit("2", ["1"], "b\n"), commit("4", ["2", "7"], "Merge\n")];
+    const plan = planRewrite(merge, (c) => c.parents.length <= 1 && needs(c));
+    if (plan === null) throw new Error("no plan");
+    const mapping = new Map<Sha, Sha>([[sha("2"), sha("b")], [sha("4"), sha("d")]]);
+    const rebuilt = (parents: readonly string[]) =>
+      new Map<Sha, RangeCommit>([[sha("b"), commit("b", ["1"], `b\n\n${TRAILER}\n`)], [sha("d"), commit("d", parents, "Merge\n")]]);
+    expect(verifyRewrite(plan, rebuilt(["b", "7"]), mapping, TRAILER, sha("4"))).toBeNull();
+    expect(verifyRewrite(plan, rebuilt(["7", "b"]), mapping, TRAILER, sha("4"))).toContain("parents");
+    expect(verifyRewrite(plan, rebuilt(["b", "8"]), mapping, TRAILER, sha("4"))).toContain("parents");
+    expect(verifyRewrite(plan, rebuilt(["b"]), mapping, TRAILER, sha("4"))).toContain("parents");
+    expect(verifyRewrite(plan, rebuilt(["b", "7", "8"]), mapping, TRAILER, sha("4"))).toContain("parents");
+  });
+
   test("rejects a different count", () => {
     const { plan, mapping, rebuilt } = good();
     rebuilt.delete(sha("c"));
@@ -214,11 +231,37 @@ describe("parseArgs", () => {
   };
 
   test("modes and options", () => {
-    expect(ok(["sync", "12", "--fresh-ci", "--run-ci", "--repo", "example-org/example-repo"]).command).toEqual({ mode: "sync", freshCi: true, runCi: true });
+    expect(ok(["sync", "12", "--fresh-ci", "--run-ci", "--repo", "example-org/example-repo"]).command).toEqual({ mode: "sync", freshCi: true, runCi: true, keepWorktree: false });
     expect(ok(["dco-fix", "#3"]).number).toBe(3);
     expect(ok(["metadata", "4", "show"]).command).toEqual({ mode: "metadata-show" });
-    expect(ok(["metadata", "4", "write", "--title", "t", "--expect-head", "a".repeat(40)]).command).toMatchObject({ mode: "metadata-write", title: "t", bodyFile: null });
+    expect(ok(["metadata", "4", "write", "--title", "t", "--expect-head", "a".repeat(40), "--expect-state", "b".repeat(16)]).command).toMatchObject({ mode: "metadata-write", title: "t", bodyFile: null });
     expect(ok(["sync", "1"]).remote).toBe("origin");
+  });
+
+  test("--help and -h exit 0 and print the usage", async () => {
+    for (const flag of ["--help", "-h"]) {
+      const lines: string[] = [];
+      const code = await main([flag], { out: (l) => lines.push(l), err: (l) => lines.push(`ERR ${l}`) });
+      expect(code).toBe(0);
+      expect(lines.join("\n")).toContain("usage:");
+      expect(lines.join("\n")).not.toContain("ERR");
+    }
+    expect(await main(["sync", "--help"], { out: () => undefined, err: () => undefined })).toBe(0);
+  });
+
+  test("continue and abort need the absolute worktree path; --keep-worktree belongs to sync", () => {
+    expect(ok(["continue", "5", "--worktree", "/tmp/pr-refresh-x/work"]).command).toEqual({ mode: "continue", worktree: "/tmp/pr-refresh-x/work", runCi: false });
+    expect(ok(["abort", "5", "--worktree", "/tmp/pr-refresh-x/work"]).command).toEqual({ mode: "abort", worktree: "/tmp/pr-refresh-x/work" });
+    expect(ok(["sync", "5", "--keep-worktree"]).command).toMatchObject({ keepWorktree: true });
+    expect(parseArgs(["continue", "5"]).ok).toBe(false);
+    expect(parseArgs(["continue", "5", "--worktree", "relative"]).ok).toBe(false);
+    expect(parseArgs(["abort", "5", "--worktree", "/x", "--fresh-ci"]).ok).toBe(false);
+    expect(parseArgs(["dco-fix", "5", "--keep-worktree"]).ok).toBe(false);
+  });
+
+  test("metadata write needs --expect-state", () => {
+    expect(parseArgs(["metadata", "1", "write", "--title", "t", "--expect-head", "a".repeat(40)]).ok).toBe(false);
+    expect(parseArgs(["metadata", "1", "write", "--title", "t", "--expect-head", "a".repeat(40), "--expect-state", "short"]).ok).toBe(false);
   });
 
   test.each([
@@ -288,10 +331,38 @@ describe("withWorktree", () => {
       await withWorktree({ cwd: sb.clone, root, runner: guardedGit }, head, async (w) => {
         seen = w.path;
       });
-      expect(seen.startsWith(`${root}/pr-refresh-`)).toBe(true);
+      expect(seen.startsWith(`${realpathSync(root)}/pr-refresh-`)).toBe(true);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe("outcome codes and the git environment", () => {
+  test("every outcome code that the script can emit is documented", () => {
+    const root = join(import.meta.dir, "..");
+    const doc = readFileSync(join(root, "skills", "tailrocks-pr-refresh", "references", "outcome-codes.md"), "utf8");
+    const sources = [...readdirSync(join(root, "lib", "refresh")).map((f) => join(root, "lib", "refresh", f)), join(root, "lib", "dco.ts")];
+    const codes = new Set<string>();
+    for (const file of sources) {
+      const text = readFileSync(file, "utf8");
+      for (const match of text.matchAll(/(?:blocked|aborted|refused)\(\s*(?:\{\s*code:\s*)?"([a-z_]+)"|\bcode:\s*"([a-z_]+)"|\bcode = "([a-z_]+)"/g)) {
+        const code = match[1] ?? match[2] ?? match[3];
+        if (code !== undefined && code !== "usage" && code !== "ok") {
+          codes.add(code);
+        }
+      }
+    }
+    expect(codes.size).toBeGreaterThan(30);
+    const missing = [...codes].filter((code) => !doc.includes(`\`${code}\``));
+    expect(missing).toEqual([]);
+  });
+
+  test("the refresh git environment turns hooks off and leaves signing alone", async () => {
+    const { REFRESH_GIT_ENV } = await import("../lib/refresh/gitx.ts");
+    const text = JSON.stringify(REFRESH_GIT_ENV);
+    expect(text).toContain("core.hooksPath");
+    expect(text).not.toContain("gpgsign");
   });
 });
 

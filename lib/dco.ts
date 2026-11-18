@@ -115,6 +115,28 @@ export function onlyTrailerAdded(before: string, after: string, trailer: string)
   return rest === `\n${trailer}\n` || rest === `\n\n${trailer}\n`;
 }
 
+// ---------- Sign-off identity ----------
+
+const SIGNOFF_EMAIL = /^signed-off-by:[^<\n]*<([^<>\n]*)>\s*$/gim;
+
+/**
+ * Commits whose sign-off lines name none of the author's email. Design section 7
+ * and pr-status both count any `Signed-off-by:` line as signed, so the rewrite
+ * leaves these commits alone. They are reported, because a DCO check that
+ * matches the sign-off to the author can still fail for them.
+ */
+export function signoffMismatches(range: readonly RangeCommit[]): readonly Sha[] {
+  return range
+    .filter((commit) => {
+      if (commit.parents.length > 1 || !hasSignoff(commit.message)) {
+        return false;
+      }
+      const emails = [...commit.message.matchAll(SIGNOFF_EMAIL)].map((m) => (m[1] ?? "").toLowerCase());
+      return !emails.includes(commit.authorEmail.toLowerCase());
+    })
+    .map((commit) => commit.sha);
+}
+
 // ---------- Preconditions ----------
 
 /** The reasons to refuse before any git work. Pure. */
@@ -232,7 +254,7 @@ export interface DcoFixRequest {
 
 export type DcoFixResult =
   | { readonly kind: "refused"; readonly refusal: Refusal; readonly details: readonly string[] }
-  | { readonly kind: "unchanged"; readonly headline: string }
+  | { readonly kind: "unchanged"; readonly headline: string; readonly mismatched?: readonly string[] }
   | { readonly kind: "aborted"; readonly code: string; readonly headline: string; readonly next: string; readonly details: readonly string[] }
   | {
       readonly kind: "rewritten";
@@ -241,6 +263,8 @@ export type DcoFixResult =
       readonly trailersAdded: number;
       readonly reparented: number;
       readonly warnings: readonly string[];
+      /** Commits that already had a sign-off of another identity than the author. They keep it. */
+      readonly mismatched: readonly string[];
     };
 
 function aborted(code: string, headline: string, next: string, details: readonly string[] = []): DcoFixResult {
@@ -251,18 +275,45 @@ function refused(refusal: Refusal, details: readonly string[] = []): DcoFixResul
   return { kind: "refused", refusal, details };
 }
 
-async function readRange(repo: Repo, head: Sha, base: Sha): Promise<readonly RangeCommit[] | string> {
+// Messages are compared as text. That is exact only when the bytes are valid
+// UTF-8, because then decoding and encoding again gives the same bytes. So the
+// objects are read as bytes, and any object that is not valid UTF-8 is refused
+// before a rewrite. The byte order mark stays in the text (`ignoreBOM`).
+const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+export type ObjectRead = { readonly ok: true; readonly commit: RangeCommit } | { readonly ok: false; readonly reason: string };
+
+/** Read one commit object as bytes and parse it. */
+export async function readCommit(repo: Repo, sha: Sha): Promise<ObjectRead> {
+  const result = await repo.bytes(["cat-file", "commit", sha]);
+  if (result.code !== 0) {
+    throw new GitFailure(`git cat-file failed: ${result.stderr.trim().split("\n")[0] ?? `exit ${result.code}`}`);
+  }
+  let text: string;
+  try {
+    text = STRICT_UTF8.decode(result.stdout);
+  } catch {
+    return { ok: false, reason: `commit ${sha.slice(0, 7)} is not valid UTF-8, so a rewrite could not keep its bytes` };
+  }
+  const commit = parseCommitObject(sha, text);
+  return commit === null ? { ok: false, reason: `commit ${sha.slice(0, 7)} is malformed` } : { ok: true, commit };
+}
+
+type RangeRead =
+  | { readonly ok: true; readonly commits: readonly RangeCommit[] }
+  | { readonly ok: false; readonly code: string; readonly reason: string };
+
+async function readRange(repo: Repo, head: Sha, base: Sha): Promise<RangeRead> {
   const listing = await must(repo, ["rev-list", "--reverse", "--topo-order", head, `^${base}`]);
   const commits: RangeCommit[] = [];
   for (const line of listing.split("\n").filter((l) => l !== "")) {
-    const sha = parseShaOrThrow(line.trim());
-    const commit = parseCommitObject(sha, await must(repo, ["cat-file", "commit", sha]));
-    if (commit === null) {
-      return `commit ${sha.slice(0, 7)} is malformed`;
+    const read = await readCommit(repo, parseShaOrThrow(line.trim()));
+    if (!read.ok) {
+      return { ok: false, code: "non_utf8_commit", reason: read.reason };
     }
-    commits.push(commit);
+    commits.push(read.commit);
   }
-  return commits;
+  return { ok: true, commits };
 }
 
 async function readIdentity(repo: Repo): Promise<string | null> {
@@ -311,10 +362,12 @@ export async function executeDcoFix(request: DcoFixRequest): Promise<DcoFixResul
 async function rewriteAndPush(request: DcoFixRequest): Promise<DcoFixResult> {
   const { snapshot, policy, repo } = request;
   const oldHead = snapshot.headSha;
-  const range = await readRange(repo, oldHead, snapshot.baseSha);
-  if (typeof range === "string") {
-    return aborted("git_failed", range, "run pr-status, then try again");
+  const read = await readRange(repo, oldHead, snapshot.baseSha);
+  if (!read.ok) {
+    return refused({ code: read.code, headline: read.reason, next: "ask the author to add the sign-off in a new commit" });
   }
+  const range = read.commits;
+  const mismatched = signoffMismatches(range).map((c) => c.slice(0, 12));
   const exemptBot = (commit: RangeCommit): boolean => {
     const login = botLoginOf(snapshot, commit.sha);
     return policy.dco.bot_commits === "exempt" && login !== null && policy.dco.bot_authors.some((bot) => sameLogin(bot, login));
@@ -323,7 +376,7 @@ async function rewriteAndPush(request: DcoFixRequest): Promise<DcoFixResult> {
     commit.parents.length <= 1 && !hasSignoff(commit.message) && !exemptBot(commit);
   const plan = planRewrite(range, needsTrailer);
   if (plan === null) {
-    return { kind: "unchanged", headline: "every commit has a sign-off or is exempt; nothing to rewrite" };
+    return { kind: "unchanged", headline: "every commit has a sign-off or is exempt; nothing to rewrite", mismatched };
   }
   const signedCommits = plan.rewrite.filter((c) => c.signed);
   if (signedCommits.length > 0) {
@@ -362,10 +415,11 @@ async function rewriteAndPush(request: DcoFixRequest): Promise<DcoFixResult> {
   // Verify the commits as git stored them.
   const rebuilt = new Map<Sha, RangeCommit>();
   for (const newSha of mapping.values()) {
-    const commit = parseCommitObject(newSha, await must(repo, ["cat-file", "commit", newSha]));
-    if (commit !== null) {
-      rebuilt.set(newSha, commit);
+    const read = await readCommit(repo, newSha);
+    if (!read.ok) {
+      return aborted("verification_failed", `the rewrite failed verification: ${read.reason}; nothing was pushed`, "report this to the maintainers of the skill");
     }
+    rebuilt.set(newSha, read.commit);
   }
   const problem = verifyRewrite(plan, rebuilt, mapping, trailer, oldHead);
   if (problem !== null) {
@@ -417,5 +471,6 @@ async function rewriteAndPush(request: DcoFixRequest): Promise<DcoFixResult> {
     trailersAdded: plan.needsTrailer.size,
     reparented: plan.rewrite.length - plan.needsTrailer.size,
     warnings,
+    mismatched,
   };
 }
