@@ -24,7 +24,7 @@ export interface FetchPolicyOptions {
 export async function fetchBasePolicy(
   repo: RepoSlug,
   baseSha: Sha,
-  options: FetchPolicyOptions,
+  options: FetchPolicyOptions = { cwd: process.cwd() },
 ): Promise<PolicyResult> {
   const args = [
     "api",
