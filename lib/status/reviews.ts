@@ -91,7 +91,8 @@ function commentVerdict(snapshot: PrSnapshot, policy: Policy): readonly Finding[
   const latest = new Map<string, Verdict>();
   for (const review of reviews) {
     const key = review.author.toLowerCase();
-    if (changes.test(review.body)) {
+    // GitHub's own "request changes" state counts, whatever the body says. A later approval overrides it.
+    if (review.state === "CHANGES_REQUESTED" || changes.test(review.body)) {
       latest.set(key, { kind: "changes", review, blocking: false });
     } else if (approve.test(review.body)) {
       latest.set(key, { kind: "approve", review, blocking: blocking?.test(review.body) ?? false });

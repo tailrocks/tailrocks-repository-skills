@@ -284,6 +284,23 @@ describe("reviews: comment-verdict", () => {
       expect(new RegExp(b, flags).test(text)).toBe(false);
     }
   });
+  test("a native CHANGES_REQUESTED review is a changes verdict whatever its body says", () => {
+    const native = { ...verdictReview("user-b", "please look again, see inline comments", HEAD, "2026-01-01T13:00:00Z"), state: "CHANGES_REQUESTED" as const };
+    const verdict = run(green({ reviews: [approve(), native] }));
+    expect(codes(verdict)).toEqual(["review_changes_requested"]);
+    expect(find(verdict, "review_changes_requested").detail).toContain("user-b");
+  });
+  test("a later approval overrides a native CHANGES_REQUESTED review", () => {
+    const native = { ...verdictReview("user-b", "no verdict line here", HEAD, "2026-01-01T13:00:00Z"), state: "CHANGES_REQUESTED" as const };
+    expect(run(green({ reviews: [native, approve(HEAD, "2026-01-01T14:00:00Z")] })).state).toBe("READY");
+  });
+  test("a native CHANGES_REQUESTED review from an uncounted reviewer or from the author when count_author is false does not block", () => {
+    const outsider = { ...verdictReview("user-z", "x", HEAD, "2026-01-01T13:00:00Z"), state: "CHANGES_REQUESTED" as const, association: "NONE" as const };
+    expect(run(green({ reviews: [approve(), outsider] })).state).toBe("READY");
+    const own = { ...verdictReview("user-b", "x", HEAD, "2026-01-01T13:00:00Z"), state: "CHANGES_REQUESTED" as const };
+    const strict = { ...example, review: { ...example.review, count_author: false } };
+    expect(run(green({ author: "user-b", reviews: [approve(HEAD, "2026-01-01T12:00:00Z", "user-c"), own] }), strict).state).toBe("READY");
+  });
   test("a changes-needed verdict with bold markup blocks", () => {
     const changes = verdictReview("user-b", "**Verdict: changes needed**", HEAD, "2026-01-01T13:00:00Z");
     expect(codes(run(green({ reviews: [changes] })))).toEqual(["review_changes_requested"]);
