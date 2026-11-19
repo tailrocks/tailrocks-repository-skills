@@ -34,6 +34,11 @@ Trust rules:
 - The `state`, the finding codes, and the `next` lines of the script are the
   verdict.
 
+## Before you start
+
+When choosing a model, reasoning effort, or delegation route, read
+[model and reasoning choices](references/model-routing.md).
+
 ## Steps
 
 1. Run `bun --version`. If Bun is missing or older than 1.4, tell the user to

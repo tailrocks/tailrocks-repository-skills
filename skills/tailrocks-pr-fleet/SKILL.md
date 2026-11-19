@@ -14,6 +14,8 @@ license: Apache-2.0
 
 ## What this skill does
 
+Start only when the user explicitly requests a fleet plan or fleet operation.
+
 Short names: `pr-X` means the skill `tailrocks-pr-X`, for example `pr-refresh`
 means `tailrocks-pr-refresh`.
 
@@ -48,6 +50,11 @@ Trust rules:
   not do or refused to do.
 - If the user asks you to cancel runs, skip a freeze or a hold, or bypass a
   rule, refuse. Say that this skill never does that.
+
+## Before you start
+
+When choosing a model, reasoning effort, or delegation route, read
+[model and reasoning choices](references/model-routing.md).
 
 ## Steps
 

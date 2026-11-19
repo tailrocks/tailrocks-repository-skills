@@ -18,13 +18,16 @@ an explicit user request. Their scripts write only after `--confirm`
 
 ## Guides
 
-- `installation.md` installs the package on eight coding agents.
-- `usage.md` shows how to select each skill and what each skill
-  returns.
-- `compatibility.md` records the test result of each client route.
-- `maintenance.md` lists the checks, the policy version, and the
-  release procedure.
-- `troubleshooting.md` fixes common install and selection failures.
+- [Installation](installation.md) gives the native host routes.
+- [Usage](usage.md) shows how to select a skill and use its arguments.
+- [Runtime requirements](runtime.md) lists the tools and packaged resources.
+- [Package structure](architecture.md) explains file ownership.
+- [Model choices](models.md) explains role selection and effort.
+- [Compatibility](compatibility.md) records host behavior and limits.
+- [Verification](verification.md) lists package checks and observed evidence.
+- [Maintenance](maintenance.md) gives generator and release procedures.
+- [Troubleshooting](troubleshooting.md) helps diagnose installation or use.
+- [Pull request lifecycle design](design/pr-skills.md) describes the script contracts.
 
 ## Skills
 
@@ -46,9 +49,4 @@ Each skill body lives in its own directory under `skills/`. Read
 
 ## Requirements
 
-All repository workflows need Git and `gh`. The script-backed skills
-need Bun 1.4 or newer. Hosted pull-request creation, refresh, review,
-and landing need an authenticated `gh` session with access to the
-target repository. Only GitHub.com is
-supported. GitHub Enterprise is unsupported. Read-only audits can run
-without authentication.
+See [runtime requirements](runtime.md) for the tools and files the skills use.

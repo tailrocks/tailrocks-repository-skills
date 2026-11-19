@@ -1,5 +1,5 @@
 {
-  "name": "pr-skills-tooling",
+  "name": "tailrocks-repository-skills",
   "private": true,
   "type": "module",
   "packageManager": "bun@1.4.4",
@@ -11,5 +11,39 @@
   "devDependencies": {
     "@types/bun": "1.4.4",
     "typescript": "7.0.2"
+  },
+  "version": "0.6.0",
+  "description": "Target-bound repository orchestration plus a script-backed pull-request lifecycle: status, create, refresh, review threads, guarded merge, and fleet planning.",
+  "exports": {
+    ".": "./adapters/opencode/index.js"
+  },
+  "files": [
+    "skills",
+    "adapters",
+    "index.js",
+    "plugin.json",
+    ".claude-plugin",
+    ".kimi-plugin",
+    ".antigravity-plugin",
+    "docs",
+    "README.md",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "scripts",
+    "lib",
+    "schemas",
+    "examples"
+  ],
+  "license": "Apache-2.0",
+  "repository": "https://github.com/tailrocks/tailrocks-repository-skills",
+  "dependencies": {
+    "@opencode/plugin": "2.3.2",
+    "yaml": "2.9.1"
+  },
+  "pi": {
+    "skills": [
+      "./skills"
+    ]
   }
 }

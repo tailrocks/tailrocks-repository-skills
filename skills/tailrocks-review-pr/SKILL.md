@@ -24,6 +24,9 @@ belong to `tailrocks-repository-merge`.
 
 ## Before you start
 
+When choosing a model, reasoning effort, or delegation route, read
+[model and reasoning choices](references/model-routing.md).
+
 Obey the active user request first. If the request conflicts with a safety rule
 in this skill, stop. Report the conflict.
 

@@ -1,15 +1,8 @@
-# Active skill package alint configuration (alint v0.18.1).
-# Extends the shared active profile by immutable URL plus SHA-256 pin.
-# Profile source: tailrocks/tailrocks-skills commit
-# 7bdfcdd610aa95bb13f62261cda1a53f0fa870d3 ("Establish the central
-# marketplace (#120)"). Pin computed 2026-10-08 with
-# `shasum -a 256` over the raw response body; the raw body is
-# byte-identical to `git show 7bdfcdd:standards/alint/active.yml`.
-# Bump rule: one PR updates the REV and HASH together, then re-runs
-# `alint check`, the strict-JSON check, and the frontmatter/ID check.
+# Shared Tailrocks package structure and native resource validation.
+# Update the immutable profile revision and SHA-256 together.
 version: 1
 extends:
-  - https://raw.githubusercontent.com/tailrocks/tailrocks-skills/7bdfcdd610aa95bb13f62261cda1a53f0fa870d3/standards/alint/active.yml#sha256-dae9e8f91ac3f5e6a28fb56d67f230fc4c23cc4fbab4763ecc5cc5477a903fba
+  - https://raw.githubusercontent.com/tailrocks/tailrocks-skills/5b2fc308a6f5a48d0c0e85c18e8db43c97e06433/standards/alint/active.yml#sha256-731e31c34fb41049206f69d7182f3059d16bf3e30c1c49cd16190121af89fe57
 # Narrow ignore for rule reference-names-portable (exact path, one file).
 # Reason: tailrocks-pr-template manages the exact upstream filename
 # PULL_REQUEST_TEMPLATE.md, and its SKILL.md links this reference copy.
@@ -27,3 +20,10 @@ ignore:
 # never hand-edited, and a test fails when they differ from lib/.
   - skills/*/scripts/lib/**
   - skills/*/scripts/schemas/**
+
+rules:
+  - id: native-package-valid
+    kind: command_idempotent
+    level: error
+    command: ["python3", "scripts/validate-package.py", "--check"]
+    message: "Native manifests, registrars, invocation policies, and bundled resources must agree."

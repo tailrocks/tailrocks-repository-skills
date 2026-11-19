@@ -81,6 +81,11 @@ actions, and the decisions file.
   change nothing, and report.
 - Never resolve a thread by hand. Never defer a thread of class `fix`.
 
+## Before you start
+
+When choosing a model, reasoning effort, or delegation route, read
+[model and reasoning choices](references/model-routing.md).
+
 ## Steps
 
 1. Run `bun --version`. If Bun is missing or older than 1.4, stop. Tell the user

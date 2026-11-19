@@ -29,34 +29,31 @@ Each skill body lives in its own directory. Read
 
 ## Install
 
-Install the package from the central `tailrocks` marketplace. Use
-the qualified id `tailrocks-repository-skills@tailrocks` wherever
-the client accepts it. Each row links its full section in
-`docs/installation.md`.
+Install one complete package in your host's chosen scope. The [Tailrocks
+catalog](https://github.com/tailrocks/tailrocks-skills) selects the source commit.
+Use the route for your host.
 
-| Agent | Method |
+| Host | Native install route |
 | --- | --- |
-| Claude Code | [Marketplace install](docs/installation.md#claude-code) |
-| Codex | [Marketplace add](docs/installation.md#codex) |
-| Amp | [Per-skill add](docs/installation.md#amp) |
-| Muse Code | [Marketplace install](docs/installation.md#muse-code) |
-| OpenCode | [Skill-directory copy](docs/installation.md#opencode) |
-| Antigravity | [Local-path install](docs/installation.md#antigravity) |
-| Grok Build | [Marketplace install](docs/installation.md#grok-build) |
-| Kimi Code | [In-session manager](docs/installation.md#kimi-code) |
+| Claude Code | [Marketplace plugin](docs/installation.md#claude-code) |
+| Codex | [Marketplace plugin](docs/installation.md#codex) |
+| Grok Build | [Marketplace plugin](docs/installation.md#grok-build) |
+| Muse Code | [Marketplace snapshot](docs/installation.md#muse-code) |
+| omp | [Marketplace plugin](docs/installation.md#omp) |
+| OpenCode V2 | [Git package](docs/installation.md#opencode) |
+| Amp | [Directory plugin](docs/installation.md#amp) |
+| Antigravity | [Local plugin installer](docs/installation.md#antigravity) |
+| pi | [Git package](docs/installation.md#pi) |
+| Kimi Code | [Marketplace manager](docs/installation.md#kimi-code) |
 
-Quick start on Claude Code (shell):
+Run these commands to install from the Claude Code marketplace.
 
 ```sh
 claude plugin marketplace add tailrocks/tailrocks-skills
 claude plugin install tailrocks-repository-skills@tailrocks --scope user
 ```
 
-All repository workflows need Git and `gh`. Hosted pull-request
-work needs an authenticated `gh` session. Only GitHub.com is
-supported. The six script-backed skills also need Bun 1.4 or newer.
-They read the repository policy from `.config/pr-policy.toml` on the
-default branch. See `docs/usage.md` and `examples/`.
+See [runtime requirements](docs/runtime.md) for tools and files the skills use.
 
 ## Use
 
@@ -74,28 +71,19 @@ boundary.
 
 ## Documentation
 
-- `docs/README.md` indexes the guides.
-- `docs/installation.md` installs the package on eight agents.
-- `docs/usage.md` shows how to select each skill.
-- `docs/compatibility.md` records each route result.
-- `docs/maintenance.md` lists checks, policy, and release steps.
-- `docs/troubleshooting.md` fixes common failures.
+- [Package guide](docs/README.md)
+- [Installation](docs/installation.md)
+- [Usage](docs/usage.md)
+- [Runtime requirements](docs/runtime.md)
+- [Model settings](docs/models.md)
+- [Compatibility and verification](docs/compatibility.md)
+- [Maintenance](docs/maintenance.md)
 
 ## Update and remove
 
-Refresh the marketplace first. Then refresh the plugin
-`tailrocks-repository-skills@tailrocks`. Remove the plugin when you
-no longer need it. Follow the lifecycle steps in the agent section
-of `docs/installation.md`:
-
-- [Claude Code](docs/installation.md#claude-code)
-- [Codex](docs/installation.md#codex)
-- [Amp](docs/installation.md#amp)
-- [Muse Code](docs/installation.md#muse-code)
-- [OpenCode](docs/installation.md#opencode)
-- [Antigravity](docs/installation.md#antigravity)
-- [Grok Build](docs/installation.md#grok-build)
-- [Kimi Code](docs/installation.md#kimi-code)
+Use [the host's update and removal steps](docs/installation.md).
+For a pinned Git package, install the new catalog revision and use one copy in
+the chosen scope.
 
 ## Contribute
 
