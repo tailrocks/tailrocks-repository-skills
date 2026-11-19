@@ -1,88 +1,64 @@
-# Compatibility
+# Compatibility and verification
 
-This record covers each client and route. The default outcome is
-unverified. Each unverified row names its reason. A route is never
-unsupported only because its binary is absent. A route is never
-verified only because a different client accepted the same files.
+`tailrocks-repository-skills` version `0.6.0` publishes 10 skills from
+one `skills/<id>/SKILL.md` tree. Each skill keeps its references, scripts,
+and assets in the installed package.
 
-## Results
+## Install routes
 
-| Client | Version | Route | Outcome |
-| --- | --- | --- | --- |
-| Claude Code | 2.1.289 | Marketplace | Unverified: not run. |
-| Claude Code | 2.1.289 | Local path | Trial result below. |
-| Codex | 0.160.1 | Marketplace | Unverified: not run. |
-| Codex | 0.160.1 | Local path | Unverified: not run. |
-| Amp | unversioned | Per-skill add | Unverified: CLI absent. |
-| Muse Code | 1.4.3 | Marketplace | Unverified: not run. |
-| Muse Code | 1.4.3 | Local path | Unverified: not run. |
-| OpenCode V1 | unversioned | Skills copy | Unverified: CLI absent. |
-| OpenCode V2 | unversioned | Skills copy | Unverified: CLI absent. |
-| Antigravity | unversioned | Local path | Unverified: CLI absent. |
-| Antigravity | unversioned | Skills copy | Unverified: CLI absent. |
-| Grok Build | unversioned | Marketplace | Unverified: CLI absent. |
-| Grok Build | unversioned | Skills copy | Unverified: CLI absent. |
-| Kimi Code | unversioned | Manager pin | Unverified: CLI absent. |
+| Host | Tailrocks distribution | Explicit invocation |
+| --- | --- | --- |
+| Claude Code | Native marketplace plugin | `/tailrocks-repository-skills:tailrocks-pr-create` |
+| Codex | Native marketplace plugin | `$tailrocks-repository-skills:tailrocks-pr-create` in the CLI |
+| Grok Build | Native marketplace plugin | `/tailrocks-pr-create` or `invocableAs` |
+| Muse Code | Native marketplace snapshot | `/tailrocks-pr-create` or picker entry |
+| omp | Native marketplace plugin | `/skill:tailrocks-pr-create` or resolved name |
+| OpenCode V2 | Git package with server plugin | `@tailrocks-pr-create` |
+| Amp | Directory plugin | Ask to load `tailrocks-repository-skills:tailrocks-pr-create` |
+| Antigravity | Native local plugin install | `/tailrocks-pr-create` |
+| pi | Native Git package | `/skill:tailrocks-pr-create` |
+| Kimi Code | Additional native marketplace plugin | `/skill:tailrocks-repository-skills:tailrocks-pr-create` |
 
-The trial ran on 2026-10-07 with Claude Code 2.1.289 in an
-isolated HOME. Marketplace add passed and install passed. The list
-showed the plugin enabled with all seven skills of 0.4.1 and no hooks or MCP
-servers. Uninstall passed and marketplace remove passed. The closing
-list was empty. The trial used a throwaway local marketplace built
-from the branch checkout.
-The real user config was untouched. No model task ran and no skill
-executed.
+Claude Code, Grok Build, and omp read the shared Claude catalog. Its URL
+sources carry a full commit SHA and a package version. Codex and Muse read
+the full commit in the Codex catalog's `source.ref`.
 
-## User-only enforcement
+Muse's portable importer reads the root Agent Plugins manifest. Keep every
+skill one directory below `skills/`. Muse refuses symlinks in plugin packages.
+[Portable plugin compatibility][muse]
 
-This table records documented support, not runtime verification. The
-frontmatter of all ten skills holds `name`, `description`, and
-`license` only: that is the set that every client loads. No skill
-carries `disable-model-invocation`, `user-invocable`,
-`disableModelInvocation`, `when_to_use`, or `argument-hint`. The two
-user-only skills (`tailrocks-repository-recover` and
-`tailrocks-repository-merge`) express user-only entry in two places:
-their description starts with "Use only when the user explicitly
-asks", and their `agents/openai.yaml` sets
-`policy.allow_implicit_invocation: false`. Enforced means the client
-blocks automatic model invocation from the package files. Prompt-only
-means the client reads the description and the body rule. A hard block
-needs a key that this package no longer ships. The notes below the
-table name that key and where the user can set it, if the client
-supports it.
+OpenCode V2 and Amp execute small registrars at plugin load. OpenCode reads
+the installed Markdown and registers the skill with its canonical file path.
+Amp registers each skill directory with `registerSkill`.
 
-| Client | Recover and repository-merge entry |
-| --- | --- |
-| Codex | Enforced (`allow_implicit_invocation: false`). |
-| Claude Code | Prompt-only. User setting can enforce (note 1). |
-| Kimi Code | Prompt-only. Local frontmatter key needed (note 2). |
-| Grok Build | Prompt-only. Local frontmatter key needed (note 2). |
-| Cursor | Prompt-only. Local frontmatter key needed (note 2). |
-| Amp | Limited: lists every skill to the model. |
-| Antigravity | Limited: frontmatter holds `name` and `description` only. |
-| Muse Code | Limited: recall observer can surface skills. |
-| OpenCode V1 | Gated by `permission.skill: ask`. |
+The registrars add skills only. Loading this package makes no model request
+and starts no background task, hook, or MCP server. A selected skill may use
+its bundled scripts when the workflow calls for them.
 
-1. Claude Code documents the user setting `skillOverrides` set to
-   `user-invocable-only`.
-2. The hard block is a frontmatter key: `disableModelInvocation` on
-   Kimi Code, `disable-model-invocation` on Grok Build and Cursor. This
-   package no longer ships these keys. The user adds the key in a local
-   copy of the skill, if the client supports it.
+Each host controls implicit skill selection and runtime permissions. Preserve
+any explicit-user-invocation rule in the skill. Discovering or registering a
+skill supplies no authority to perform the actions in its instructions.
 
-## Static fit
+## Verified scope
 
-These facts were observed on 2026-10-07 from the package files. They
-are not install proofs:
+See [package verification](verification.md) for the tested revision,
+tools, results, and remaining host-specific limits.
 
-- All ten frontmatter names match their skill directories. Each
-  frontmatter holds `name`, `description`, and `license` only.
-- All names are 28 characters or less. All descriptions are 1024
-  characters or less. The Amp, OpenCode, and Kimi caps fit.
-- The root manifest carries the Agent Plugins 1.0.0 schema id.
-- The Kimi manifest sets `skills` to `./skills/`.
-- Every payload file under `skills/` is text. No file carries the
-  executable bit.
-- Six skills carry a `scripts/` directory with TypeScript files. Bun
-  runs them. A plugin delivers files, not runtimes: the user installs
-  Bun 1.4 or newer. No manifest adds a hook or an MCP server.
+The shared pinning tests used Claude Code `2.1.328`, Codex CLI
+`0.167.0-alpha.4`, Grok Build `1.0.89`, and Muse Code `1.4.24`.
+Each host installed an older commit while the default branch pointed elsewhere.
+
+A separate OpenCode `2.3.2` fixture loaded skills through its live server
+registry and resolved installed script paths. The Amp registrar fixture used
+an API test double. These are distinct from package-specific verification.
+
+A registry listing establishes discovery. To verify a workflow, exercise its
+specified inputs, permissions, and expected result in the intended host.
+Private Git sources and hosted workspace installations require separate access.
+
+See the [installation guide](installation.md) for install, update, and removal
+commands. The [central distribution guide][distribution] records host-specific
+source formats and test evidence.
+
+[muse]: https://meta-models.github.io/muse-code-sdk/1.4/guides/plugins/concepts/compatibility/
+[distribution]: https://github.com/tailrocks/tailrocks-skills/blob/main/docs/standards/distribution.md

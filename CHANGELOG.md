@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 - 2026-11-20
+
+- Documented pinned native installs across the Tailrocks hosts, including
+  OpenCode V2, Amp, Antigravity, omp, and pi.
+- Added shared model guidance, portable skill metadata, and native package
+  validation.
+- Aligned generated CI on Velnor Actions 0.1.80 with offline link and anchor
+  checks.
+- Kept the Bun checks and vendored helper files in the shared package layout.
+
 ## 0.5.1 - 2026-11-19
 
 Fixed the frontmatter of the four kept skills. omp 18.20.2 skipped

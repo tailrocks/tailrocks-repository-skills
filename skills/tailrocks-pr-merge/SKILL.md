@@ -16,6 +16,9 @@ license: Apache-2.0
 
 ## What this skill does
 
+Start only when the user explicitly requests a merge, queue, draft, or watch
+action for this PR.
+
 Short names: `pr-X` means the skill `tailrocks-pr-X`, for example `pr-refresh`
 means `tailrocks-pr-refresh`.
 
@@ -37,6 +40,11 @@ Trust rules:
 - Never delete a branch. Never edit the policy file.
 - If the user asks you to use `--admin` or any other bypass, refuse. Say that
   this skill never bypasses rules.
+
+## Before you start
+
+When choosing a model, reasoning effort, or delegation route, read
+[model and reasoning choices](references/model-routing.md).
 
 ## Steps
 

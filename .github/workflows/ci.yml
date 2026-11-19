@@ -167,7 +167,7 @@ jobs:
       - name: Prepare pinned tools
         run: mise --no-config --no-env --no-hooks install 'http:lychee[url=https://github.com/lycheeverse/lychee/releases/download/v0.15.1/lychee-v0.15.1-x86_64-unknown-linux-gnu.tar.gz,checksum=sha256:9afdf0f48064fdcd8a8815ca6d2d9fcd43a0ef4c2edf9da23d6f7bf46a764eb8]@0.15.1'
       - name: Check links
-        run: mise --no-config --no-env --no-hooks exec 'http:lychee[url=https://github.com/lycheeverse/lychee/releases/download/v0.15.1/lychee-v0.15.1-x86_64-unknown-linux-gnu.tar.gz,checksum=sha256:9afdf0f48064fdcd8a8815ca6d2d9fcd43a0ef4c2edf9da23d6f7bf46a764eb8]@0.15.1' -- lychee --no-progress '**/*.md' '**/*.markdown'
+        run: mise --no-config --no-env --no-hooks exec 'http:lychee[url=https://github.com/lycheeverse/lychee/releases/download/v0.15.1/lychee-v0.15.1-x86_64-unknown-linux-gnu.tar.gz,checksum=sha256:9afdf0f48064fdcd8a8815ca6d2d9fcd43a0ef4c2edf9da23d6f7bf46a764eb8]@0.15.1' -- lychee --no-progress --offline --include-fragments '**/*.md' '**/*.markdown'
   plan:
     name: Plan
     runs-on: ubuntu-26.04

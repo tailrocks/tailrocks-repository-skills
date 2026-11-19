@@ -2,138 +2,28 @@
 
 ## Verify commands
 
-Run each command from the repository root. Every command must exit 0.
-
-Structure check:
+Run these commands from the package root.
 
 ```sh
-alint check
+python3 scripts/validate-package.py
+alint check --fail-on-warning
+npm pack --dry-run --json
 ```
 
-Expected result: no errors. The check enforces required paths,
-manifest agreement, README sections, skill-id shape, and the ban on
-component catalogs.
+The Python validator checks native manifests, adapters, skill metadata, and
+packaged resource paths. Inspect the npm file list when runtime files change.
+CI checks strict JSON and skill frontmatter. See [verification](verification.md)
+for the expected results and host evidence.
 
-Strict-JSON check. It rejects comments, trailing commas, and
-duplicate keys in the three manifests:
-
-```sh
-python3 - <<'EOF'
-import json
-FILES = ["plugin.json", ".claude-plugin/plugin.json", ".kimi-plugin/plugin.json"]
-def hook(pairs):
-    seen = set()
-    for key, _ in pairs:
-        if key in seen:
-            raise ValueError("duplicate key: " + key)
-        seen.add(key)
-    return dict(pairs)
-for path in FILES:
-    with open(path) as handle:
-        json.load(handle, object_pairs_hook=hook)
-    print("OK " + path)
-EOF
-```
-
-Expected result: one `OK` line per manifest.
-
-Frontmatter and ID check. It verifies the frontmatter block, the
-name key, name and directory agreement, id charset, and the
-description key for each skill. It also rejects any frontmatter key
-other than `name`, `description`, and `license`. Those three keys are
-the portable set: the Codex validator and the omp Agent Plugins loader
-reject other keys. Say manual-only entry in the description ("Use only
-when the user explicitly asks") and in `agents/openai.yaml`
-(`policy.allow_implicit_invocation: false`), never in frontmatter.
-`tests/skill-family.test.ts` enforces the same rule:
-
-```sh
-python3 - <<'EOF'
-import glob, os, re, sys
-found = sorted(glob.glob("skills/*/SKILL.md"))
-errors = []
-for path in found:
-    skill_id = path.split(os.sep)[1]
-    text = open(path).read()
-    match = re.match(r"---\n(.*?)\n---\n", text, re.S)
-    if not match:
-        errors.append(path + ": missing frontmatter block")
-        continue
-    front = match.group(1)
-    name = re.search(r"^name:\s*(\S+)\s*$", front, re.M)
-    if not name:
-        errors.append(path + ": missing name key")
-        continue
-    if name.group(1) != skill_id:
-        errors.append(path + ": name does not match directory")
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", name.group(1)):
-        errors.append(path + ": invalid skill id")
-    if not re.search(r"^description:", front, re.M):
-        errors.append(path + ": missing description key")
-    keys = re.findall(r"^([A-Za-z][^:\s]*):", front, re.M)
-    extra = [k for k in keys if k not in ("name", "description", "license")]
-    if extra:
-        errors.append(path + ": non-portable keys " + ", ".join(extra))
-if errors:
-    print("\n".join(errors))
-    sys.exit(1)
-print("OK %d skills: names match, ids valid, descriptions present"
-      % len(found))
-EOF
-```
-
-Expected result: `OK 10 skills` plus the verified-facts summary.
-
-Markdown check:
-
-```sh
-npx --yes markdownlint-cli2@0.23.3 "**/*.md"
-```
-
-Expected result: no issues. The version is pinned. There is no
-shared markdownlint config yet, so the check uses default rules.
-
-Native validator probes (read-only, no install):
-
-```sh
-claude plugin validate ./
-muse plugins validate ./ --json
-muse skills validate ./skills/tailrocks-review-pr
-```
-
-Expected result, observed 2026-10-07: `claude plugin validate`
-passes with one author warning (the host manifest carries name,
-version, and description only, per the common structure).
-`muse plugins validate` reports `valid: true`. It found all seven
-skills of version 0.4.1 through the portable root manifest. It lists warnings only.
-The warnings are unrecognized skill frontmatter keys, inactive
-`.claude-plugin` overlay fields beside the authoritative root, and
-the generated `.github/CLAUDE.md` symlink. `muse skills validate`
-reports valid.
-
-Known tension: `claude plugin validate --strict` exits 1 because it
-promotes the author warning to an error. Plain validation passes,
-so the package installs. Do not add `author` to the host manifest
-as a local fix: that would break the common structure. Resolve the
-tension in the common design instead.
-
-Generation diff. It proves `.github/` matches the generator output:
-
-```sh
-velnor-actions generate --output-dir /private/tmp/velnor-preview
-diff -r .github /private/tmp/velnor-preview/.github
-```
-
-Expected result: empty diff. Observed 2026-10-07: the comparison
-was empty. The 0.1.0 generator preserves the template. No restore
-step is necessary. See the CI source section below.
+Use Markdownlint CLI2 `0.23.3` to check Markdown formatting. Review meaning,
+policy, and authority in the changed instructions.
 
 ## TypeScript tooling
 
 The script-backed skills use Bun and TypeScript. `mise.toml` and the
-`packageManager` key in `package.json` pin Bun 1.4.4. The only
-dependencies are `typescript` and `@types/bun`, both development
-dependencies with exact versions. Run each command from the repository
+`packageManager` key in `package.json` pin Bun 1.4.4. The development tools are
+`typescript` and `@types/bun`. The OpenCode adapter uses its SDK and YAML parser
+as package dependencies. Run each command from the repository
 root. Every command must exit 0.
 
 Install the dependencies:
@@ -175,60 +65,59 @@ differences without a write.
 
 ## Policy version and update
 
-- alint: v0.18.1, the CI pin.
-- Shared profile: `standards/alint/active.yml` at
-  tailrocks-skills commit
-  `7bdfcdd610aa95bb13f62261cda1a53f0fa870d3`.
-- Pin:
-  `sha256-dae9e8f91ac3f5e6a28fb56d67f230fc4c23cc4fbab4763ecc5cc5477a903fba`.
-- markdownlint-cli2: 0.23.3.
-
-Bump the pin in one pull request: update the REV and HASH together
-in `.alint.yml`, regenerate, and re-run every verify command.
+The generated CI uses Alint `0.21.0`. The `.alint.yml` file pins the central
+`standards/alint/active.yml` profile by source revision and SHA-256. Review
+changes to that profile. Update both parts of the pin together. Repeat the
+verification commands after the update.
 
 ## CI source and regeneration
 
-`.velnor/config.toml` is the source. `velnor-actions generate` writes
-`.github/` from it. Never hand-edit `.github/` as the fix for a
-workflow problem. Change the config and regenerate.
+Use Velnor Actions `0.1.80` from source commit
+`b71a0045e42f6a8b620aa9283d0106bed622fe3b`. The
+[release manifest](../.velnor/release-manifest.json) records the binary digests.
+The input is `.velnor/config.toml`. CI runs Alint, strict JSON, frontmatter ID,
+and Lychee `0.15.1` with `--offline --include-fragments`. The link check covers
+local files and anchors. Generated Jactionlint and the plan feed the same
+required verdict.
 
-Proven behavior: the 0.1.0 generator from velnor-new commit
-`47c7b5b2e` preserves `.github/PULL_REQUEST_TEMPLATE.md`. The
-template survived the regenerate. The generation-diff comparison
-was empty. No restore step is necessary.
+Change the generator input and run `velnor-actions generate`. Keep the
+input and generated files together. The generator preserves the repository's
+`.github/PULL_REQUEST_TEMPLATE.md` file.
 
-The Bun checks run as a generated verification task, not as a
-`[stacks.bun]` route. In velnor-actions 0.1.80 the `[stacks.bun]`
-route fails: it hard-codes a cache read that the job cannot do. The
-config declares one `[[workflow.tasks]]` entry with `kind =
-"verification"` and `mise_task = "ci:bun-checks"`. The task lives in
-`mise.toml`. It installs Bun as `aqua:oven-sh/bun` (the core `bun`
-backend is rejected) and runs `bun install --frozen-lockfile`,
-`bun run typecheck`, and `bun test`. The generator checks the SHA-256
-of `mise.toml` and `mise.lock`, so regenerate after any change to
-either file. Make `mise.lock` with `mise lock`. Keep it at
-`lockfile_version = 3`.
+Compare the generated files with a fresh preview.
 
-After a change to the config, `mise.toml`, or `mise.lock`, run
-`velnor-actions generate` and commit the result. The job `Verify
-bun-checks` is a required need of the final gate.
+```sh
+package_preview="$(mktemp -d)"
+velnor-actions generate --output-dir "$package_preview"
+diff -r --brief .github "$package_preview/.github"
+```
+
+An empty diff confirms the recorded generator can reproduce the files.
+
+Repository Skills also runs the `ci:bun-checks` Mise task as a required
+verification job. The task uses `aqua:oven-sh/bun` and runs the frozen dependency
+install, type check, and tests. `mise.toml` and `mise.lock` supply the inputs.
+Keep the lock at `lockfile_version = 3`. Use `mise lock` to update it and
+regenerate the workflow after either input changes.
 
 ## Release and migration
 
-Release in this order:
+Update the version and description in `plugin.json` when the release requires
+it. Use the central generator to sync equivalent host metadata and the shared
+files. From the catalog checkout, point the generator at the directory that
+contains the plugin checkouts.
 
-1. Tag the release commit.
-2. Resolve the exact commit SHA of the tag.
-3. Bump the `rev` of this plugin in the central catalog at
-   `tailrocks/tailrocks-skills`.
-4. Regenerate the native catalogs from the central source.
-5. Re-run every verify command.
-6. Publish the tag.
+```sh
+python3 scripts/sync-packages.py --workspace /path/to/plugin-checkouts
+python3 scripts/sync-packages.py --workspace /path/to/plugin-checkouts --check
+```
 
-Migrate installs per the agent procedures in `installation.md`.
-Uninstall each plugin per scope, remove the old marketplace, add the
-new marketplace, and install the plugin. The order prevents
-duplicates.
+Review changes from `standards/native/` and `standards/models/model-routing.md`
+in the catalog checkout. Update `CHANGELOG.md`. Run the package checks and regenerate
+CI when its inputs change. Tag the verified release commit, publish it, and
+record its exact revision in the central catalog. Regenerate the central native
+catalogs after that revision is available. Check the published tag and catalog pin.
+Use [installation](installation.md) to migrate or remove an installed version.
 
 ## Prohibited evaluation content
 

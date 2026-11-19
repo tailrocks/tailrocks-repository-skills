@@ -1,656 +1,200 @@
 # Installation
 
-Install the package `tailrocks-repository-skills` from the central
-`tailrocks` marketplace. The marketplace source is
-`tailrocks/tailrocks-skills`. The qualified plugin id is
-`tailrocks-repository-skills@tailrocks`. Always use the qualified id.
-It prevents collisions with same-named plugins.
+`tailrocks-repository-skills` version `0.6.0` contains 10 skills.
+The package source is [tailrocks/tailrocks-repository-skills][package].
+The [Tailrocks catalog][catalog] pins one upstream commit per package.
 
-Each section below names the exact version, surface, and source. Shell
-commands run in a terminal. Session commands run inside the agent
-session. All commands were recorded on 2026-10-07.
+Install the complete package in one scope per host.
+Keep `skills/`, sibling skills, references, assets, and package-root scripts
+in their original locations. Relative links and script imports use that layout.
 
-## Runtime requirements
+See [runtime requirements](runtime.md) before running a selected workflow.
 
-All repository workflows need Git and `gh`. Six skills (`pr-status`,
-`pr-create`, `pr-refresh`, `pr-threads`, `pr-merge`, `pr-fleet`) run
-TypeScript scripts, so they also need Bun 1.4 or newer from bun.sh. The
-package does not install Bun. A script-backed skill stops and says so
-when `bun --version` fails. Hosted pull-request creation, refresh,
-review, and landing need an authenticated `gh` session with access to
-the target repository. Only GitHub.com is supported. GitHub Enterprise
-is unsupported. Read-only audits can run without authentication.
-
-Vet the package before install. Read `plugin.json`, the host
-manifests, the ten skill directories under `skills/`, and the
-`scripts/` directory of each script-backed skill. The scripts call `gh`
-and `git` only, make no other network call, and have no runtime
-dependencies. This package adds no hooks and no MCP servers.
-
-## User-only skills
-
-`tailrocks-repository-recover` and `tailrocks-repository-merge` need
-an explicit human command. A model must not select them from task
-similarity. The frontmatter of every skill holds only `name`,
-`description`, and `license`, because those keys load on every client.
-The package expresses user-only entry in three portable ways:
-
-- The description of each skill starts with "Use only when the user
-  explicitly asks", and the body keeps the explicit-request rule.
-- `agents/openai.yaml` sets `policy.allow_implicit_invocation: false`.
-  Codex enforces this flag. Explicit `$skill` invocation still works.
-- Claude Code documents a user setting for a hard block:
-  `skillOverrides` set to `user-invocable-only`. OpenCode v1 documents
-  `permission.skill` set to `ask`.
-- Kimi Code and Grok Build hard blocks are frontmatter keys:
-  `disableModelInvocation` (Kimi Code) and `disable-model-invocation`
-  (Grok Build). This package no longer ships these keys. To get the
-  hard block, add the key to a local copy of the skill, if you accept
-  that the local copy then differs from the package.
-
-Amp, Antigravity, and Muse Code cannot enforce per-skill user-only
-entry. Invoke the two skills only through an explicit human command.
-
-Loading or selecting a skill never authorizes side effects. Each run
-needs its own human invocation.
+Private packages require Git credentials with read access to the source.
+Hosted imports also require the host's GitHub connection to have access.
 
 ## Claude Code
 
-- Version and surface: `claude` 2.1.289, CLI. Sources: the plugin
-  docs at code.claude.com (five pages, HTTP 200) and local `--help`,
-  2026-10-07.
-- Tools and access: the `claude` CLI and network access to GitHub.
-  Private repository work needs an authenticated `gh` session.
-- Method: native marketplace, then qualified install.
-- Scope: user, project, or local.
-
-Shell commands:
+Register the marketplace once, then install this package in user scope.
 
 ```sh
 claude plugin marketplace add tailrocks/tailrocks-skills
 claude plugin install tailrocks-repository-skills@tailrocks --scope user
 ```
 
-Inspect the install (shell):
+Use `/tailrocks-repository-skills:tailrocks-pr-create` in the session.
+Run `claude plugin list` to inspect the installation.
 
-```sh
-claude plugin list
-claude plugin details tailrocks-repository-skills
-```
-
-Selection example (session):
-
-```text
-/tailrocks-repository-skills:tailrocks-review-pr #1663
-```
-
-Update and reload. Update one plugin (there is no update-all), or
-refresh the marketplace listing and its installed plugins (shell).
-Reload in the session after changes:
-
-```sh
-claude plugin update tailrocks-repository-skills@tailrocks
-claude plugin marketplace update tailrocks
-```
-
-```text
-/reload-plugins
-```
-
-Removal (shell):
-
-```sh
-claude plugin uninstall tailrocks-repository-skills --scope user
-```
-
-Limits and evidence: removing a marketplace uninstalls its plugins
-and strips `enabledPlugins`. Cloud sessions load no local or project
-plugins. A project scope needs one install per machine. Sources with
-`..` are rejected. Source: the loading and manifest-reference docs,
-2026-10-07.
+Refresh with `claude plugin marketplace update tailrocks`, then run
+`claude plugin update tailrocks-repository-skills@tailrocks`. Use `/reload-plugins` in the
+session. Remove with `claude plugin uninstall tailrocks-repository-skills@tailrocks --scope user`.
+[Claude Code plugins][claude]
 
 ## Codex
 
-- Version and surface: codex-cli 0.160.1, CLI. Sources: the plugin
-  guide at developers.openai.com, the developer-commands and
-  skills-and-plugins pages at learn.chatgpt.com, and local `--help`,
-  2026-10-07.
-- Tools and access: the `codex` CLI and network access to GitHub.
-- Method: native marketplace, then qualified add.
-- Scope: user install under `~/.codex/plugins/`, plus project enable
-  in `.codex/config.toml`.
-
-Shell commands:
-
 ```sh
 codex plugin marketplace add tailrocks/tailrocks-skills
 codex plugin add tailrocks-repository-skills@tailrocks
 ```
 
-Inspect the install (shell):
-
-```sh
-codex plugin list --available --json
-```
-
-Selection example (session):
-
-```text
-$tailrocks-review-pr #1663
-```
-
-Update and reload (shell). This refreshes the marketplace snapshots
-for configured plugins, even disabled ones:
-
-```sh
-codex plugin marketplace upgrade tailrocks
-```
-
-Removal (shell):
-
-```sh
-codex plugin remove tailrocks-repository-skills@tailrocks
-```
-
-Limits and evidence: Codex 0.160.1 has no `install`, `update`, or
-`validate` verbs (local `--help`). Marketplace refresh is separate
-from installed-plugin refresh: there is no verb to refresh one
-installed plugin. Restart the desktop app after local edits. Whether
-`marketplace remove` also removes installed plugins is unresolved in
-the docs. Identity is `name@marketplace`: always qualify the id.
-
-## Amp
-
-- Version and surface: docs unversioned, CLI plus hosted threads.
-  Sources: the skills, plugins, global-plugins-and-skills, and
-  settings pages at ampcode.com, plus the official building-skills
-  guide, 2026-10-07. The `amp` CLI is absent locally, so these
-  commands are doc-derived and unverified here.
-- Tools and access: the `amp` CLI and a local checkout of the
-  package. Each skill installs as its own directory.
-- Method: per-skill add from local paths.
-- Scope: project `.agents/skills/`, machine-local
-  `~/.config/agents/skills/`, or personal and workspace hosted
-  scopes.
-
-Shell commands. Clone once, then add each of the ten skill
-directories:
-
-```sh
-git clone https://github.com/tailrocks/tailrocks-repository-skills
-for skill in tailrocks-repository-recover tailrocks-repository-merge \
-    tailrocks-pr-status tailrocks-pr-create tailrocks-pr-refresh \
-    tailrocks-pr-threads tailrocks-pr-merge tailrocks-pr-fleet \
-    tailrocks-review-pr tailrocks-pr-template; do
-  amp skill add ./tailrocks-repository-skills/skills/"$skill" \
-    --name "$skill"
-done
-```
-
-Each add copies the full skill directory, including references. Add
-`--global` for the machine-local scope. Add `--overwrite` to replace
-an older copy.
-
-Inspect the install (shell):
-
-```sh
-amp skills list --json
-```
-
-Selection example (session). Amp has no slash invoke. Ask the thread
-for the exact qualified skill by name:
-
-```text
-Use the tailrocks-repository-skills:tailrocks-review-pr skill on #1663.
-```
-
-Update and reload: run the `reload_skills` tool after changes. No
-restart is needed. Hosted update is documented under two names
-(`amp skill update` on the Global page, `amp skills update` in
-building-skills). Verify the correct verb against the installed CLI
-before use.
-
-Removal: delete the installed skill directory, then run the
-`reload_skills` tool. There is no documented remove subcommand. Never
-delete the loader cache directory.
-
-Limits and evidence: hosted installs cap each repository at 200
-skills, 200 files, 10 MiB per file, 25 MiB per skill, text files
-only. A binary file blocks that skill from loading. Names keep 64
-characters or less and match their directory. Descriptions keep 1024
-characters or less. All ten skills in this package fit these caps.
-Names are 28 characters or less. Descriptions are 1024 characters or
-less. Every payload file is text.
-Duplicates resolve first-`name`-wins: a local copy masks a repository
-copy, and a personal copy masks a workspace copy. Amp cannot enforce
-per-skill user-only entry: it lists every discovered skill to the
-model. Remove or disable untrusted skill sources.
-
-## Muse Code
-
-- Version and surface: CLI 1.4.3, doc examples 1.3.0, Developer
-  Preview. Sources: the marketplaces-and-updates and compatibility
-  guides at meta-models.github.io, plus local `--help` and read-only
-  probes, 2026-10-07.
-- Tools and access: the `muse` CLI and network access to GitHub for
-  the first snapshot. Installs run offline from the snapshot.
-- Method: native marketplace, then qualified install, then approve
-  when the client asks.
-- Scope: marketplace installs are always user scope. Local-path
-  installs accept user or project scope.
-
-Shell commands:
-
-```sh
-muse plugins marketplace add tailrocks tailrocks/tailrocks-skills
-muse plugins install tailrocks-repository-skills@tailrocks
-```
-
-This package ships no hooks and no MCP servers, so there is usually
-nothing to approve. When the client reports capabilities that wait at
-`review_needed`, approve them explicitly.
-
-Inspect the install (shell):
-
-```sh
-muse plugins list --json
-```
-
-Validate a local checkout without install (shell, read-only):
-
-```sh
-muse plugins validate ./tailrocks-repository-skills --json
-muse skills validate ./tailrocks-repository-skills/skills/tailrocks-review-pr
-```
-
-Selection example (session): select the skill in the `/` picker and
-invoke its shown slash shortcut:
-
-```text
-/tailrocks-review-pr #1663
-```
-
-Update and reload (shell). Refresh the catalog first. Installed
-plugins never follow the refreshed snapshot, so refresh one git
-plugin with the remove plus install sequence, then re-approve when
-the client asks:
-
-```sh
-muse plugins marketplace update tailrocks
-muse plugins remove tailrocks-repository-skills@tailrocks
-muse plugins install tailrocks-repository-skills@tailrocks
-```
-
-Removal (shell):
-
-```sh
-muse plugins remove tailrocks-repository-skills@tailrocks
-```
-
-Add `--delete-data` to also remove the plugin data directory. The
-data directory stays without the flag.
-
-Limits and evidence: the first marketplace add clones over git with a
-60 second timeout and stores a snapshot. The catalog probe reads
-`marketplace.json`, then the Codex form, then the Claude form.
-Removing a marketplace keeps installed plugins working but ends
-their git update path. The catalog `name` must equal the manifest
-`name` or install fails. Always qualify `@marketplace`. Muse
-documents no frontmatter user-only enforcement, and its skill-recall
-observer can surface skills automatically. Invoke the two user-only
-skills only through an explicit human `/` picker command.
-
-## OpenCode
-
-- Version and surface: V1 and V2 docs, file copy, no install verb.
-  Sources: the skills pages at opencode.ai (V1, last updated Oct 6,
-  2026) and opencode.ai/v2/docs/skills, full pages, 2026-10-07. The
-  `opencode` CLI is absent locally, so these steps are doc-derived
-  and unverified here.
-- Tools and access: a shell and a local checkout of the package.
-- Method: copy complete skill directories, including references.
-- Scope: project `.opencode/skills/` (plus `.claude/` and `.agents/`
-  compatibility directories), or user `~/.config/opencode/skills/`.
-
-Shell commands for the project scope:
-
-```sh
-git clone https://github.com/tailrocks/tailrocks-repository-skills
-mkdir -p .opencode/skills
-cp -R tailrocks-repository-skills/skills/. .opencode/skills/
-```
-
-Shell commands for the user scope:
-
-```sh
-git clone https://github.com/tailrocks/tailrocks-repository-skills
-mkdir -p ~/.config/opencode/skills
-cp -R tailrocks-repository-skills/skills/. ~/.config/opencode/skills/
-```
-
-Inspect the install (shell): list the copied directories and confirm
-each holds its own `SKILL.md` file:
-
-```sh
-ls .opencode/skills/tailrocks-review-pr/SKILL.md
-```
-
-Selection example. V1 uses `skill({name})` in the prompt. V2 uses
-the path-derived case-sensitive id with `@` mention or
-`skill({id})`. Request the skill by name in the prompt:
-
-```text
-Use the tailrocks-review-pr skill on #1663. Report only; do not post or merge.
-```
-
-Update and reload: replace the copied files with the new package
-files. There is no reload command. V2 lists permitted skills per
-step.
-
-Removal: delete the copied skill directories and drop stale `skills`
-array entries from `opencode.json`. There is no documented remove
-verb.
-
-Limits and evidence: V1 names use 1 to 64 lowercase hyphenated
-characters and match their directory. Descriptions use 1 to 1024
-characters. All ten skills in this package fit: names are 28
-characters or less, descriptions are 1024 characters or less. Never write V2 keys
-(`metadata.opencode/autoinvoke`, `permission.skill`) into V1
-instructions: the V1 `permission.skill`
-map and the V2 JSONC permissions are different schemas. Keep V1 and
-V2 instructions separate. Gate the two user-only skills with
-`permission.skill` set to `ask` on V1:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "permission": {
-    "skill": {
-      "tailrocks-repository-recover": "ask",
-      "tailrocks-repository-merge": "ask"
-    }
-  }
-}
-```
-
-Duplicates on V2 resolve later-registered source wins: the project
-`.opencode` directory beats the global directory. On V1, names must
-be unique. Keep one copy per skill.
-
-## Antigravity
-
-- Version and surface: docs unversioned, surfaces "Antigravity 2.0 /
-  CLI / IDE". Sources: the plugins, marketplace, skills, and CLI
-  reference pages at antigravity.google, 2026-10-07. The `agy` CLI
-  is absent locally, so these commands are doc-derived and
-  unverified here.
-- Tools and access: the `agy` CLI and a local checkout of the
-  package. There is no Git-URL install form.
-- Method: local-path plugin install, or native skill-directory copy.
-- Scope: workspace `.agents/` directories or global `~/.gemini/`
-  directories. The CLI skill paths are `.agents/skills/` in the
-  workspace and `~/.gemini/antigravity-cli/skills/` globally.
-
-Shell commands for the plugin route. Clone first, then install the
-local path:
-
-```sh
-git clone https://github.com/tailrocks/tailrocks-repository-skills
-agy plugin install ./tailrocks-repository-skills
-```
-
-Shell commands for the native skill route:
-
-```sh
-git clone https://github.com/tailrocks/tailrocks-repository-skills
-mkdir -p .agents/skills
-cp -R tailrocks-repository-skills/skills/. .agents/skills/
-```
-
-Inspect the install. Shell:
-
-```sh
-agy plugin list
-```
-
-Session:
-
-```text
-/plugin list
-```
-
-Selection example (session). The CLI converts each skill to a slash
-command:
-
-```text
-/tailrocks-review-pr #1663
-```
-
-Update and reload: no update, upgrade, refresh, or reload command is
-documented. The docs describe only the 2.0 to CLI sync.
-Reload-after-edit behavior and collision precedence are undocumented.
-Reinstall the local path after upstream changes and verify the
-loaded copy.
-
-Removal. Shell:
-
-```sh
-agy plugin uninstall tailrocks-repository-skills
-```
-
-Session:
-
-```text
-/plugin uninstall tailrocks-repository-skills
-```
-
-Uninstall removes files and registry entries. For the native skill
-route, delete the copied skill directories.
-
-Limits and evidence: the plugin install accepts a local path only.
-There is no public marketplace catalog JSON. The root manifest must
-not carry the Antigravity schema. This package carries the portable
-Agent Plugins 1.0.0 schema (observed 2026-10-07). Antigravity
-frontmatter supports only `name` and `description`, so user-only
-entry cannot be enforced here. The agent auto-reads skills. Invoke
-the two user-only skills only through an explicit human
-`/<skill-name>` command. Keep one copy per skill: no precedence is
-documented.
+Use `$tailrocks-repository-skills:tailrocks-pr-create` in the CLI or pick the skill from `/skills`.
+Inspect installed entries with `codex plugin list --json`.
+
+Refresh with `codex plugin marketplace upgrade tailrocks` and repeat the
+qualified `plugin add` command. Open a new session after updating.
+Remove with `codex plugin remove tailrocks-repository-skills@tailrocks`. [Codex CLI][codex]
 
 ## Grok Build
 
-- Version and surface: docs unversioned, CLI plus project files.
-  Sources: the skills-plugins-marketplaces and CLI reference pages
-  at docs.x.ai, plus the xai-org plugin-marketplace repository,
-  2026-10-07. Install syntax is corroborated by ten or more
-  consistent third-party READMEs. The `grok` CLI is absent locally,
-  so these commands are doc-derived and unverified here.
-- Tools and access: the `grok` CLI and network access to GitHub.
-- Method: native marketplace, then install with explicit trust.
-- Scope: user scope under `~/.grok/`. Project scope needs manual
-  placement under `./.grok/plugins` or `./.grok/skills`.
-
-Shell commands:
-
 ```sh
 grok plugin marketplace add tailrocks/tailrocks-skills
 grok plugin install tailrocks-repository-skills --trust
 ```
 
-The `--trust` flag is required. The `@marketplace` qualified form
-and the direct `owner/repo` and `./path` source forms come from
-third-party evidence only. Compare them with current `grok --help`
-at install time before use.
+`--trust` grants the plugin access to Grok's extension runtime. Review the
+source before installing. Use `/tailrocks-pr-create` in the session. On a name
+collision, `grok inspect --json` reports the qualified `invocableAs` shortcut.
 
-Inspect the install (shell):
+Use `grok plugin marketplace list` to find the registered marketplace name.
+Refresh that marketplace, then run `grok plugin update tailrocks-repository-skills`.
+Remove with `grok plugin uninstall tailrocks-repository-skills`. [Grok plugins][grok]
 
-```sh
-grok inspect --json
-```
-
-Selection example (session):
-
-```text
-/tailrocks-review-pr #1663
-```
-
-Update and reload: the `plugin update` and `marketplace update`
-verbs are official, but their semantics come from third-party
-sources (bump the sha, regenerate the index). Reload is
-third-party-only with no official statement. Verify behavior on the
-installed build.
-
-Removal (shell):
+## Muse Code
 
 ```sh
-grok plugin uninstall tailrocks-repository-skills
-```
-
-Removal file effects and name-collision behavior are unresolved.
-Verify on the installed build.
-
-Limits and evidence: remote catalog entries need the full 40
-character lowercase `sha`. Branches, tags, and short SHAs are
-rejected, and the client re-verifies the sha against the cloned
-head. The `.grok-plugin/plugin-index.json` file is generated: never
-hand-edit it. Grok reads the Claude catalog with zero-config
-compatibility. The frontmatter of
-all ten skills holds `name`, `description`, and `license` only, so no
-skill sets `disable-model-invocation`. This package no longer
-ships that key. To block automatic invocation of the two user-only
-skills on Grok Build, add the key to a local copy of each skill. Do not
-treat `allowed-tools` metadata as an enforced tool-permission boundary.
-
-## Kimi Code
-
-- Version and surface: docs unversioned, CLI surface with in-session
-  commands only. Sources: the plugins and skills pages at kimi.com,
-  2026-10-07. The `kimi` CLI is absent locally, so these commands
-  are doc-derived and unverified here.
-- Tools and access: a Kimi Code session with network access to
-  github.com and codeload.github.com.
-- Method: in-session plugin manager with a commit-pinned source.
-  There is no shell verb.
-- Scope: user only. Project-level install is unsupported.
-
-Session commands. Register the central catalog first. Kimi never
-auto-discovers the catalog, so the marketplace URL is required:
-
-```text
-/plugins marketplace https://raw.githubusercontent.com/tailrocks/tailrocks-skills/c401bb7f8aeb77cc8d0cec0b99ce2ab2e0427f3e/.kimi-plugin/marketplace.json
-/plugins install https://github.com/tailrocks/tailrocks-repository-skills/commit/759849769249b5a4ada95595914ab8e81daf618b
-```
-
-The commit pin is the recommended form. The pin above matches the
-current central-catalog revision. That revision predates the
-common-package restructure on this branch. Apply every install,
-enable, disable, or remove with `/reload` or a new session.
-
-Inspect the install (session):
-
-```text
-/plugins list
-/plugins info tailrocks-repository-skills
-```
-
-Selection example (session):
-
-```text
-/skill:tailrocks-review-pr #1663
-```
-
-Update and reload: there is no `update` subcommand. The manager UI
-offers an update when one is available. Official plugins do not
-auto-update. Run `/reload` after each change.
-
-Removal (session):
-
-```text
-/plugins remove tailrocks-repository-skills
-```
-
-Removal deletes the installation record but leaves the managed copy
-on disk. Delete the
-`$KIMI_CODE_HOME/plugins/managed/tailrocks-repository-skills/`
-directory to clear it fully. The CLI always runs from that managed
-copy: reinstall after upstream changes.
-
-Limits and evidence: fields cap at 32 KB each and 64 KB total
-`systemPrompt`. Non-`.md` command files are ignored. Paths stay
-confined to the plugin root. Manifest names match
-`[a-z0-9][a-z0-9_-]{0,63}`. This package name fits (observed
-2026-10-07). The `.kimi-plugin/plugin.json` manifest must set
-`skills` to `./skills/`. Without it, Kimi reads a root SKILL.md
-instead. This package sets it (observed 2026-10-07). Invocation
-nesting caps at three levels. Duplicates resolve Project over User
-over Extra over Built-in. The package no longer
-ships the frontmatter key `disableModelInvocation`. Invoke the two
-user-only skills only with an explicit `/skill:` command, or add that
-key to a local copy of each skill. Audit enabled plugins: a
-`sessionStart.skill` injection can bypass the gate.
-
-## Migrate from the old catalog
-
-Older installs used the self-hosted `tailrocks-repository-skills`
-marketplace, which this restructure removed. Move each install to
-the central `tailrocks` marketplace in this order. Uninstall each
-plugin per scope. Remove the old marketplace. Add the new
-marketplace. Install the plugin. The order prevents duplicates.
-
-Claude Code (shell):
-
-```sh
-claude plugin uninstall tailrocks-repository-skills --scope user
-claude plugin marketplace remove tailrocks-repository-skills
-claude plugin marketplace add tailrocks/tailrocks-skills
-claude plugin install tailrocks-repository-skills@tailrocks --scope user
-```
-
-Removing a marketplace uninstalls its plugins and strips
-`enabledPlugins`, so the explicit uninstall first keeps the record
-clean. Repeat the uninstall for `project` and `local` scopes when
-used.
-
-Codex (shell):
-
-```sh
-codex plugin remove tailrocks-repository-skills@tailrocks-repository-skills
-codex plugin marketplace remove tailrocks-repository-skills
-codex plugin marketplace add tailrocks/tailrocks-skills
-codex plugin add tailrocks-repository-skills@tailrocks
-```
-
-Muse (shell):
-
-```sh
-muse plugins remove tailrocks-repository-skills@tailrocks-repository-skills
-muse plugins marketplace remove tailrocks-repository-skills
 muse plugins marketplace add tailrocks tailrocks/tailrocks-skills
 muse plugins install tailrocks-repository-skills@tailrocks
 ```
 
-Grok (shell):
+The Git-backed catalog resolves external packages while building its local
+snapshot. Inspect skipped entries if the package is missing. Inspect installed
+skills with `muse skills list --source plugin`.
+
+Use `/tailrocks-pr-create` or the qualified entry shown in the `/` picker.
+For a newer pin, refresh the snapshot, remove the installed copy, and repeat
+the install command.
 
 ```sh
-grok plugin uninstall tailrocks-repository-skills
-grok plugin marketplace remove tailrocks-repository-skills
-grok plugin marketplace add tailrocks/tailrocks-skills
-grok plugin install tailrocks-repository-skills --trust
+muse plugins marketplace update tailrocks
+muse plugins remove tailrocks-repository-skills
 ```
 
-Kimi (session):
+The `remove` command alone uninstalls this package. [Muse marketplaces][muse]
+
+## omp
+
+```sh
+omp plugin marketplace add tailrocks/tailrocks-skills
+omp plugin install tailrocks-repository-skills@tailrocks --scope user
+```
+
+Use `/skill:tailrocks-pr-create` with skill commands enabled. For a name
+collision, `omp skill list --json` reports the resolved name. The qualified
+form uses `/skill:<plugin-id>/<skill-id>`.
+
+Refresh with `omp plugin marketplace update tailrocks`, then run
+`omp plugin upgrade tailrocks-repository-skills@tailrocks --scope user`. Remove with
+`omp plugin uninstall tailrocks-repository-skills@tailrocks --scope user`. [omp plugins][omp]
+
+## Exact-revision commands
+
+Run the following commands from a checkout of the [Tailrocks catalog][catalog].
+Each prints shell commands for the selected host and current catalog commit.
+Review and run the printed commands in your terminal.
+
+The next four hosts install this package directly. Their Tailrocks routes
+require no marketplace registration. [Distribution guide][distribution]
+
+## OpenCode
+
+Use the OpenCode V2 package installer.
+
+```sh
+python3 scripts/install-command.py tailrocks-repository-skills --agent opencode
+```
+
+The printed `opencode plugin add` command installs a pinned Git package.
+Its server adapter registers the bundled skills. Use `@tailrocks-pr-create`.
+Inspect the configured target with `opencode plugin list`.
+
+For a new pin, remove the old target with `opencode plugin remove` followed
+by its configured package specifier. Run the newly printed install command.
+The same removal command uninstalls the package. [OpenCode plugins][opencode]
+
+## Amp
+
+```sh
+python3 scripts/install-command.py tailrocks-repository-skills --agent amp
+```
+
+The commands place a complete pinned checkout in Amp's user plugin directory.
+For project scope, place the checkout under `.amp/plugins/tailrocks-repository-skills/`.
+The root `index.js` registers each bundled skill with Amp.
+
+Ask Amp to load `tailrocks-repository-skills:tailrocks-pr-create` explicitly. Run
+`amp plugins list` to inspect loaded plugins. For updates, fetch the new
+catalog commit in that checkout and switch to it with `git checkout --detach`.
+
+To uninstall, move this package directory outside the scanned plugin root.
+Run `plugins: reload` from the command palette after either change.
+[Amp directory plugins][amp]
+
+## Antigravity
+
+```sh
+python3 scripts/install-command.py tailrocks-repository-skills --agent antigravity
+```
+
+The commands check out the selected commit and pass the local directory to
+`agy plugin install`. Antigravity's named marketplace installs address its
+official marketplace. Tailrocks uses the local package installer.
+
+Use `/tailrocks-pr-create` in chat. Inspect `agy plugin list --json` for
+installed components. For a new pin, install the updated checkout. If the CLI
+reports an installed copy, uninstall it first, then repeat the install.
+Remove with `agy plugin uninstall tailrocks-repository-skills`. [Antigravity plugins][agy]
+
+## pi
+
+```sh
+python3 scripts/install-command.py tailrocks-repository-skills --agent pi
+```
+
+The printed `pi install` command uses the Git source and full commit ID.
+Pi reads the package's `pi.skills` entry. Use `/skill:tailrocks-pr-create` and
+inspect configured packages with `pi list`.
+
+Remove with `pi remove <installed-source>`, using the Git specifier from
+`pi list`. To update, remove that pin and install the newly printed source.
+Use `/reload` in the session. [Pi packages][pi]
+
+## Kimi Code
+
+Kimi also supports this package. Open the Tailrocks catalog from the CLI
+session and select `tailrocks-repository-skills`. Its catalog entry points to the pinned
+commit. Reload the session after installing.
 
 ```text
-/plugins remove tailrocks-repository-skills
-/plugins marketplace https://raw.githubusercontent.com/tailrocks/tailrocks-skills/c401bb7f8aeb77cc8d0cec0b99ce2ab2e0427f3e/.kimi-plugin/marketplace.json
-/plugins install https://github.com/tailrocks/tailrocks-repository-skills/commit/759849769249b5a4ada95595914ab8e81daf618b
+/plugins marketplace https://raw.githubusercontent.com/tailrocks/tailrocks-skills/main/.kimi-plugin/marketplace.json
+/reload
 ```
 
-Then run `/reload` and delete the stale managed copy when needed.
+Use `/skill:tailrocks-repository-skills:tailrocks-pr-create` for a bundled skill. Open the
+plugin manager to apply a catalog update. Remove with
+`/plugins remove tailrocks-repository-skills`, then `/reload`. [Kimi plugins][kimi]
 
-Amp: delete the old installed skill directories, add the ten new
-skill directories, and run the `reload_skills` tool. OpenCode and
-Antigravity native routes: delete the old copied directories and
-copy the new ones. Antigravity plugin route: run `agy plugin
-uninstall tailrocks-repository-skills`, then install the new local
-path.
+See [compatibility and verification](compatibility.md) for measured results.
+
+[package]: https://github.com/tailrocks/tailrocks-repository-skills
+[catalog]: https://github.com/tailrocks/tailrocks-skills
+[distribution]: https://github.com/tailrocks/tailrocks-skills/blob/main/docs/standards/distribution.md
+[claude]: https://code.claude.com/docs/en/discover-plugins
+[codex]: https://learn.chatgpt.com/docs/cli/reference
+[grok]: https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/09-plugins.md
+[muse]: https://meta-models.github.io/muse-code-sdk/1.4/guides/plugins/concepts/marketplaces-and-updates/
+[omp]: https://github.com/can1357/oh-my-pi/blob/main/docs/marketplace.md
+[opencode]: https://opencode.ai/docs/plugins/
+[amp]: https://ampcode.com/docs/customize/plugins
+[agy]: https://antigravity.google/docs/plugins
+[pi]: https://docs.pi.dev/latest/packages
+[kimi]: https://www.kimi.com/code/docs/en/kimi-code-cli/customization/plugins

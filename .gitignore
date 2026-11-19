@@ -6,3 +6,6 @@ helper/target/
 state/
 dist/
 node_modules/
+__pycache__/
+*.pyc
+*.tgz
