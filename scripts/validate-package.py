@@ -232,8 +232,12 @@ def inspect_skill(directory, policy_package):
         require(explicit, f"{path}: user-only policies must disable implicit invocation")
         require(description.startswith(POLICY_DESCRIPTION),
                 f"{path}: description must begin with the user invocation requirement")
-        entry = text[match.end():].partition("## Use this skill\n\n")[2]
-        require(entry.startswith(POLICY_ENTRY + "\n"),
+        body = text[match.end():].lstrip("\n")
+        title, _, entry = body.partition("\n")
+        guard = f"\n## Use this skill\n\n{POLICY_ENTRY}\n"
+        entry_headings = sum(line.rstrip() == "## Use this skill" for line in unfenced_lines(body))
+        require(title.startswith("# ") and title[2:].strip()
+                and entry.startswith(guard) and entry_headings == 1,
                 f"{path}: first workflow instruction must require user invocation")
     reference = (directory / MODEL_REFERENCE).read_bytes()
     require(f"({MODEL_REFERENCE})" in text, f"{path}: link the bundled model guide")
