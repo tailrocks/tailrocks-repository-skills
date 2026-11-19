@@ -1,17 +1,11 @@
 ---
 name: tailrocks-pr-template
 description: >-
-  Creates or reconciles the single file `.github/PULL_REQUEST_TEMPLATE.md`.
-  Use this skill when the user says PR template, default PR body, PR
-  boilerplate, or standard PR text. This skill does not open, refresh,
-  review, or merge a PR.
-argument-hint: "[repo path]"
-disable-model-invocation: false
+  Use this skill when the user asks for a PR template, a PR template file, a
+  default PR body, PR boilerplate, or standard PR text. It creates or
+  reconciles the single file `.github/PULL_REQUEST_TEMPLATE.md`. This skill
+  does not open, refresh, review, or merge a PR.
 license: Apache-2.0
-user-invocable: true
-when_to_use: >-
-  User asks for a PR template file, a default PR body, or PR text
-  boilerplate.
 ---
 
 # PR template
@@ -37,6 +31,10 @@ This skill never commits, pushes, or opens a PR. Give the written file to
 
 If the resolved target or a parent directory is a symlink, stop with zero
 writes. Never write through a symlink.
+
+The skill accepts one optional argument: `[repo path]` names the repository to
+write the template for. Without it, the skill uses the repository of the
+current working directory.
 
 Take each command in the template from the repository CI, task runner, or
 contributor documents. Never invent a gate. Never leave a `<placeholder>`

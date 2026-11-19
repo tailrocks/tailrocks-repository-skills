@@ -1,20 +1,13 @@
 ---
 name: tailrocks-review-pr
 description: >-
-  Reviews one pull request, branch, diff, or plan and reports findings
-  with evidence and a Ready, Changes required, or Incomplete verdict. Use
-  this skill when the user says review, look over, or audit a PR, diff,
-  MR, change, CL, or plan. Also use it when the user says check a change
-  or asks if a change is safe to land (code quality). For merge readiness
-  (checks, reviews, queue) use tailrocks-pr-status. This skill never
-  posts, approves, or merges.
-argument-hint: "[PR | branch | range | plan] [--repo OWNER/REPO]"
-disable-model-invocation: false
+  Use this skill when the user asks to review, look over, or audit a PR,
+  branch, diff, MR, change, CL, or plan, asks to check a change, asks for
+  feedback on a diff, or asks if a change is safe to land (code quality). It
+  reports findings with evidence and a Ready, Changes required, or Incomplete
+  verdict. For merge readiness (checks, reviews, queue) use
+  tailrocks-pr-status. This skill never posts, approves, or merges.
 license: Apache-2.0
-user-invocable: true
-when_to_use: >-
-  User asks for a code review, feedback on a diff, or whether a change
-  is safe to land.
 ---
 
 # Review PR

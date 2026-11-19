@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.5.1 - 2026-11-19
+
+Fixed the frontmatter of the four kept skills. omp 18.20.2 skipped
+`tailrocks-repository-recover`, `tailrocks-repository-merge`,
+`tailrocks-pr-template`, and `tailrocks-review-pr`, because the Agent Plugins
+loader rejects `argument-hint`. The Codex validator rejects the same keys.
+
+Changed:
+
+- The frontmatter of all ten skills now holds `name`, `description`, and
+  `license` only. The four skills lost `argument-hint`, `user-invocable`,
+  `disable-model-invocation`, `disableModelInvocation`, and `when_to_use`.
+- The trigger text of `tailrocks-pr-template` and `tailrocks-review-pr` moved
+  into the description, trigger first. The argument syntax of
+  `tailrocks-pr-template` moved into its body. The other three skills already
+  listed their arguments in the body.
+- `tailrocks-repository-recover` and `tailrocks-repository-merge` stay
+  user-only. Their description now starts "Use only when the user explicitly
+  asks", the body keeps the explicit-request rule, and `agents/openai.yaml`
+  keeps `policy.allow_implicit_invocation: false`. Codex enforces that flag.
+  On Claude Code, Kimi Code, and Grok Build, the package no longer sets a
+  frontmatter gate. Set the client key in your own config. See
+  `docs/compatibility.md`.
+
+Added:
+
+- A test that fails when any `skills/*/SKILL.md` frontmatter holds a key other
+  than `name`, `description`, and `license`.
+
 ## 0.5.0 - 2026-11-19
 
 Replaced the prose-only pull-request skills with script-backed skills. A

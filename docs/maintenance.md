@@ -39,7 +39,13 @@ Expected result: one `OK` line per manifest.
 
 Frontmatter and ID check. It verifies the frontmatter block, the
 name key, name and directory agreement, id charset, and the
-description key for each skill:
+description key for each skill. It also rejects any frontmatter key
+other than `name`, `description`, and `license`. Those three keys are
+the portable set: the Codex validator and the omp Agent Plugins loader
+reject other keys. Say manual-only entry in the description ("Use only
+when the user explicitly asks") and in `agents/openai.yaml`
+(`policy.allow_implicit_invocation: false`), never in frontmatter.
+`tests/skill-family.test.ts` enforces the same rule:
 
 ```sh
 python3 - <<'EOF'
@@ -64,6 +70,10 @@ for path in found:
         errors.append(path + ": invalid skill id")
     if not re.search(r"^description:", front, re.M):
         errors.append(path + ": missing description key")
+    keys = re.findall(r"^([A-Za-z][^:\s]*):", front, re.M)
+    extra = [k for k in keys if k not in ("name", "description", "license")]
+    if extra:
+        errors.append(path + ": non-portable keys " + ", ".join(extra))
 if errors:
     print("\n".join(errors))
     sys.exit(1)

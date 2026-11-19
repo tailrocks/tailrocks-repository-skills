@@ -30,11 +30,15 @@ Fix: keep one copy and always use the qualified id.
 
 ## User-only skill starts without a human command
 
-Cause: the client cannot enforce user-only entry. Amp,
-Antigravity, and Muse Code document no enforcement. OpenCode V1
-ignores the frontmatter flags. Fix: invoke the two user-only skills
+Cause: the skill frontmatter holds only `name`, `description`, and
+`license`, so only Codex enforces user-only entry, through
+`allow_implicit_invocation: false` in `agents/openai.yaml`. On other
+clients the description and the body ask the model to wait for an
+explicit request. Amp, Antigravity, and Muse Code document no
+enforcement. Fix: invoke the two user-only skills
 only through an explicit human command. On OpenCode V1, set
-`permission.skill` to `ask`. On Kimi, audit enabled plugins: a
+`permission.skill` to `ask`. On Claude Code, set `skillOverrides` to
+`user-invocable-only` for the two skills. On Kimi, audit enabled plugins: a
 `sessionStart.skill` injection can bypass the gate.
 
 ## Kimi reads the wrong skill root

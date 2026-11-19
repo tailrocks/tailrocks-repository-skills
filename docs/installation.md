@@ -31,15 +31,22 @@ dependencies. This package adds no hooks and no MCP servers.
 
 `tailrocks-repository-recover` and `tailrocks-repository-merge` need
 an explicit human command. A model must not select them from task
-similarity. Support differs per client:
+similarity. The frontmatter of every skill holds only `name`,
+`description`, and `license`, because those keys load on every client.
+The package expresses user-only entry in three portable ways:
 
-- Enforced on Claude Code, Codex, Kimi Code, and Grok Build. The
-  client blocks automatic model invocation.
-- Limited on Amp, Antigravity, and Muse Code. These clients cannot
-  enforce per-skill user-only entry. Invoke the two skills only
-  through an explicit human command.
-- Gated by `permission.skill` on OpenCode v1. Set the value to `ask`
-  for the two skills.
+- The description of each skill starts with "Use only when the user
+  explicitly asks", and the body keeps the explicit-request rule.
+- `agents/openai.yaml` sets `policy.allow_implicit_invocation: false`.
+  Codex enforces this flag. Explicit `$skill` invocation still works.
+- Each client can add its own gate in the user config: Claude Code
+  `skillOverrides` set to `user-invocable-only`, Kimi Code
+  `disableModelInvocation`, Grok Build `disable-model-invocation`, or
+  `permission.skill` set to `ask` on OpenCode v1. The package does not
+  write these keys into the skill files.
+
+Amp, Antigravity, and Muse Code cannot enforce per-skill user-only
+entry. Invoke the two skills only through an explicit human command.
 
 Loading or selecting a skill never authorizes side effects. Each run
 needs its own human invocation.
@@ -345,8 +352,8 @@ Limits and evidence: V1 names use 1 to 64 lowercase hyphenated
 characters and match their directory. Descriptions use 1 to 1024
 characters. All ten skills in this package fit: names are 28
 characters or less, descriptions are 1024 characters or less. Never write V2 keys
-(`metadata.opencode/autoinvoke`, `disable-model-invocation`,
-`permission.skill`) into V1 instructions: the V1 `permission.skill`
+(`metadata.opencode/autoinvoke`, `permission.skill`) into V1
+instructions: the V1 `permission.skill`
 map and the V2 JSONC permissions are different schemas. Keep V1 and
 V2 instructions separate. Gate the two user-only skills with
 `permission.skill` set to `ask` on V1:
@@ -504,11 +511,11 @@ character lowercase `sha`. Branches, tags, and short SHAs are
 rejected, and the client re-verifies the sha against the cloned
 head. The `.grok-plugin/plugin-index.json` file is generated: never
 hand-edit it. Grok reads the Claude catalog with zero-config
-compatibility. This package sets `disable-model-invocation` to
-`true` on the two user-only skills and to `false` on `tailrocks-review-pr`
-and `tailrocks-pr-template`. The six script-backed skills carry no such
-key: their frontmatter holds `name`, `description`, and `license`
-only. Do not treat `allowed-tools` metadata as an
+compatibility. The frontmatter of
+all ten skills holds `name`, `description`, and `license` only, so no
+skill sets `disable-model-invocation`. To block automatic invocation
+of the two user-only skills on Grok Build, set that key in your own
+copy of the config. Do not treat `allowed-tools` metadata as an
 enforced tool-permission boundary.
 
 ## Kimi Code
@@ -573,9 +580,10 @@ confined to the plugin root. Manifest names match
 `skills` to `./skills/`. Without it, Kimi reads a root SKILL.md
 instead. This package sets it (observed 2026-10-07). Invocation
 nesting caps at three levels. Duplicates resolve Project over User
-over Extra over Built-in. The two user-only skills set
-`disableModelInvocation` to `true`: invoke them only with an
-explicit `/skill:` command. Audit enabled plugins: a
+over Extra over Built-in. The package sets no
+`disableModelInvocation` key: invoke the two user-only skills only
+with an explicit `/skill:` command, or set that key in your own
+config. Audit enabled plugins: a
 `sessionStart.skill` injection can bypass the gate.
 
 ## Migrate from the old catalog
