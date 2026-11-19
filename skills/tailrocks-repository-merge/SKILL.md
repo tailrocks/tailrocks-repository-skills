@@ -1,15 +1,11 @@
 ---
 name: tailrocks-repository-merge
 description: >-
-  Audits, groups, integrates, reviews, and merges selected branches or
-  PRs into one exact target branch. Use this skill only when the user
-  explicitly requests it. A single PR belongs to its single-PR owner:
-  create, refresh, review, or merge. This skill never deletes sources.
-argument-hint: "[SOURCES... | --all-work] [--repo OWNER/REPO] [--target-branch BRANCH] [--audit-only] [--transition-mode]"
-disable-model-invocation: true
-disableModelInvocation: true
+  Use only when the user explicitly asks to audit, group, integrate, review,
+  and merge selected branches or PRs into one exact target branch. A model
+  never selects it from task similarity. A single PR belongs to its single-PR
+  owner: create, refresh, review, or merge. This skill never deletes sources.
 license: Apache-2.0
-user-invocable: true
 ---
 
 # Repository merge

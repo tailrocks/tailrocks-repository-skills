@@ -1,16 +1,12 @@
 ---
 name: tailrocks-repository-recover
 description: >-
-  Finds, analyzes, and preserves the local work of one repository: Git
-  copies and related loose files. Use this skill only when the user
-  explicitly requests it. It compares work with the target, publishes
-  marked recovery branches and PRs, and cleans local state only after
+  Use only when the user explicitly asks to find, analyze, and preserve the
+  local work of one repository: Git copies and related loose files. A model
+  never selects it from task similarity. It compares work with the target,
+  publishes marked recovery branches and PRs, and cleans local state only after
   verified preservation. It never integrates sources.
-argument-hint: "[--repo OWNER/REPO] [--target-branch BRANCH] [--scope machine|roots] [--publish] [--cleanup none|temp|all]"
-disable-model-invocation: true
-disableModelInvocation: true
 license: Apache-2.0
-user-invocable: true
 ---
 
 # Repository recover

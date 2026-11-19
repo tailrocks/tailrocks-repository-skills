@@ -23,6 +23,14 @@ Six skills (`pr-status`, `pr-create`, `pr-refresh`, `pr-threads`,
 
 ## Rules for changes
 
+- Keep the `SKILL.md` frontmatter to `name`, `description`, and
+  `license`. Never add `argument-hint`, `when_to_use`,
+  `user-invocable`, `disable-model-invocation`, or any other key: the
+  Codex validator and omp reject them. Put trigger text in the
+  description and argument syntax in the body. Express manual-only
+  entry with a description that starts "Use only when the user
+  explicitly asks" and `policy.allow_implicit_invocation: false` in
+  `agents/openai.yaml`.
 - Write all new and changed prose in ASD-STE100 Simplified Technical
   English, Issue 9 rules.
 - Never hand-edit `.github/`. Change `.velnor/config.toml` and

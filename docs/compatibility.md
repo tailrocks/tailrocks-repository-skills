@@ -35,29 +35,48 @@ executed.
 
 ## User-only enforcement
 
-This table records documented support, not runtime verification.
-Enforced means the client blocks automatic model invocation of the
-two user-only skills (`tailrocks-repository-recover` and
-`tailrocks-repository-merge`). Limited means the client documents the
-frontmatter but cannot enforce it.
+This table records documented support, not runtime verification. The
+frontmatter of all ten skills holds `name`, `description`, and
+`license` only: that is the set that every client loads. No skill
+carries `disable-model-invocation`, `user-invocable`,
+`disableModelInvocation`, `when_to_use`, or `argument-hint`. The two
+user-only skills (`tailrocks-repository-recover` and
+`tailrocks-repository-merge`) express user-only entry in two places:
+their description starts with "Use only when the user explicitly
+asks", and their `agents/openai.yaml` sets
+`policy.allow_implicit_invocation: false`. Enforced means the client
+blocks automatic model invocation from the package files. Prompt-only
+means the client reads the description and the body rule. A hard block
+needs a key that this package no longer ships. The notes below the
+table name that key and where the user can set it, if the client
+supports it.
 
 | Client | Recover and repository-merge entry |
 | --- | --- |
-| Claude Code | Enforced (`disable-model-invocation`). |
 | Codex | Enforced (`allow_implicit_invocation: false`). |
-| Kimi Code | Enforced (`disableModelInvocation`). |
-| Grok Build | Enforced (`disable-model-invocation`). |
+| Claude Code | Prompt-only. User setting can enforce (note 1). |
+| Kimi Code | Prompt-only. Local frontmatter key needed (note 2). |
+| Grok Build | Prompt-only. Local frontmatter key needed (note 2). |
+| Cursor | Prompt-only. Local frontmatter key needed (note 2). |
 | Amp | Limited: lists every skill to the model. |
 | Antigravity | Limited: frontmatter holds `name` and `description` only. |
 | Muse Code | Limited: recall observer can surface skills. |
 | OpenCode V1 | Gated by `permission.skill: ask`. |
+
+1. Claude Code documents the user setting `skillOverrides` set to
+   `user-invocable-only`.
+2. The hard block is a frontmatter key: `disableModelInvocation` on
+   Kimi Code, `disable-model-invocation` on Grok Build and Cursor. This
+   package no longer ships these keys. The user adds the key in a local
+   copy of the skill, if the client supports it.
 
 ## Static fit
 
 These facts were observed on 2026-10-07 from the package files. They
 are not install proofs:
 
-- All ten frontmatter names match their skill directories.
+- All ten frontmatter names match their skill directories. Each
+  frontmatter holds `name`, `description`, and `license` only.
 - All names are 28 characters or less. All descriptions are 1024
   characters or less. The Amp, OpenCode, and Kimi caps fit.
 - The root manifest carries the Agent Plugins 1.0.0 schema id.

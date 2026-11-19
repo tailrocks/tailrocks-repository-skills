@@ -72,3 +72,52 @@ describe("the family of PR skills", () => {
     expect(rules).toContain("never does it");
   });
 });
+
+const PORTABLE_KEYS: ReadonlySet<string> = new Set(["name", "description", "license"]);
+
+/** The top-level keys of a SKILL.md frontmatter block. Indented lines continue a value. */
+function frontmatterKeys(text: string): readonly string[] {
+  const front = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
+  return front
+    .split("\n")
+    .map((line) => /^([^\s#][^:]*):/.exec(line)?.[1])
+    .filter((key): key is string => key !== undefined);
+}
+
+/** The folded `description: >-` value, joined into one line. */
+function descriptionValue(text: string): string {
+  const front = /^---\n([\s\S]*?)\n---/.exec(text)?.[1] ?? "";
+  const lines = front.split("\n");
+  const start = lines.findIndex((line) => line.startsWith("description:"));
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => !line.startsWith(" "));
+  return rest.slice(0, end === -1 ? rest.length : end).map((line) => line.trim()).join(" ");
+}
+
+describe("the portable frontmatter", () => {
+  const ids = readdirSync(join(root, "skills"), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  test("the package holds ten skills", () => {
+    expect(ids).toHaveLength(10);
+  });
+
+  test.each(ids)("%s has only name, description, and license", (id) => {
+    const keys = frontmatterKeys(read(id, "SKILL.md"));
+    expect(keys.filter((key) => !PORTABLE_KEYS.has(key))).toEqual([]);
+    expect([...keys].sort()).toEqual([...PORTABLE_KEYS].sort());
+  });
+
+  test.each(ids)("%s has a description of at most 1024 characters without angle brackets", (id) => {
+    const value = descriptionValue(read(id, "SKILL.md"));
+    expect(value.length).toBeGreaterThan(0);
+    expect(value.length).toBeLessThanOrEqual(1024);
+    expect(value).not.toMatch(/[<>]/);
+  });
+
+  test.each(["repository-merge", "repository-recover"])("%s is manual-only by description and by agents/openai.yaml", (id) => {
+    expect(descriptionValue(read(`${PREFIX}-${id}`, "SKILL.md"))).toMatch(/^Use only when the user explicitly asks /);
+    expect(read(`${PREFIX}-${id}`, "agents", "openai.yaml")).toContain("allow_implicit_invocation: false");
+  });
+});
