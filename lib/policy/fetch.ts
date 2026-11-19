@@ -1,5 +1,6 @@
-// Read the policy file from the base branch at an exact commit.
-// The policy never comes from the PR head, so a PR cannot weaken its own gates.
+// Read the policy file from the default branch at an exact commit.
+// The policy never comes from the PR head or from the base of a stacked PR, so
+// a PR cannot weaken its own gates.
 
 import { gh } from "../gh.ts";
 import type { RunResult } from "../proc.ts";
@@ -18,23 +19,23 @@ export interface FetchPolicyOptions {
 }
 
 /**
- * Fetch and load the policy at `baseSha`. A 404 means the repository has no
+ * Fetch and load the policy at `commit`, a commit of the default branch. A 404 means the repository has no
  * policy file: use the built-in defaults, with source "default".
  */
 export async function fetchBasePolicy(
   repo: RepoSlug,
-  baseSha: Sha,
+  commit: Sha,
   options: FetchPolicyOptions = { cwd: process.cwd() },
 ): Promise<PolicyResult> {
   const args = [
     "api",
     "-H",
     "Accept: application/vnd.github.raw+json",
-    `repos/${repo}/contents/${POLICY_PATH}?ref=${baseSha}`,
+    `repos/${repo}/contents/${POLICY_PATH}?ref=${commit}`,
   ];
   const result = await (options.runGh ?? ((a) => gh(a, { cwd: options.cwd })))(args);
   if (result.code === 0) {
-    return loadPolicy({ text: result.stdout, source: "base-branch" });
+    return loadPolicy({ text: result.stdout, source: "default-branch" });
   }
   if (/\bHTTP 404\b|Not Found/i.test(result.stderr)) {
     return defaultPolicy();
@@ -43,6 +44,6 @@ export async function fetchBasePolicy(
   return {
     ok: false,
     unreadable: true,
-    errors: [{ pointer: "", message: `could not read ${POLICY_PATH} at ${baseSha}: ${detail}` }],
+    errors: [{ pointer: "", message: `could not read ${POLICY_PATH} at ${commit}: ${detail}` }],
   };
 }

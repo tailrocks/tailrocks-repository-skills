@@ -3,6 +3,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { main } from "../lib/refresh/cli.ts";
+import { guardedGit } from "../lib/refresh/gitx.ts";
 import {
   BUN,
   fakeGithub,
@@ -145,6 +146,33 @@ describe("continue", () => {
     expect(existsSync(path)).toBe(false);
     expect(worktreeLeftovers(sb).entries).toEqual([]);
     expect(worktreeLeftovers(sb).list.split("\n").filter((l) => l.startsWith("worktree ")).length).toBe(1);
+  });
+
+  test.each([
+    ["a finished continue", false],
+    ["a continue that stops on a failed pre-push step", true],
+  ])("nothing reads the worktree after it was removed, and the last line names no missing file: %s", async (_name, failing) => {
+    const sb = box();
+    conflictSetup(sb);
+    const step = ["[[prepush]]", 'name = "check"', `run = [${JSON.stringify(BUN)}, "-e", "process.exit(3)"]`].join("\n");
+    const { gh, path } = await (failing ? keep(sb, { policy: policyToml(regenerateSection(), step) }) : keep(sb));
+    writeFileSync(join(path, "README.md"), "# both\n");
+    const calls: { readonly cwd: string | undefined; readonly gone: boolean }[] = [];
+    const { deps } = testDeps(sb, gh, {
+      git: (args, options) => {
+        calls.push({ cwd: options.cwd, gone: !existsSync(path) });
+        return guardedGit(args, options);
+      },
+    });
+    const lines: string[] = [];
+    const code = await main(["continue", "7", "--worktree", path, "--repo", REPO], { cwd: sb.clone, deps, out: (l) => lines.push(l), err: (l) => lines.push(l) });
+    expect(code).toBe(failing ? 20 : 0);
+    expect(existsSync(path)).toBe(false);
+    // A git call that runs inside the worktree after it is gone would fail with ENOENT.
+    expect(calls.filter((c) => c.gone && c.cwd !== undefined && c.cwd.startsWith(path))).toEqual([]);
+    const last = lines.join("\n").split("\n").at(-1) ?? "";
+    expect(last).toMatch(/^\s*next:/);
+    expect(lines.join("\n")).not.toMatch(/ENOENT|no such file/i);
   });
 
   test("refuses leftover conflict markers, keeps the worktree, and works after the fix", async () => {

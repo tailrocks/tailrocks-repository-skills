@@ -285,7 +285,7 @@ export function configFor(repos: Repos, fake: FakeWorld, extra: Partial<CreateCo
       return guarded(args);
     },
     runCommand: (argv, cwd) => run(argv, { cwd }),
-    runGitEnv: (args, env) => git(args, { cwd: repos.work, env: { ...IDENTITY, ...env } }),
+    runRepo: (args, options) => git(args, { ...options, env: { ...IDENTITY, ...options.env } }),
     mutate: async (op) => {
       fake.world.mutations.push(op);
       if (op.kind === "markPullRequestReadyForReview") {
@@ -326,7 +326,7 @@ export async function runCli(argv: readonly string[], repos: Repos, fake: FakeWo
     runGh: config.runGh,
     runGit: config.runGit,
     runCommand: config.runCommand,
-    runGitEnv: config.runGitEnv,
+    runRepo: config.runRepo,
     mutate: config.mutate,
     out: (l) => out.push(l),
     err: (l) => err.push(l),

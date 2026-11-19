@@ -155,6 +155,13 @@ describe("checks", () => {
     const twice = withChecks(required({ conclusion: "failure", attempts: 2, failedAttempts: 2 }));
     expect(codes(run(twice, policy))).toEqual(["check_failed"]);
   });
+  test("the newest run is the one with the highest check-run id, not the latest start time", () => {
+    const verdictCheck = check("Required verdict", { isRequired: true });
+    const failedEarlyId = check("Required", { isRequired: true, workflow: "A", runId: 3, startedAt: "2026-01-01T00:30:00Z", conclusion: "failure" });
+    const passedLateId = check("Required", { isRequired: true, workflow: "B", runId: 8, startedAt: "2026-01-01T00:05:00Z", conclusion: "success" });
+    expect(codes(run(withChecks([failedEarlyId, passedLateId, verdictCheck])))).toEqual([]);
+    expect(codes(run(withChecks([{ ...failedEarlyId, runId: 9 }, passedLateId, verdictCheck])))).toEqual(["check_failed"]);
+  });
   test("check_cancelled when cancellation is load, check_failed when it is not", () => {
     const snapshot = withChecks(required({ conclusion: "cancelled" }));
     expect(codes(run(snapshot))).toEqual(["check_cancelled"]);
@@ -462,6 +469,22 @@ describe("threads, DCO, queue, issues, body, gates", () => {
     const entry = { id: "MQE_1", position: 2, state: "AWAITING_CHECKS" as const, jump: false, enqueuedAt: "2026-01-01T00:00:00Z" };
     expect(codes(run(green({ queueEntry: entry })))).toEqual(["queued"]);
     expect(codes(run(green({ queueEntry: entry, mergeable: "UNKNOWN" })))).toEqual(["mergeability_pending", "queued"]);
+  });
+  test("an unreadable state with a queue entry is not queued_while_blocked", () => {
+    const entry = { id: "MQE_1", position: 2, state: "QUEUED" as const, jump: false, enqueuedAt: "2026-01-01T00:00:00Z" };
+    const unknown = run(green({ queueEntry: entry, problems: ["a check page was unreadable"] }));
+    expect(codes(unknown)).toEqual(["queued", "unknown_state"]);
+    expect(unknown.state).toBe("BLOCKED");
+    const both = run(green({ queueEntry: entry, problems: ["a check page was unreadable"], mergeable: "UNKNOWN" }));
+    expect(codes(both)).toEqual(["mergeability_pending", "queued", "unknown_state"]);
+    expect(codes(both)).not.toContain("queued_while_blocked");
+  });
+  test("a wait next to a queue entry is not queued_while_blocked", () => {
+    const entry = { id: "MQE_1", position: 2, state: "QUEUED" as const, jump: false, enqueuedAt: "2026-01-01T00:00:00Z" };
+    const pending = check("Required", { isRequired: true, status: "in_progress", conclusion: null, completedAt: null });
+    const verdict = run(green({ queueEntry: entry, mergeable: "UNKNOWN", checks: [pending, check("Required verdict", { isRequired: true })] }));
+    expect(codes(verdict)).toEqual(["checks_pending", "mergeability_pending", "queued"]);
+    expect(verdict.state).toBe("WAITING");
   });
   test("queue_unmergeable is a blocker", () => {
     const entry = { id: "MQE_1", position: 1, state: "UNMERGEABLE" as const, jump: false, enqueuedAt: "2026-01-01T00:00:00Z" };

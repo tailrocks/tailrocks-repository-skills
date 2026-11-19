@@ -61,6 +61,7 @@ export function check(name: string, patch: Partial<CheckObservation> = {}): Chec
     event: "pull_request",
     startedAt: "2026-01-01T00:00:00Z",
     completedAt: "2026-01-01T00:01:00Z",
+    runId: null,
     attempts: 1,
     failedAttempts: 0,
     ...patch,
@@ -74,7 +75,7 @@ export function verdictReview(author: string, body: string, commit: Sha, submitt
 /** A snapshot that the example policy accepts as READY. */
 export function green(patch: Partial<PrSnapshot> = {}): PrSnapshot {
   return {
-    schema: 1,
+    schema: 2,
     capturedAt: "2026-01-02T00:00:00Z",
     repo: must(parseRepoSlug("example-org/example-repo")),
     defaultBranch: "main",
@@ -88,6 +89,7 @@ export function green(patch: Partial<PrSnapshot> = {}): PrSnapshot {
     body: "",
     baseRef: "main",
     baseSha: BASE,
+    defaultSha: BASE,
     headRef: "feature/7",
     headSha: HEAD,
     mergeable: "MERGEABLE",

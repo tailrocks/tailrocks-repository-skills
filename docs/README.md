@@ -1,15 +1,20 @@
 # Repository skills guides
 
-This package holds seven skills. The skills coordinate repository work
-and run the pull-request lifecycle: template, create, refresh, review,
-and guarded merge.
+This package holds ten skills. The skills coordinate repository work
+and run the pull-request lifecycle: status, create, refresh, review
+threads, guarded merge, and fleet planning, plus a review skill and a
+template skill. Six skills run scripts with Bun and TypeScript.
 
-Five skills are model-selectable. Two skills are user-only and need an
+Six skills are model-selectable. Two skills are user-only and need an
 explicit human command:
 
 - `tailrocks-repository-recover` finds and preserves local work.
 - `tailrocks-repository-merge` integrates selected work into one exact
   target.
+
+Two write skills, `tailrocks-pr-merge` and `tailrocks-pr-fleet`, need
+an explicit user request. Their scripts write only after `--confirm`
+(merge) or `--apply` (fleet).
 
 ## Guides
 
@@ -27,10 +32,13 @@ explicit human command:
 | --- | --- |
 | `tailrocks-repository-recover` | Preserve local work. User-only. |
 | `tailrocks-repository-merge` | Integrate sources into one target. User-only. |
-| `tailrocks-create-pr` | Open one pull request. |
-| `tailrocks-refresh-pr` | Reconcile title and body. |
+| `tailrocks-pr-status` | Give a PR verdict. Read-only. Script. |
+| `tailrocks-pr-create` | Open one draft PR under the policy. Script. |
+| `tailrocks-pr-refresh` | Sync base, fix sign-off, fix body. Script. |
+| `tailrocks-pr-threads` | Triage and resolve review threads. Script. |
+| `tailrocks-pr-merge` | Land one PR, guarded. Explicit only. Script. |
+| `tailrocks-pr-fleet` | Plan work on all open PRs. Explicit only. Script. |
 | `tailrocks-review-pr` | Review and report. Read-only. |
-| `tailrocks-merge-pr` | Land under the guarded policy. |
 | `tailrocks-pr-template` | Manage the PR template. |
 
 Each skill body lives in its own directory under `skills/`. Read
@@ -38,8 +46,9 @@ Each skill body lives in its own directory under `skills/`. Read
 
 ## Requirements
 
-All repository workflows need Git and `gh`. Hosted pull-request
-creation, refresh, review, and landing need an authenticated `gh`
-session with access to the target repository. Only GitHub.com is
+All repository workflows need Git and `gh`. The script-backed skills
+need Bun 1.4 or newer. Hosted pull-request creation, refresh, review,
+and landing need an authenticated `gh` session with access to the
+target repository. Only GitHub.com is
 supported. GitHub Enterprise is unsupported. Read-only audits can run
 without authentication.

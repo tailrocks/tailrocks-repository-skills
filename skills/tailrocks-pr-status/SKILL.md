@@ -16,6 +16,9 @@ license: Apache-2.0
 
 ## What this skill does
 
+Short names: `pr-X` means the skill `tailrocks-pr-X`, for example `pr-refresh`
+means `tailrocks-pr-refresh`.
+
 One script computes the verdict. You run it and report what it prints. You do
 not decide from memory which gates exist. You never conclude READY yourself.
 READY comes only from the script.
@@ -47,13 +50,15 @@ Trust rules:
    bun run <skill-dir>/scripts/status.ts --all [--repo owner/name] [--json] [--git-dir <clone>] [--wait]
    ```
 
-4. Check the exit code (see "Exit codes"). Without a verdict, go to the error
-   rules and stop.
+4. Check the exit code (see "Exit codes"). Without a verdict, report stderr as
+   "Exit codes" says, and stop.
 5. Report the first line: the state, the head commit, and the next action.
 6. Report each finding. A `blocker` stops the merge. A `wait` means only time is
    needed. An `info` finding explains and never blocks.
-7. For each blocker, pass its `next` line to the skill named in `owner`, or to the
-   user. This skill does not do the action. Use the table in "Owners".
+7. For each blocker, hand off: name the skill in `owner` and give its `next`
+   line to the user. Use the table in "Owners". This skill does not do the
+   action. Run the owner skill only when the user asked for the fix or the
+   merge. A question about status is not that request.
 8. With `--all`, each PR gets one line: number, state, finding codes, and the
    next action. For the details of one PR, run the script again with its number.
 
@@ -68,14 +73,15 @@ Trust rules:
 | `--wait` | With `--all`: when the budget is low, sleep until the reset. This can block for up to one hour. Use it only when your harness can run a command that long, or run it in the background. Otherwise run without it and report the reset time. |
 | `--policy <file>` | A local policy file, for policy checks and tests only. See "Rules". |
 
-The policy comes from `.config/pr-policy.toml` on the base branch, read through
-the GitHub API. A PR cannot change its own gates.
+The policy comes from `.config/pr-policy.toml` on the default branch at its
+current commit, read through the GitHub API. A stacked PR does not bring the
+policy of its parent branch. A PR cannot change its own gates.
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
-| 0 | READY |
+| 0 | READY. `--help` also exits 0: usage text, not a verdict. |
 | 10 | WAITING |
 | 20 | BLOCKED. With `--all`, the worst state of all PRs. |
 | 2 | No verdict: usage error, invalid policy, repository not found, Bun too old, or the GraphQL budget is too low. |
@@ -102,20 +108,10 @@ this script says READY.
 
 ## Order of the blockers
 
-The first blocker gives the next action of the whole verdict. The order puts work
-that changes the head first, and review on the final head last:
-
-1. PR not open, unknown state.
-2. Stacked or wrong base.
-3. In the merge queue while blocked (`queued_while_blocked`): dequeue first.
-4. Conflict, unmergeable queue entry, behind the base.
-5. Missing sign-off.
-6. Stale-base check, unresolved threads.
-7. Failed, flaky, cancelled, or missing checks.
-8. Review: missing, stale, changes requested, or a blocking finding.
-9. Draft, body template, gates, GitHub disagrees.
-
-`references/finding-codes.md` lists every code with its meaning and next action.
+The first blocker gives the next action of the whole verdict. The order is in
+one place: the "Headline order" section of `references/finding-codes.md`. This
+file does not repeat it. Work that changes the head comes first, and review on
+the final head comes last.
 
 ## Owners
 
@@ -140,6 +136,9 @@ If the owner skill is not installed, give the user the exact `next` line.
   and stop.
 - On WAITING, report it and stop, unless the user asked you to watch. If they
   did, wait at least 60 seconds between runs, and stop after 3 runs.
+- On `queued_while_blocked`, the PR sits in the merge queue and has another
+  blocker. Report it. The `next` line is `pr-merge dequeue`. Run it only when
+  the user asked for it.
 - On `github_disagrees`, all policy gates passed but GitHub does not allow the
   merge. Report GitHub's reason. Do not merge.
 - Do not pass `--policy` when you answer a user's status question. A verdict from
@@ -149,5 +148,6 @@ If the owner skill is not installed, give the user the exact `next` line.
 
 ## References
 
-- `references/finding-codes.md`: each finding code, its meaning, and its next action.
+- `references/finding-codes.md`: each finding code, its meaning, and its next
+  action, plus the one headline order of the blockers.
 - `references/runtime-trust.md`: general rules for untrusted text.

@@ -11,6 +11,8 @@ export interface CommentView {
   readonly isBotAccount: boolean;
   readonly body: string;
   readonly url: string | null;
+  /** When the comment text last changed: the later of GitHub's `lastEditedAt` and `updatedAt`. Null when GitHub gives neither. */
+  readonly editedAt: string | null;
 }
 
 export interface ThreadDetail {
@@ -73,5 +75,10 @@ export interface Decision {
 export interface DecisionFile {
   /** When set, the head of the PR must equal it. */
   readonly expectHead: Sha | null;
+  /**
+   * The time of the plan that the agent read (plan prints it). Needed for every resolving action.
+   * A comment that was edited after this time counts like a new comment and stops the resolve.
+   */
+  readonly planAt: string | null;
   readonly decisions: readonly Decision[];
 }

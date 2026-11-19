@@ -6,13 +6,13 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { StopSignal } from "../../lib/merge/signals.ts";
-import type { MergeIo, StepContext } from "../../lib/merge/types.ts";
+import type { MergeIo, StepContext, StepResult } from "../../lib/merge/types.ts";
 import { newShared } from "../../lib/merge/types.ts";
 import type { RunResult } from "../../lib/proc.ts";
 import { checkGh, ghMutationArgv, type GhMutation } from "../../lib/safety-gh.ts";
 import { parseRepoSlug, type Sha } from "../../lib/types.ts";
 import { baseResponse, commitNode, fakeGh, prResponse } from "./fake-gh.ts";
-import { HEAD, OLD, sha } from "./status.ts";
+import { BASE, HEAD, OLD, sha } from "./status.ts";
 
 const REPO = "example-org/example-repo";
 
@@ -30,6 +30,8 @@ export interface World {
   /** Patch of the PR query. Each key replaces the default. */
   pr: Record<string, unknown>;
   head: Sha;
+  /** Tip of the default branch. The policy is read at this commit. */
+  defaultSha: Sha;
   prState: "OPEN" | "MERGED" | "CLOSED";
   mergeCommit: Sha;
   /** Number of PR reads so far. */
@@ -74,6 +76,8 @@ export interface World {
   readonly signalHandlers: ((signal: StopSignal) => void)[];
   /** Exit codes that the watch asked for. */
   readonly exits: number[];
+  /** The results that a stop signal handed to `ctx.stop`. */
+  readonly stopped: StepResult[];
   queue(entry: Partial<QueueEntryData> | null): void;
   removed(reason: string): void;
 }
@@ -115,6 +119,7 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
   const lines: string[] = [];
   const signalHandlers: ((signal: StopSignal) => void)[] = [];
   const exits: number[] = [];
+  const stopped: StepResult[] = [];
   let clock = 1_000_000;
   const lockDir = mkdtempSync(join(tmpdir(), "pr-merge-test-"));
   lockDirs.push(lockDir);
@@ -128,7 +133,7 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
         world.failReads -= 1;
         return { errors: [{ message: "read failed" }] };
       }
-      return prResponse({ ...headPatch(world.head), state: world.prState, ...world.pr });
+      return prResponse({ ...headPatch(world.head), state: world.prState, ...world.pr }, { defaultBranchRef: { name: "main", target: { oid: world.defaultSha } } });
     },
     base: () => baseResponse(world.hasQueue ? {} : { mergeQueue: null }),
     issue: () => ({ data: { repository: { issueOrPullRequest: null } } }),
@@ -262,6 +267,10 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
     io,
     shared: newShared(),
     say: (line: string) => void lines.push(line),
+    stop: (outcome) => {
+      stopped.push(outcome);
+      io.exit(outcome.exit);
+    },
     confirmed: true,
     ...extra,
   });
@@ -269,6 +278,7 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
   const world: World = {
     pr: {},
     head: HEAD,
+    defaultSha: BASE,
     prState: "OPEN",
     mergeCommit: sha("e"),
     gathers: 0,
@@ -296,6 +306,7 @@ export function makeWorld(patch: Partial<Pick<World, "policyToml" | "queueMethod
     starts: new Map(),
     signalHandlers,
     exits,
+    stopped,
     ...patch,
     io,
     context,

@@ -14,7 +14,7 @@ import {
 import { main, parseArgs } from "../lib/refresh/cli.ts";
 import { writeRefusal } from "../lib/refresh/gate.ts";
 import { guardedGit, repoAt } from "../lib/refresh/gitx.ts";
-import { inventoryMisses } from "../lib/refresh/steps.ts";
+import { inventoryMisses } from "../lib/policy-steps.ts";
 import { withWorktree } from "../lib/refresh/worktree.ts";
 import type { Sha } from "../lib/types.ts";
 import { sandbox, type Sandbox } from "./helpers/refresh-env.ts";

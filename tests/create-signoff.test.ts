@@ -2,7 +2,9 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { run } from "../lib/proc.ts";
-import { appendSignoff, onlyTrailerAdded, parseCommitObject, signoffRange, type SignoffResult } from "../lib/create/signoff.ts";
+import { rewriteRefusal, signoffRange, type SignoffResult } from "../lib/create/signoff.ts";
+import { appendSignoff, onlyTrailerAdded, parseCommitObject, type RangeCommit, type RewritePlan } from "../lib/dco.ts";
+import { sha } from "./helpers/status.ts";
 import { argsFor, configFor, fakeWorld, makeRepos, newWorld, runCli, type FakeWorld, type Repos, type World } from "./helpers/create.ts";
 
 const made: Repos[] = [];
@@ -149,9 +151,28 @@ describe("signoff", () => {
     const config = configFor(repos, fake);
     const result = await signoffRange(argsFor("signoff", "--expect-head", sha), {
       ...config,
-      runGit: async (args) => (args[0] === "config" ? { code: 1, stdout: "", stderr: "" } : config.runGit(args)),
+      runRepo: async (args, options) => (args[0] === "config" ? { code: 1, stdout: "", stderr: "" } : config.runRepo(args, options)),
     });
     expect(result).toMatchObject({ kind: "refused", code: 3 });
+    expect(await repos.head()).toBe(sha);
+  });
+
+  test("a git failure inside the rewrite is a refusal (exit 3), not a crash, in the library and on the command line", async () => {
+    const { repos, fake } = await setup();
+    const sha = await repos.commit("a.txt", "a\n", "feat: add a", { signoff: false });
+    const config = configFor(repos, fake);
+    const failing = {
+      ...config,
+      runRepo: async (args: readonly string[], options: Parameters<typeof config.runRepo>[1]) =>
+        args[0] === "commit-tree" ? { code: 128, stdout: "", stderr: "fatal: boom" } : config.runRepo(args, options),
+    };
+    const result = await signoffRange(argsFor("signoff", "--expect-head", sha), failing);
+    expect(result).toMatchObject({ kind: "refused", code: 3 });
+    expect(result.kind === "refused" ? result.reasons.join(" ") : "").toContain("git commit-tree failed: fatal: boom");
+    expect(await repos.head()).toBe(sha);
+    const cli = await runCli(["signoff", "--json", "--expect-head", sha], repos, fake, { runRepo: failing.runRepo });
+    expect(cli.code).toBe(3);
+    expect(JSON.parse(cli.out)).toMatchObject({ schema: 1, mode: "signoff", refused: true, exit: 3 });
     expect(await repos.head()).toBe(sha);
   });
 
@@ -162,7 +183,7 @@ describe("signoff", () => {
     const result = await signoffRange(argsFor("signoff", "--expect-head", sha), {
       ...config,
       // A rewrite that changes the author date.
-      runGitEnv: (args, env) => config.runGitEnv(args, { ...env, GIT_AUTHOR_DATE: "1600000000 +0000" }),
+      runRepo: (args, options) => config.runRepo(args, args[0] === "commit-tree" ? { ...options, env: { ...options.env, GIT_AUTHOR_DATE: "1600000000 +0000" } } : options),
     });
     expect(result).toMatchObject({ kind: "refused", code: 3 });
     expect(result.kind === "refused" ? result.reasons[0] : "").toContain("author name, email, or date changed");
@@ -179,9 +200,11 @@ describe("signoff", () => {
     const result = await signoffRange(argsFor("signoff", "--expect-head", tip), {
       ...config,
       // The first rebuilt commit gets another tree. The last one keeps its own, so only the per-commit check can see it.
-      runGitEnv: (args, env) => {
+      runRepo: (args, options) => {
+        if (args[0] !== "commit-tree") return config.runRepo(args, options);
         calls += 1;
-        return config.runGitEnv(calls === 1 ? [args[0] ?? "", other, ...args.slice(2)] : args, env);
+        // The tree is the last argument of `git commit-tree`.
+        return config.runRepo(calls === 1 ? [...args.slice(0, -1), other] : args, options);
       },
     });
     expect(result).toMatchObject({ kind: "refused", code: 3 });
@@ -195,7 +218,8 @@ describe("signoff", () => {
     const config = configFor(repos, fake);
     const result = await signoffRange(argsFor("signoff", "--expect-head", sha), {
       ...config,
-      runGitEnv: (args, env) => config.runGitEnv(args.map((a) => a.replace("feat: add a", "feat: changed a")), env),
+      runRepo: (args, options) =>
+        config.runRepo(args, args[0] === "commit-tree" && options.stdin !== undefined ? { ...options, stdin: options.stdin.replace("feat: add a", "feat: changed a") } : options),
     });
     expect(result).toMatchObject({ kind: "refused", code: 3 });
     expect(result.kind === "refused" ? result.reasons[0] : "").toContain("more than the added trailer");
@@ -210,13 +234,14 @@ describe("signoff", () => {
     let calls = 0;
     const result = await signoffRange(argsFor("signoff", "--expect-head", tip), {
       ...config,
-      runGitEnv: (args, env) => {
+      runRepo: (args, options) => {
+        if (args[0] !== "commit-tree") return config.runRepo(args, options);
         calls += 1;
-        return config.runGitEnv(calls === 2 ? args.map((a) => a.replace("feat: add b", "feat: add B")) : args, env);
+        return config.runRepo(args, calls === 2 && options.stdin !== undefined ? { ...options, stdin: options.stdin.replace("feat: add b", "feat: add B") } : options);
       },
     });
     expect(result).toMatchObject({ kind: "refused", code: 3 });
-    expect(result.kind === "refused" ? result.reasons[0] : "").toContain("more than the added trailer");
+    expect(result.kind === "refused" ? result.reasons[0] : "").toContain("the message changed on a commit that needs no trailer");
     expect(await repos.head()).toBe(tip);
   });
 
@@ -238,6 +263,35 @@ describe("signoff", () => {
     const sha = await repos.commit("a.txt", "a\n", "feat: add a", { signoff: false });
     const out = JSON.parse((await runCli(["signoff", "--json", "--expect-head", sha], repos, fake)).out);
     expect(out).toMatchObject({ schema: 1, mode: "signoff", exit: 0, trailersAdded: 1, oldHead: sha });
+  });
+});
+
+describe("rewriteRefusal", () => {
+  const commit = (char: string, parents: readonly string[] = ["0"]): RangeCommit => ({
+    sha: sha(char),
+    tree: sha("1"),
+    parents: parents.map((p) => sha(p)),
+    authorName: "Dev A",
+    authorEmail: "dev-a@example.invalid",
+    authorDate: "1700000000 +0000",
+    message: "feat: x\n",
+    signed: false,
+    unsupportedHeader: null,
+  });
+  const planOf = (...rewrite: RangeCommit[]): RewritePlan => ({ firstUnsigned: sha("a"), rewrite, needsTrailer: new Set(rewrite.map((c) => c.sha)) });
+
+  test("a commit that the remote holds is refused with pushed_commit, naming the skill that can fix it", () => {
+    const refusal = rewriteRefusal(new Set([sha("b")]))(planOf(commit("a"), commit("b", ["a"])));
+    expect(refusal?.code).toBe("pushed_commit");
+    expect(refusal?.headline).toContain("already on the remote branch");
+    expect(refusal?.headline).toContain("bbbbbbb");
+    expect(refusal?.next).toContain("tailrocks-pr-refresh");
+  });
+
+  test("a merge or a root commit is refused, and a plain local range is not", () => {
+    expect(rewriteRefusal(new Set())(planOf(commit("a"), commit("c", ["a", "b"])))?.code).toBe("merge_commit");
+    expect(rewriteRefusal(new Set())(planOf(commit("a", [])))?.code).toBe("merge_commit");
+    expect(rewriteRefusal(new Set([sha("f")]))(planOf(commit("a"), commit("c", ["a"])))).toBeNull();
   });
 });
 

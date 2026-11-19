@@ -1,14 +1,15 @@
 // The policy steps that follow a base merge: regenerate outputs, check
 // inventories, scan sign-offs, run pre-push steps. Commands are argument
-// arrays from the base-branch policy. No command passes through a shell.
+// arrays from the default-branch policy. No command passes through a shell.
 
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { matchesAnyGlob } from "../glob.ts";
+import { inventoryApplies, inventoryFix, inventoryMisses, runPrepushSteps, signoffRequired, whenChanged } from "../policy-steps.ts";
 import type { Policy, PolicyInventory, PolicyPrepushStep, PolicyRegenerateStep } from "../policy/types.ts";
 import { run, scrub } from "../proc.ts";
-import { hasSignoff, sameLogin } from "../status/text.ts";
+import { sameLogin } from "../status/text.ts";
 import type { PrSnapshot } from "../status/types.ts";
 import type { Sha } from "../types.ts";
 import { must, parseShaOrThrow, splitNul, type Repo } from "./gitx.ts";
@@ -37,7 +38,7 @@ export async function changedFiles(repo: Repo, base: Sha, oldHead: Sha): Promise
 }
 
 export function matchesWhenChanged(globs: readonly string[], changed: readonly string[]): boolean {
-  return changed.some((file) => matchesAnyGlob(globs, file));
+  return whenChanged(globs, changed);
 }
 
 // ---------- Running a policy command ----------
@@ -151,30 +152,6 @@ export async function regenerateEntry(repo: Repo, entry: PolicyRegenerateStep, c
 
 // ---------- Inventories ----------
 
-const PATH_TOKEN = /[A-Za-z0-9_.@+/-]+/g;
-
-/** Added files that an inventory must name and does not. Pure. */
-export function inventoryMisses(inventory: PolicyInventory, added: readonly string[], text: string): readonly string[] {
-  const tokens = new Set(text.match(PATH_TOKEN) ?? []);
-  const listed = [...tokens];
-  const misses: string[] = [];
-  for (const file of added) {
-    if (file === inventory.file || !matchesAnyGlob(inventory.added, file) || matchesAnyGlob(inventory.exclude, file)) {
-      continue;
-    }
-    if (tokens.has(file)) {
-      continue;
-    }
-    const segments = file.split("/");
-    const group = segments.slice(0, Math.min(inventory.group_depth, segments.length - 1)).join("/");
-    // Enforced only for groups that the inventory already lists.
-    if (group !== "" && listed.some((token) => token.startsWith(`${group}/`))) {
-      misses.push(file);
-    }
-  }
-  return misses;
-}
-
 export async function checkInventories(repo: Repo, policy: Policy, base: Sha): Promise<readonly StepProblem[]> {
   if (policy.inventories.length === 0) {
     return [];
@@ -184,7 +161,7 @@ export async function checkInventories(repo: Repo, policy: Policy, base: Sha): P
   for (const inventory of policy.inventories) {
     const file = join(repo.cwd, inventory.file);
     if (!existsSync(file)) {
-      if (added.some((f) => matchesAnyGlob(inventory.added, f) && !matchesAnyGlob(inventory.exclude, f))) {
+      if (inventoryApplies(inventory, added)) {
         problems.push({
           code: "inventory_miss",
           headline: `inventory "${inventory.name}": the file ${inventory.file} does not exist`,
@@ -199,10 +176,7 @@ export async function checkInventories(repo: Repo, policy: Policy, base: Sha): P
       problems.push({
         code: "inventory_miss",
         headline: `inventory "${inventory.name}" does not name ${misses.length} added file(s)`,
-        next:
-          inventory.update.length > 0
-            ? `add them to ${inventory.file} (the policy update command is: ${inventory.update.join(" ")}), then run the mode again`
-            : `add them to ${inventory.file}, then run the mode again`,
+        next: inventoryFix(inventory, "then run the mode again"),
         details: misses.slice(0, 20),
       });
     }
@@ -222,13 +196,9 @@ export async function unsignedCommits(repo: Repo, policy: Policy, snapshot: PrSn
   for (const line of listing.split("\n").filter((l) => l.trim() !== "")) {
     const sha = parseShaOrThrow(line.trim());
     const message = await must(repo, ["log", "-1", "--format=%B", sha]);
-    if (hasSignoff(message)) {
-      continue;
-    }
     const login = snapshot.commits.find((c) => c.oid === sha)?.authorLogin ?? null;
-    const exempt =
-      policy.dco.bot_commits === "exempt" && login !== null && policy.dco.bot_authors.some((bot) => sameLogin(bot, login));
-    if (!exempt) {
+    const isBot = login !== null && policy.dco.bot_authors.some((bot) => sameLogin(bot, login));
+    if (signoffRequired(policy, message, isBot)) {
       unsigned.push(sha);
     }
   }
@@ -242,19 +212,18 @@ export async function runPrepush(
   steps: readonly PolicyPrepushStep[],
   changed: readonly string[],
 ): Promise<StepProblem | null> {
-  for (const step of steps) {
-    if (step.when_changed.length > 0 && !matchesWhenChanged(step.when_changed, changed)) {
-      continue;
-    }
+  const outcome = await runPrepushSteps(steps, changed, async (step) => {
     const result = await runPolicyCommand(step.run, repo.cwd, step.cwd);
-    if (!result.ok) {
-      return {
-        code: "prepush_failed",
-        headline: `pre-push step "${step.name}" failed; nothing was pushed`,
-        next: `fix the cause of the failure of "${step.name}", then run the mode again`,
-        details: result.tail,
-      };
-    }
+    return { code: result.ok ? 0 : 1, output: result.tail.join("\n") };
+  });
+  if (outcome.failure === null) {
+    return null;
   }
-  return null;
+  const { step, tail } = outcome.failure;
+  return {
+    code: "prepush_failed",
+    headline: `pre-push step "${step.name}" failed; nothing was pushed`,
+    next: `fix the cause of the failure of "${step.name}", then run the mode again`,
+    details: tail,
+  };
 }

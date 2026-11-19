@@ -110,7 +110,7 @@ export async function watchStep(ctx: StepContext, options: WatchOptions): Promis
   const removeHandlers = ctx.io.onStopSignal((signal) => {
     lock.release();
     ctx.say(`the watch was stopped by ${signal}; the PR was not judged. Read it with pr-status before any other step`);
-    ctx.io.exit(EXIT.waiting);
+    ctx.stop(result(EXIT.waiting, "stopped", `Run pr-status ${ctx.number} before any other step. Start another watch only when the user asks.`, first.evaluated));
   });
   try {
     return await poll(ctx, first.evaluated, intervalSeconds, options.timeoutSeconds);
@@ -184,10 +184,16 @@ async function poll(ctx: StepContext, first: Evaluated, intervalSeconds: number,
           return leftQueue(ctx, current, true);
         }
         // GitHub can show an open PR for a few seconds after a merge. Read again before the verdict.
+        // The settle reads count inside the deadline: no wait runs past it.
         if (settling < SETTLE_READS) {
+          const room = deadline - ctx.io.now();
+          if (room <= 0) {
+            ctx.say("the time bound passed while the PR was out of the queue; it was neither seen merged nor judged");
+            return result(EXIT.waiting, "timeout", `Run pr-status ${ctx.number}. Start another watch only when the user asks.`, current);
+          }
           settling += 1;
           current = null;
-          await ctx.io.sleep(SETTLE_WAIT_MS);
+          await ctx.io.sleep(Math.min(SETTLE_WAIT_MS, room));
           continue;
         }
         return leftQueue(ctx, current, false);

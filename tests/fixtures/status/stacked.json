@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "capturedAt": "2026-11-18T21:01:17.457Z",
   "repo": "example-org/example-repo",
   "defaultBranch": "main",
@@ -13,6 +13,7 @@
   "body": "Part of #1290\n## What changed\n## Release coupling\nThe two blockers this branch found are fixed by #1351, which this PR is stacked on:\n## Red / green\n## Ordering",
   "baseRef": "feature/1351",
   "baseSha": "8edffba648ca9415cfc7ba14419a9f8e6a59b625",
+  "defaultSha": "9999999999999999999999999999999999999999",
   "headRef": "feature/1352",
   "headSha": "0500578b07d90d743ef5d160a2d1132b778c440b",
   "mergeable": "MERGEABLE",

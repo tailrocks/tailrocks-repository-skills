@@ -26,16 +26,25 @@ The two user-only skills need an explicit human command on every
 client. A model must not select `tailrocks-repository-recover` or
 `tailrocks-repository-merge` from task similarity.
 
+`tailrocks-pr-merge` and `tailrocks-pr-fleet` set
+`allow_implicit_invocation: false` in `agents/openai.yaml`. Only Codex
+reads that flag. On every client, their scripts print a plan and write
+nothing until the user passes `--confirm <pr>` (merge) or `--apply`
+(fleet). Run them only when the user asked for the write.
+
 ## Skill owners
 
 | Request | Owner |
 | --- | --- |
 | Find and preserve local work | `tailrocks-repository-recover` |
 | Integrate sources into one exact target | `tailrocks-repository-merge` |
+| Find out if a pull request can merge | `tailrocks-pr-status` |
 | Open one pull request | `tailrocks-pr-create` |
-| Reconcile a pull request title and body | `tailrocks-refresh-pr` |
+| Sync the base, fix sign-off, or fix title and body | `tailrocks-pr-refresh` |
+| Triage, answer, and resolve review threads | `tailrocks-pr-threads` |
+| Land one pull request | `tailrocks-pr-merge` |
+| Plan or run work on all open pull requests | `tailrocks-pr-fleet` |
 | Review one pull request | `tailrocks-review-pr` |
-| Land one pull request | `tailrocks-merge-pr` |
 | Create or reconcile the pull-request template | `tailrocks-pr-template` |
 
 Read the skill body for the full procedure. Each body lives at
@@ -96,12 +105,27 @@ Invoke the status owner with a pull-request number, or with `--all`:
 /tailrocks-repository-skills:tailrocks-pr-status 1663
 ```
 
-The skill runs one script. The script reads the pull request, the
-repository policy from the base branch, and the branch rules. It
-returns READY, WAITING, or BLOCKED. Each blocker names the next action
-and the skill that owns it. The skill is read-only. A READY verdict is
-not a merge. The agent never decides READY itself. The reference
-`finding-codes.md` in the skill lists every finding code.
+The skill runs one script with Bun. The script reads the pull request,
+the repository policy from the default branch at its current commit,
+and the branch rules. It returns READY, WAITING, or BLOCKED. Each
+blocker names the next action and the skill that owns it. The skill is
+read-only. It hands off to the owner skill, and it runs that skill only
+when the user asked for the fix or the merge. A READY verdict is not a
+merge. The agent never decides READY itself. The reference
+`finding-codes.md` in the skill lists every finding code and the order
+of the blockers.
+
+## Repository policy
+
+The script-backed skills read one policy file:
+`.config/pr-policy.toml` on the default branch, at its current commit.
+They never read it from a pull-request head, from the base of a stacked
+pull request, or from the working tree. A pull request cannot change
+its own gates. Without the file, the skills use built-in defaults and
+the rules that GitHub enforces. `schemas/pr-policy.schema.json` holds
+the contract. `examples/` holds example policies. `--policy <file>`
+exists for checks and tests only. A verdict from a local policy file is
+advisory, and `tailrocks-pr-merge` refuses it.
 
 ## Example: refresh a pull request
 
@@ -145,10 +169,12 @@ Invoke the merge owner with a pull-request number:
 ```
 
 The skill runs one script with four steps: `ready`, `merge`,
-`dequeue`, and `watch`. Each step prints its plan first and writes
-nothing. A second run with `--confirm` set to the pull-request number
-does the write. The `merge` step needs a READY verdict on the
-base-branch policy. It enters the merge queue with the head commit
+`dequeue`, and `watch`. The steps `ready`, `merge`, and `dequeue`
+print their plan first and write nothing. A second run with
+`--confirm` set to the pull-request number does the write. The `watch`
+step needs no plan run: run it directly with `--confirm`. The `merge`
+step needs a READY verdict on the
+default-branch policy. It enters the merge queue with the head commit
 pinned, or merges directly with the policy method. It never uses admin
 bypass and never deletes a branch. The `watch` step reports the merge
 commit, or the reason that the pull request left the queue. The
@@ -158,14 +184,14 @@ reference `merge-rules.md` in the skill lists the gates.
 
 Local-work recovery belongs to `tailrocks-repository-recover`.
 Multi-source integration belongs to `tailrocks-repository-merge`.
-Review, creation, refresh, template work, and landing belong to the
-bundled pull-request owners. Each owner needs an explicit selection
-when required.
+Status, creation, refresh, review-thread triage, review, template
+work, landing, and fleet planning belong to the bundled pull-request
+owners. Each owner needs an explicit selection when required.
 
 The merge owner verifies the exact target, checks, reviews, and
 policy before one merge or enqueue request. It reports blocked,
 pending, queued, merged, failed, or uncertain. Read-only inspection
-uses native `gh` only:
+uses `tailrocks-pr-status` or native `gh`:
 
 ```sh
 gh pr view 1663 --repo OWNER/REPO --json number,title,headRefOid,baseRefName,mergeable,mergeStateStatus,reviewDecision

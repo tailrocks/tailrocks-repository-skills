@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.5.0 - 2026-11-19
+
+Replaced the prose-only pull-request skills with script-backed skills. A
+script computes each gate. The agent no longer decides from memory which gates
+exist. Design: `docs/design/pr-skills.md`.
+
+Added:
+
+- `tailrocks-pr-status`: one verdict per PR (READY, WAITING, or BLOCKED), with
+  the next action and its owner for each blocker. Read-only.
+- `tailrocks-pr-create`: create one draft PR under the policy, with signed
+  commits and pre-push checks.
+- `tailrocks-pr-refresh`: sync with the base, fix sign-off, and reconcile the
+  title and body.
+- `tailrocks-pr-threads`: triage review threads, reply, and resolve them under
+  the policy.
+- `tailrocks-pr-merge`: guarded `ready`, `merge`, `dequeue`, and `watch` steps.
+  It writes only after `--confirm`.
+- `tailrocks-pr-fleet`: rank all open PRs, plan work under a CI budget, and
+  apply it through the other skills. It writes only with `--apply`.
+- The repository policy file `.config/pr-policy.toml`. The skills read it from
+  the default branch at its current commit, never from a PR head or from the
+  base of a stacked PR. `schemas/pr-policy.schema.json` holds the contract.
+  `examples/` holds example policies. Without the file, built-in defaults and
+  the rules that GitHub enforces apply.
+- Bun 1.4 or newer as the runtime of the script-backed skills. The scripts are
+  TypeScript, call only `gh` and `git`, and have no runtime dependencies.
+  `bun run vendor` copies the shared library `lib/` into each script-backed
+  skill.
+
+Removed, with no aliases:
+
+- `tailrocks-create-pr`: use `tailrocks-pr-create`.
+- `tailrocks-refresh-pr`: use `tailrocks-pr-refresh`.
+- `tailrocks-merge-pr`: use `tailrocks-pr-merge`.
+
+Changed:
+
+- `tailrocks-review-pr`, `tailrocks-pr-template`, `tailrocks-repository-merge`,
+  and `tailrocks-repository-recover` link to the new skill ids.
+- The package holds ten skills.
+
 ## 0.4.1 - 2026-10-08
 
 Applied the common active-package structure on branch

@@ -3,6 +3,7 @@
 import type { GhRun } from "../github/graphql.ts";
 import type { GitRun } from "../github/git-facts.ts";
 import type { RunResult } from "../proc.ts";
+import type { GitRunner } from "../refresh/gitx.ts";
 import type { GhMutation } from "../safety-gh.ts";
 import type { Policy, PolicyError, PolicySource } from "../policy/types.ts";
 import type { RepoSlug, Sha } from "../types.ts";
@@ -117,8 +118,6 @@ export type PlanResult =
 
 /** Runs one policy command (an argument array, never a shell string) in a directory. */
 export type CommandRun = (argv: readonly string[], cwd: string) => Promise<RunResult>;
-/** Runs git with extra environment variables. Used only by the sign-off rewrite, to keep the author. */
-export type GitEnvRun = (args: readonly string[], env: Readonly<Record<string, string>>) => Promise<RunResult>;
 export type MutateRun = (op: GhMutation) => Promise<RunResult>;
 
 export interface CreateConfig {
@@ -126,6 +125,7 @@ export interface CreateConfig {
   readonly runGh: GhRun;
   readonly runGit: GitRun;
   readonly runCommand: CommandRun;
-  readonly runGitEnv: GitEnvRun;
+  /** The guarded git runner with a working directory, an environment, and stdin. Used only by the shared sign-off rewrite of lib/dco.ts. */
+  readonly runRepo: GitRunner;
   readonly mutate: MutateRun;
 }

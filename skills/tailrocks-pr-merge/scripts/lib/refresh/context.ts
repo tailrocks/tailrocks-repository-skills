@@ -1,4 +1,4 @@
-// Load the facts that every mode needs: the snapshot, the base-branch policy,
+// Load the facts that every mode needs: the snapshot, the default-branch policy,
 // and the gh user. Writing modes read the snapshot again before and after
 // each write (`reread`).
 
@@ -88,14 +88,15 @@ export async function readSnapshot(
   return { ok: true, snapshot: gathered.snapshot };
 }
 
-/** Read the PR, the policy at the base commit, and the gh user. */
+/** Read the PR, the policy at the default-branch commit (`defaultSha`), and the gh user. */
 export async function loadContext(deps: RefreshDeps, repo: RepoSlug, number: number, writesBranch = true): Promise<Loaded> {
   const read = await readSnapshot(deps, repo, number, writesBranch);
   if (!read.ok) {
     return read;
   }
   const { snapshot } = read;
-  const policy = await fetchBasePolicy(repo, snapshot.baseSha, { cwd: deps.cwd, runGh: deps.runGh });
+  // The policy comes from the default branch at its current commit, never from the base of a stacked PR.
+  const policy = await fetchBasePolicy(repo, snapshot.defaultSha, { cwd: deps.cwd, runGh: deps.runGh });
   if (!policy.ok) {
     return { ok: false, outcome: usage("the repository policy is invalid", formatPolicyErrors(policy.errors).split("\n")) };
   }

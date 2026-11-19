@@ -30,7 +30,7 @@ export const PR_QUERY = `
 query($owner: String!, $name: String!, $number: Int!) {
   repository(owner: $owner, name: $name) {
     nameWithOwner
-    defaultBranchRef { name }
+    defaultBranchRef { name target { oid } }
     pullRequest(number: $number) {
       id number state isDraft title body
       baseRefName baseRefOid headRefName headRefOid

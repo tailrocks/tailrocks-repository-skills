@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "capturedAt": "2026-11-18T21:01:09.005Z",
   "repo": "example-org/example-repo",
   "defaultBranch": "main",
@@ -13,6 +13,7 @@
   "body": "Refs #1033, #1034, #934.",
   "baseRef": "main",
   "baseSha": "25278ea64ada72eb19d647b39185dbd02116f2fd",
+  "defaultSha": "25278ea64ada72eb19d647b39185dbd02116f2fd",
   "headRef": "feature/1168",
   "headSha": "4ebe263067ba6f5623d048d1f17fe59035eaaaef",
   "mergeable": "CONFLICTING",

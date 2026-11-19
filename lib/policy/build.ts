@@ -221,7 +221,6 @@ export function buildPolicy(value: JsonValue): Policy {
       freeze: fleet.boolean("freeze"),
       hold: fleet.integers("hold"),
       max_merges_per_pass: fleet.integerOrNull("max_merges_per_pass"),
-      max_merges_per_pass_congested: fleet.integer("max_merges_per_pass_congested"),
     },
   };
 }

@@ -47,6 +47,12 @@ describe("SKILL.md", () => {
     expect(skill).toContain("Do not run the\n   `next` line of a stopped, skipped, pending, or refused action");
   });
 
+  test("refresh actions run pr-refresh sync through its outcome, never dco-fix, and nothing is pending for lack of pr-refresh", () => {
+    expect(skill).not.toContain("not available");
+    expect(skill).toContain("reads the outcome of `sync` (its state and code), not an exit");
+    expect(skill).toContain("never runs `pr-refresh dco-fix`");
+  });
+
   test("an unknown exit code is reported word for word and is not retried", () => {
     expect(skill).toMatch(/^\| 1, 127, or any other code \|.*Do not retry\./m);
   });

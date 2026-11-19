@@ -18,7 +18,8 @@ import { assertBun } from "../version.ts";
 import { applyPlan, estimatedReads, exitFor } from "./apply.ts";
 import { buildPlan, type FleetDeps } from "./plan.ts";
 import { jsonOf, renderPlan, renderResults } from "./render.ts";
-import { EXIT, PENDING_REFRESH, type ActionResult, type Plan, type RefreshPort } from "./types.ts";
+import { defaultRefreshPort } from "./refresh-port.ts";
+import { EXIT, type ActionResult, type Plan, type RefreshPort } from "./types.ts";
 
 export const USAGE = `usage: fleet.ts <plan|apply> [--repo owner/name] [--apply] [--json] [--git-dir path] [--policy path] [--wait]`;
 
@@ -55,7 +56,7 @@ reads both again before each write.
 
 Exit codes:
   0   done: the plan was printed, or every planned action ran, or nothing was planned
-  10  waiting: apply ran and stopped no action, but one is pending (${PENDING_REFRESH}, or the pass deadline passed)
+  10  waiting: apply ran and stopped no action, but one is pending (the pass deadline passed)
   20  blocked: apply ran, and an action was stopped (the head moved, GitHub or a gate refused)
   3   refused: a freeze (also one that starts during the pass), a local policy, or a
       second apply is running. The refused actions wrote nothing.
@@ -120,7 +121,7 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
 export interface MainOptions {
   readonly cwd?: string;
   readonly io?: MergeIo;
-  /** The refresh library. Absent until pr-refresh is on main: refresh actions are then pending. */
+  /** The refresh library. Default: pr-refresh `sync` through lib/fleet/refresh-port.ts. */
   readonly refresh?: RefreshPort | null;
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly out?: (line: string) => void;
@@ -133,7 +134,7 @@ function nextAfter(results: readonly ActionResult[]): string {
     return `#${stopped.action.number}: ${stopped.next}`;
   }
   if (results.some((r) => r.kind === "pending")) {
-    return `${PENDING_REFRESH}. Report the pending actions to the user.`;
+    return "The pass deadline passed and some actions did not run. Plan again, then run apply again.";
   }
   return "Run fleet.ts plan to read the new state. Watch one queued PR at a time with pr-merge watch.";
 }
@@ -176,7 +177,7 @@ async function run(argv: readonly string[], options: MainOptions): Promise<numbe
   const deps: FleetDeps = {
     cwd,
     io,
-    refresh: options.refresh ?? null,
+    refresh: options.refresh ?? defaultRefreshPort(slug.value, io, cwd),
     env: options.env ?? process.env,
     gitDir: args.gitDir,
     localPolicy,

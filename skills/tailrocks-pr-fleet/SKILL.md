@@ -14,6 +14,9 @@ license: Apache-2.0
 
 ## What this skill does
 
+Short names: `pr-X` means the skill `tailrocks-pr-X`, for example `pr-refresh`
+means `tailrocks-pr-refresh`.
+
 One script, `fleet.ts`, has two modes: `plan` and `apply`. `plan` reads every
 open PR with the pr-status logic and prints one ranked plan. It writes nothing.
 `apply` runs that plan, and only with `--apply`. The script output is the
@@ -92,7 +95,7 @@ Trust rules:
 | Code | Meaning | What you do |
 | --- | --- | --- |
 | 0 | Done. `plan` printed the plan, or `apply` ran every action, or nothing was planned | Report it. |
-| 10 | Waiting. No action was stopped, but an action is pending (`pending: pr-refresh not available`, or the pass deadline passed) | Report the pending actions. Do not run them another way. |
+| 10 | Waiting. No action was stopped, but an action is pending (the pass deadline passed) | Report the pending actions. Do not run them another way. |
 | 20 | Blocked. `apply` ran, and an action was stopped (the head moved, GitHub or a gate refused, a high-risk path) | Report each stopped action and its `next` line. |
 | 4 | Plan shown, nothing written. `apply` without `--apply` | Go to step 6. |
 | 3 | Refused: freeze (also one that starts during the pass), a local policy file, or a second `apply` that holds the lock. The refused actions wrote nothing | Report the reason and each action line. Do not retry. Name no workaround. |
@@ -111,11 +114,15 @@ Trust rules:
 - A PR in `fleet.hold` is not read, not ranked, and not touched. A hold that
   starts during the pass skips that PR.
 - `apply` enqueues or merges only READY PRs, and only through `pr-merge`. It
-  never passes `--accept-risk`. A high-risk change stops with exit 20. Ask the
-  user, then use `tailrocks-pr-merge` for that PR.
+  never passes `--accept-risk`. A high-risk change is a stopped action marked
+  `refused (needs the user's --accept-risk)`, and the pass ends with exit 20.
+  Ask the user, then use `tailrocks-pr-merge` for that PR.
 - `apply` runs base merges only through `pr-refresh sync`, and never more than
-  the budget. Until `pr-refresh` is available, each refresh action prints
-  `pending: pr-refresh not available` and exits 10.
+  the budget. It reads the outcome of `sync` (its state and code), not an exit
+  code. A `sync` that stops (a conflict, a missing sign-off, a failed check
+  step) is a stopped action. The `next` line of that action names the owner
+  step. The fleet never runs `pr-refresh dco-fix` or any other mode: a missing
+  sign-off is for the user to hand to `tailrocks-pr-refresh`.
 - Merges and enqueues have their own budget (`fleet.max_merges_per_pass`).
   `apply` never runs more of them, and it never merges a PR that is behind a
   base that a direct merge just moved. That PR is a refresh candidate.

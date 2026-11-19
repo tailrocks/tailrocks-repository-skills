@@ -229,6 +229,23 @@ describe("plan: the base", () => {
     expect(plan.base.ref).toBe("main");
   });
 
+  test("a child PR that holds the whole branch is skipped, also when its base is the default branch", async () => {
+    const { repos, fake } = await setup();
+    await repos.commit("c.txt", "c\n", "feat: topic work");
+    await repos.git(["push", "origin", "feat/topic"]);
+    await repos.git(["checkout", "-b", "later"]);
+    const later = await repos.commit("l.txt", "l\n", "feat: later work");
+    await repos.git(["push", "origin", "later"]);
+    await repos.git(["checkout", "feat/topic"]);
+    // The child PR targets main, and its head is ahead of this branch. It is neither the parent nor an ambiguous candidate.
+    fake.world.prs.push({ number: 9, id: "PR_9", title: "later", headRef: "later", headSha: later, baseRef: "main", isDraft: true, isCrossRepository: false, author: "other-dev", labels: [], body: "" });
+    const plan = await planOf(repos, fake, "--title", "feat: topic work");
+    expect(plan.base.ref).toBe("main");
+    expect(plan.base.stackedOn).toBeNull();
+    expect(codes(plan, "blocker")).not.toContain("base_ambiguous");
+    expect(plan.exit).toBe(0);
+  });
+
   test("an explicit base that is neither the default nor allowed is a blocker", async () => {
     const { repos, fake } = await setup();
     await repos.commit("a.txt", "a\n", "feat: add a");

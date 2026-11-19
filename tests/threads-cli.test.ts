@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { HELP, main, parseArgs } from "../lib/threads/cli.ts";
-import { AGENT, FIX_COMMIT, REPO, World, type ThreadSpec } from "./helpers/threads-world.ts";
+import { AGENT, FIX_COMMIT, PLAN_AT, REPO, World, type ThreadSpec } from "./helpers/threads-world.ts";
 
 const noSleep = async (): Promise<void> => undefined;
 const tmp = mkdtempSync(join(tmpdir(), "threads-cli-"));
@@ -35,7 +35,7 @@ async function run(argv: readonly string[], w: World): Promise<{ code: number; o
 function decisionsFile(w: World, decisions: readonly { readonly id: string; readonly action: string; readonly [key: string]: unknown }[]): string {
   const path = join(tmp, `d-${Math.random().toString(36).slice(2)}.json`);
   const filled = decisions.map((x) => (x.action === "reply-only" ? x : { ...x, lastCommentId: w.lastCommentId(x.id) }));
-  writeFileSync(path, JSON.stringify({ schema: 1, decisions: filled }));
+  writeFileSync(path, JSON.stringify({ schema: 1, planAt: PLAN_AT, decisions: filled }));
   return path;
 }
 
@@ -70,6 +70,31 @@ describe("plan", () => {
     const json: unknown = JSON.parse(r.out);
     expect(json).toMatchObject({ schema: 1, mode: "plan", repo: REPO, number: 7, agent: AGENT, exit: 20 });
     expect(JSON.stringify(json)).toContain('"class":"human-question"');
+  });
+
+  test("planAt is GitHub's time, the newest comment time that plan read, never the local clock", async () => {
+    const w = new World(SPECS);
+    const plain = JSON.parse((await run([...base, "plan", "--json"], w)).out) as { planAt: string };
+    // The fake gives every comment the update time 2025-12-31. The local clock is far later.
+    expect(plain.planAt).toBe("2025-12-31T00:00:00Z");
+    expect((await run([...base, "plan"], w)).out).toContain("planAt: 2025-12-31T00:00:00Z");
+    const edited = new World([{ id: "T-e", comments: [{ author: "review-bot", body: "P3: x", editedAt: "2026-02-03T04:05:06Z" }] }]);
+    expect((JSON.parse((await run([...base, "plan", "--json"], edited)).out) as { planAt: string }).planAt).toBe("2026-02-03T04:05:06Z");
+  });
+
+  test("an edit after the plan that printed planAt stops the resolve, whatever the local clock says", async () => {
+    const w = new World([{ id: "T-praise", comments: [{ author: "reviewer-1", body: "Nice cleanup." }] }]);
+    const planned = JSON.parse((await run([...base, "plan", "--json"], w)).out) as { planAt: string };
+    // GitHub shows an edit one second after the plan time. The local clock is not read.
+    const thread = w.threads.find((t) => t.id === "T-praise");
+    if (thread?.comments[0] === undefined) throw new Error("thread");
+    thread.comments[0] = { ...thread.comments[0], editedAt: "2025-12-31T00:00:01Z" };
+    const path = join(tmp, "flow.json");
+    writeFileSync(path, JSON.stringify({ schema: 1, planAt: planned.planAt, decisions: [{ id: "T-praise", action: "reply-resolve", reply: "Thanks.", confirmedNoOpenQuestion: true, lastCommentId: w.lastCommentId("T-praise") }] }));
+    const r = await run([...base, "apply", "--decisions", path], w);
+    expect(r.code).toBe(3);
+    expect(r.out + r.err).toContain("comment edited since plan");
+    expect(w.ops).toEqual([]);
   });
 
   test("exit 10 when only people can act, 0 when no thread is open", async () => {

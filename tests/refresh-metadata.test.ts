@@ -53,6 +53,42 @@ const FILES = [
   { filename: "src/b.ts", status: "modified", additions: 4, deletions: 2 },
 ];
 
+describe("the template source", () => {
+  test("metadata show reads the body template at the default branch commit, not at the head of the PR", async () => {
+    const sb = box();
+    const run = await meta(sb, { policy: policyToml(), template: "## Why\n\n## What\n" }, ["show"]);
+    expect(run.code).toBe(0);
+    const reads = run.gh.calls.filter((c) => c.some((a) => a.includes("PULL_REQUEST_TEMPLATE.md")));
+    expect(reads).toHaveLength(1);
+    const head = sb.remoteRev("refs/heads/feat/topic");
+    expect(reads[0]?.some((a) => a.endsWith(`ref=${"c".repeat(40)}`))).toBe(true);
+    expect(reads[0]?.some((a) => a.endsWith(`ref=${head}`))).toBe(false);
+  });
+
+  test("a missing template says it is missing on the default branch", async () => {
+    const sb = box();
+    const run = await meta(sb, { policy: policyToml() }, ["show"]);
+    expect(JSON.stringify(run.json)).not.toContain("on the head");
+  });
+});
+
+describe("the policy source", () => {
+  test("every refresh mode reads the policy at the default branch commit, not at the base of the PR", async () => {
+    const sb = box();
+    const run = await meta(sb, { policy: policyToml() }, ["show"]);
+    expect(run.code).toBe(0);
+    const reads = run.gh.calls.filter((c) => c.some((a) => a.includes("pr-policy.toml")));
+    expect(reads.length).toBeGreaterThan(0);
+    // The fake serves the default branch tip as "c" x 40. The base commit of the PR is the real tip of main.
+    const baseTip = sb.remoteRev("refs/heads/main");
+    expect(baseTip).not.toBe("c".repeat(40));
+    for (const call of reads) {
+      expect(call.some((a) => a.endsWith(`ref=${"c".repeat(40)}`))).toBe(true);
+      expect(call.some((a) => a.endsWith(`ref=${baseTip}`))).toBe(false);
+    }
+  });
+});
+
 describe("metadata show", () => {
   test("prints title, body, diff stat, template, and a state id", async () => {
     const sb = box();

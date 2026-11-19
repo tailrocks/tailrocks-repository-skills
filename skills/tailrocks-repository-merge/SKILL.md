@@ -18,12 +18,13 @@ user-invocable: true
 
 This skill audits, groups, integrates, reviews, and merges selected repository
 work into one exact target. It uses native `git` for local work and `gh` for
-GitHub operations. No custom runtime exists: no resolver scripts, receipts,
-schemas, or run-state protocol.
+GitHub operations. This skill has no scripts of its own: no resolver scripts,
+receipts, schemas, or run-state protocol. The pull-request skills that it calls
+can run their own scripts.
 
 Use this skill only when the user explicitly requests it. A single PR belongs to
-its single-PR owner: `tailrocks-create-pr`, `tailrocks-refresh-pr`,
-`tailrocks-review-pr`, or `tailrocks-merge-pr`.
+its single-PR owner: `tailrocks-pr-create`, `tailrocks-pr-refresh`,
+`tailrocks-review-pr`, or `tailrocks-pr-merge`.
 
 One term names one concept here. A source is a selected branch or PR. A
 contribution is one distinct behavior, fix, or supporting change. A group holds
@@ -67,7 +68,7 @@ Recovery branches and PRs enter through the existing source selectors. Read
 their source maps before integration. Never merge preservation-only snapshots
 mechanically. Analyze each useful contribution against the latest target.
 
-Each hosted PR merge squashes through `tailrocks-merge-pr`. Local source
+Each hosted PR merge squashes through `tailrocks-pr-merge`. Local source
 integration and the hosted PR merge are different operations.
 
 When this skill loads, it grants no permission beyond the active request. A
@@ -166,9 +167,9 @@ The skill accepts these arguments:
     group and nothing else.
 
 11. **Run checks and open the PR.** Run the relevant checks. Create or reuse the
-    PR of the group through `tailrocks-create-pr`. When necessary, refresh its
-    body through `tailrocks-refresh-pr`. Before step 12, confirm that one PR
-    covers the candidate.
+    PR of the group through `tailrocks-pr-create`. When necessary, refresh its
+    body through `tailrocks-pr-refresh` in `metadata` mode. Before step 12,
+    confirm that one PR covers the candidate.
 
 12. **Review the combined change.** Review the final combined change through
     `tailrocks-review-pr`. Include group coverage: each selected contribution is
@@ -182,7 +183,7 @@ The skill accepts these arguments:
     or Required finding remains on the current head.
 
 14. **Squash the PR.** Squash the reviewed PR into its intended target through
-    `tailrocks-merge-pr`. Before step 15, observe the landing result. Record it.
+    `tailrocks-pr-merge`. Before step 15, observe the landing result. Record it.
 
 15. **Confirm and refresh.** Confirm the merge, the intended target, and the
     resulting commit. Refresh the target SHA and the remaining source
@@ -221,7 +222,7 @@ through 16 of the Procedure.
    `tailrocks-review-pr`. Cover group coverage and the required checks. Before
    transition step 5, confirm that a review verdict covers the current head.
 
-5. **Squash the final PR through `tailrocks-merge-pr`.** At the end, observe the
+5. **Squash the final PR through `tailrocks-pr-merge`.** At the end, observe the
    landing result. Record it.
 
 ## Result

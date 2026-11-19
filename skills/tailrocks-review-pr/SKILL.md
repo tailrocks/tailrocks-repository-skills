@@ -5,8 +5,9 @@ description: >-
   with evidence and a Ready, Changes required, or Incomplete verdict. Use
   this skill when the user says review, look over, or audit a PR, diff,
   MR, change, CL, or plan. Also use it when the user says check a change
-  or asks if a change is ready to merge. This skill never posts,
-  approves, or merges.
+  or asks if a change is safe to land (code quality). For merge readiness
+  (checks, reviews, queue) use tailrocks-pr-status. This skill never
+  posts, approves, or merges.
 argument-hint: "[PR | branch | range | plan] [--repo OWNER/REPO]"
 disable-model-invocation: false
 license: Apache-2.0
@@ -42,7 +43,7 @@ publication. A review report never substitutes for required human approval or
 CODEOWNERS approval.
 
 If the user asks to fix, approve, or merge, refuse that action. Name the owning
-skill. `tailrocks-merge-pr` owns landing. Still finish the review.
+skill. `tailrocks-pr-merge` owns landing. Still finish the review.
 
 If the PR is closed or merged, report that state. Stop. This skill reviews open
 work.

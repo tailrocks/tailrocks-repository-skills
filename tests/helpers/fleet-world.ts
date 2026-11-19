@@ -281,7 +281,7 @@ export function makeFleetWorld(fixtureName = "mixed-queue.json"): FleetWorld {
       if (pr === undefined || pr.unreadable) {
         return { errors: [{ message: "read failed" }] };
       }
-      return prResponse(prNode(world, pr));
+      return prResponse(prNode(world, pr), { defaultBranchRef: { name: world.defaultBranch, target: { oid: world.defaultSha } } });
     },
     base: (vars) => {
       const pr = [...prs.values()].find((p) => headOf(p) === vars["head"]);

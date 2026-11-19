@@ -159,7 +159,7 @@ export function prResponse(patch: Record<string, unknown> = {}, repoPatch: Recor
     data: {
       repository: {
         nameWithOwner: "example-org/example-repo",
-        defaultBranchRef: { name: "main" },
+        defaultBranchRef: { name: "main", target: { oid: BASE } },
         pullRequest: {
           id: "PR_node_1",
           number: 7,

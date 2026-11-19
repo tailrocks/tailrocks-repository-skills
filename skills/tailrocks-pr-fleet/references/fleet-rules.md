@@ -56,6 +56,12 @@ branch. It is not queued. Each of its blockers is `behind_base`, `conflict`, or
 `check_stale_base`. Candidates are taken in PR number order, up to the budget.
 The rest is `deferred`.
 
+A refresh is `pr-refresh sync` for one PR, run as a library call in a temporary
+worktree. `apply` maps the outcome object of `sync`: state DONE is a done
+action (also when the branch was already up to date), and any other state is a
+stopped action with the outcome code and its `next` line. A refresh is never
+`dco-fix`.
+
 `apply` reads the queue length again before each refresh. Its own enqueues
 grow the queue, so the budget can shrink during the run. A refresh counts
 against the budget when it starts, whatever its result.
@@ -67,17 +73,26 @@ against the budget when it starts, whatever its result.
 | Merge queue | 3 enqueues |
 | Direct merges | 1 merge |
 
-`fleet.max_merges_per_pass` replaces the default. At or above
-`ci.congestion_queue_length` the cap is `fleet.max_merges_per_pass_congested`
-(default 0). On a merge queue, the cap is also limited so that the queue length
-plus the enqueues of the pass stays at or below `ci.congestion_queue_length`.
-A queue of unknown length has no room. The READY PRs over the cap are listed as
-`deferred (merge budget)` in ranked order.
+`fleet.max_merges_per_pass` replaces the default. On a merge queue, the cap is
+also limited so that the queue length plus the enqueues of the pass stays at or
+below `ci.congestion_queue_length`. At or above that length the room is 0, so
+nothing is enqueued. A queue of unknown length has no room. The READY PRs over
+the cap are listed as `deferred (merge budget)` in ranked order.
 
 `apply` reads the queue and the policy again before each merge. After a direct
 merge, the base has moved. The next PR is read on the new base. A PR that is
 behind it is skipped as a merge and becomes a refresh candidate for this pass,
 within the refresh budget.
+
+## A high-risk refusal of pr-merge
+
+`apply` never passes `--accept-risk`. When `pr-merge` refuses a PR with exit 3
+because the change touches high-risk paths, the action is reported as
+`stopped`, and its detail starts with
+`refused (needs the user's --accept-risk)`. Its `next` line tells the user to run `tailrocks-pr-merge` for that PR with
+`--accept-risk`, after the user accepts the risk. The fleet never does it. Other
+refusals of `pr-merge` and every other failure stay generic stops. The pass goes
+on with the next action, and the exit code is 20.
 
 ## Freeze, hold, and the deadline
 
@@ -111,6 +126,6 @@ per repository, so two runs never overlap.
 | --- | --- |
 | done | The action ran. |
 | skipped | The PR no longer matches the plan. Nothing was written. |
-| pending | The action cannot run in this build. Nothing was written. |
+| pending | The pass deadline passed before the action ran. Nothing was written. |
 | stopped | The head moved, or the other skill refused. Nothing was written for it. |
 | refused | A freeze started. Nothing was written for it or for any action after it. |

@@ -9,7 +9,7 @@ import type { RunResult } from "../proc.ts";
 import type { GhMutation } from "../safety.ts";
 import type { RepoSlug } from "../types.ts";
 import { verifyFixCommits } from "./commits.ts";
-import { commentsSince, planWrites, STALE_COMMENT, type PlannedWrite } from "./decisions.ts";
+import { commentsSince, EDITED_COMMENT, editedSince, planWrites, STALE_COMMENT, type PlannedWrite } from "./decisions.ts";
 import { readHead, readThread } from "./read.ts";
 import { readThreadState, unresolved, type ThreadsConfig, type ThreadState } from "./state.ts";
 import type { Action, ClassifiedThread, DecisionFile } from "./types.ts";
@@ -75,7 +75,7 @@ function mutationError(result: RunResult, check: (data: unknown) => boolean): st
 /** Null when the PR is open, the head is the validated one, and the thread has no comment of anyone else since plan. Otherwise the reason to stop. */
 type BeforeWrite = (w: PlannedWrite) => Promise<string | null>;
 
-function guard(config: ApplyConfig, state: ThreadState): BeforeWrite {
+function guard(config: ApplyConfig, state: ThreadState, planAt: string | null): BeforeWrite {
   const { nodeId, headSha } = state.snapshot;
   return async (w) => {
     try {
@@ -94,6 +94,10 @@ function guard(config: ApplyConfig, state: ThreadState): BeforeWrite {
         }
         if (newer.length > 0) {
           return `${STALE_COMMENT} (the first by ${newer[0]?.author ?? "someone"}); the thread was not resolved`;
+        }
+        const edited = planAt === null ? [] : editedSince(thread.comments, planAt, w.body);
+        if (edited.length > 0) {
+          return `${EDITED_COMMENT} (the first by ${edited[0]?.author ?? "someone"}); the thread was not resolved`;
         }
       }
       return null;
@@ -202,7 +206,7 @@ export async function applyDecisions(
   const outcomes: ThreadOutcome[] = [];
   let aborted: string | null = null;
   let mutations = 0;
-  const beforeWrite = guard(config, state);
+  const beforeWrite = guard(config, state, file.planAt);
   for (const write of checked.writes) {
     const result = await writeThread(write, config, beforeWrite);
     outcomes.push(result.outcome);

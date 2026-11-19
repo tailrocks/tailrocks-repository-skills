@@ -58,9 +58,10 @@ async function readFiles(run: GhRun, ctx: PrContext): Promise<{ readonly files: 
   return { files, truncated: true };
 }
 
+/** The body template at the default-branch commit, like pr-status and pr-create. A PR cannot change its own template. */
 async function readTemplate(run: GhRun, ctx: PrContext): Promise<string | null> {
   const encoded = ctx.policy.pr_body.template.split("/").map(encodeURIComponent).join("/");
-  const result = await rest(run, `repos/${ctx.repo}/contents/${encoded}?ref=${ctx.snapshot.headSha}`, true);
+  const result = await rest(run, `repos/${ctx.repo}/contents/${encoded}?ref=${ctx.snapshot.defaultSha}`, true);
   return result.code === 0 && !isNotFound(result) ? result.stdout : null;
 }
 
@@ -82,7 +83,7 @@ export async function metadataShow(deps: RefreshDeps, ctx: PrContext): Promise<O
       ...files.slice(0, MAX_LISTED).map((f) => `${f.status} ${f.path} (+${f.additions} -${f.deletions})`),
       ...(files.length > MAX_LISTED ? [`... ${files.length - MAX_LISTED} more files`] : []),
       "--- template ---",
-      ...(template === null ? [`(no template at ${ctx.policy.pr_body.template} on the head)`] : template.split("\n")),
+      ...(template === null ? [`(no template at ${ctx.policy.pr_body.template} on the default branch)`] : template.split("\n")),
       "--- section check (policy pr_body.sections) ---",
       ...(problems.length === 0 ? ["every required section is present"] : problems),
     ];

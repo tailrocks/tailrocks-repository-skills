@@ -33,7 +33,7 @@ Before any action, read `references/runtime-trust.md`. Resolve each relative
 link against the directory that contains this SKILL.md file.
 
 This skill never commits, pushes, or opens a PR. Give the written file to
-`tailrocks-create-pr` to ship the file as a PR.
+`tailrocks-pr-create` to ship the file as a PR.
 
 If the resolved target or a parent directory is a symlink, stop with zero
 writes. Never write through a symlink.
@@ -83,7 +83,7 @@ command in an executable fence.
 
 6. **Report.** Report the target and the publication outcome. Report the section
    set with the reason for each section. Report the evidence behind each command
-   in the Verify-locally blocks. Name `tailrocks-create-pr` as the next step to
+   in the Verify-locally blocks. Name `tailrocks-pr-create` as the next step to
    ship the file as a PR.
 
 ## Result

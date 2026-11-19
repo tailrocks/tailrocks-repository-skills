@@ -35,6 +35,7 @@ export type Outcome =
   | "ejected"
   | "closed"
   | "timeout"
+  | "stopped"
   | "policy_error";
 
 export interface StepResult {
@@ -45,6 +46,8 @@ export interface StepResult {
   /** The one next action for the agent or the user. */
   readonly next: string;
   readonly verdict: Verdict | null;
+  /** Why a refused step (exit 3) was refused, when a caller needs to tell it from other refusals. */
+  readonly refusal: "high_risk" | null;
 }
 
 /** Everything a step reads and writes goes through this boundary. Tests inject a fake. */
@@ -97,6 +100,11 @@ export interface StepContext {
   readonly shared: SharedState;
   /** Progress lines. */
   readonly say: (line: string) => void;
+  /**
+   * Called by a stop-signal handler with the final result. The caller prints it (text or JSON),
+   * removes the temporary files, and ends the process through `io.exit`.
+   */
+  readonly stop: (outcome: StepResult) => void;
   /** The user passed `--confirm <pr>`. Without it a step only prints its plan. */
   readonly confirmed: boolean;
   /** Test seam: a local policy. A verdict that uses it is refused. */
@@ -108,7 +116,7 @@ export function result(
   outcome: Outcome,
   next: string,
   evaluated: Evaluated | null = null,
-  extra: { readonly mergeCommit?: Sha | null } = {},
+  extra: { readonly mergeCommit?: Sha | null; readonly refusal?: "high_risk" } = {},
 ): StepResult {
   return {
     exit,
@@ -117,5 +125,6 @@ export function result(
     mergeCommit: extra.mergeCommit ?? null,
     next,
     verdict: evaluated?.verdict ?? null,
+    refusal: extra.refusal ?? null,
   };
 }

@@ -1,4 +1,4 @@
-// One fresh read of a PR: gather, load the base-branch policy, evaluate.
+// One fresh read of a PR: gather, load the default-branch policy, evaluate.
 // Every call uses a new gather cache, so a read before a write never reuses
 // facts from an earlier read.
 
@@ -31,17 +31,17 @@ export async function evaluateFresh(ctx: StepContext): Promise<Fresh> {
   const status = await statusFor(ctx.repo, ctx.number, config);
   if (status.kind === "policy-error") {
     ctx.say(`invalid policy:\n${formatPolicyErrors(status.errors)}`);
-    return { ok: false, kind: "policy", result: result(EXIT.usage, "policy_error", "Fix the policy file on the base branch. No step ran.") };
+    return { ok: false, kind: "policy", result: result(EXIT.usage, "policy_error", "Fix the policy file on the default branch. No step ran.") };
   }
   const { verdict, snapshot } = status;
   if (snapshot === null) {
     ctx.say(renderText(verdict));
     return { ok: false, kind: "unreadable", result: result(EXIT.blocked, "blocked", verdict.next) };
   }
-  const loaded = await policyFor(ctx.repo, snapshot.baseSha, config, ctx.io.runGh);
+  const loaded = await policyFor(ctx.repo, snapshot.defaultSha, config, ctx.io.runGh);
   if (!loaded.ok) {
     ctx.say(`invalid policy:\n${formatPolicyErrors(loaded.errors)}`);
-    return { ok: false, kind: "policy", result: result(EXIT.usage, "policy_error", "Fix the policy file on the base branch. No step ran.") };
+    return { ok: false, kind: "policy", result: result(EXIT.usage, "policy_error", "Fix the policy file on the default branch. No step ran.") };
   }
   return { ok: true, evaluated: { snapshot, verdict, policy: loaded.policy } };
 }

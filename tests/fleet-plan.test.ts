@@ -9,7 +9,7 @@ import { BASE, OLD, builtinPolicy, check, green, policyFromText } from "./helper
 afterEach(removeFleetWorlds);
 
 function policyWith(toml: string): Policy {
-  const loaded = loadPolicy({ text: `schema = 1\n${toml}`, source: "base-branch" });
+  const loaded = loadPolicy({ text: `schema = 1\n${toml}`, source: "default-branch" });
   if (!loaded.ok) {
     throw new Error(loaded.errors.map((e) => e.message).join("; "));
   }
@@ -232,12 +232,11 @@ describe("refresh budget", () => {
     expect(queueLength([], "main")).toBe(0);
   });
 
-  test("the refresh actions carry the pending note while pr-refresh is not available", async () => {
+  test("every planned action can run: no action carries a pending note", async () => {
     const plan = await planOf(makeFleetWorld());
-    const refresh = plan.actions.filter((a) => a.kind === "refresh");
-    expect(refresh.map((a) => a.pending)).toEqual(["pending: pr-refresh not available", "pending: pr-refresh not available"]);
-    const merge = plan.actions.filter((a) => a.kind !== "refresh");
-    expect(merge.every((a) => a.pending === null)).toBe(true);
+    expect(plan.actions.filter((a) => a.kind === "refresh").map((a) => a.number)).toEqual([14, 17]);
+    expect(plan.actions.every((a) => !("pending" in a))).toBe(true);
+    expect(JSON.stringify(plan)).not.toContain("not available");
   });
 });
 
@@ -373,7 +372,6 @@ describe("analyze with no PR", () => {
       held: [],
       reads: [] satisfies readonly Read[],
       orphanRuns: { runs: [], truncated: false, error: null },
-      refreshAvailable: false,
     });
     expect(plan.actions).toEqual([]);
     expect(plan.next).toBe("None. No open PR was read.");

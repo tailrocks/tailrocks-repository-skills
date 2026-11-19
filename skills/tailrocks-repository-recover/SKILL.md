@@ -19,8 +19,8 @@ user-invocable: true
 
 This skill finds, analyzes, reviews, and preserves local work for one
 repository. It uses native `git` and `gh` for repository work. It reuses the
-bundled pull-request skills for PR work. No custom runtime exists: no resolver
-scripts, receipts, schemas, or run-state protocol.
+bundled pull-request skills for PR work. This skill has no scripts of its own:
+no resolver scripts, receipts, schemas, or run-state protocol.
 
 Use this skill only when the user explicitly requests it. This skill never
 merges a candidate branch. It never calls `tailrocks-repository-merge`. Later

@@ -3,6 +3,7 @@
 // {
 //   "schema": 1,
 //   "expectHead": "<40-hex sha>",          optional
+//   "planAt": "<ISO time>",                the planAt that plan printed; needed to resolve
 //   "decisions": [
 //     { "id": "<thread id>", "action": "fix" | "defer" | "reply-only" | "reply-resolve",
 //       "reply": "<text>",                  optional for fix and defer on a bot thread
@@ -22,7 +23,7 @@ const ACTIONS: readonly Action[] = ["fix", "defer", "reply-only", "reply-resolve
 const MAX_REPLY = 60_000;
 /** The limit of a comment body in lib/safety-gh.ts. */
 const MAX_COMMENT_BODY = 65_000;
-const TOP_KEYS: ReadonlySet<string> = new Set(["schema", "expectHead", "decisions"]);
+const TOP_KEYS: ReadonlySet<string> = new Set(["schema", "expectHead", "planAt", "decisions"]);
 const DECISION_KEYS: ReadonlySet<string> = new Set(["id", "action", "reply", "fixCommit", "confirmedNoOpenQuestion", "lastCommentId"]);
 
 function unknownKeys(value: Readonly<Record<string, unknown>>, allowed: ReadonlySet<string>, where: string): void {
@@ -98,8 +99,16 @@ export function parseDecisions(text: string): Parsed<DecisionFile> {
       }
       expectHead = parsed.value;
     }
+    const rawPlanAt = member(json, "planAt");
+    let planAt: string | null = null;
+    if (rawPlanAt !== undefined && rawPlanAt !== null) {
+      planAt = str(rawPlanAt, "planAt");
+      if (Number.isNaN(Date.parse(planAt))) {
+        throw new ReadError("planAt: expected the ISO time that plan printed");
+      }
+    }
     const decisions = arr(member(json, "decisions"), "decisions").map(decision);
-    return { ok: true, value: { expectHead, decisions } };
+    return { ok: true, value: { expectHead, planAt, decisions } };
   } catch (error) {
     return { ok: false, error: error instanceof ReadError ? error.message : "unreadable decisions file" };
   }
@@ -150,6 +159,42 @@ export function commentsSince(comments: readonly CommentView[], lastCommentId: s
 }
 
 export const STALE_COMMENT = "new comment since plan; run plan again";
+/**
+ * The plan time, on GitHub's clock: the newest `lastEditedAt` or `updatedAt` of
+ * any comment that plan read. A comment that is edited after the plan has a later
+ * time, so the local clock plays no part, and a clock that runs ahead cannot hide
+ * an edit. Without any comment time it is the epoch, so any later time counts.
+ */
+export function planTime(threads: readonly ClassifiedThread[]): string {
+  let newest = 0;
+  for (const thread of threads) {
+    for (const comment of thread.detail.comments) {
+      const at = comment.editedAt === null ? Number.NaN : Date.parse(comment.editedAt);
+      if (!Number.isNaN(at) && at > newest) {
+        newest = at;
+      }
+    }
+  }
+  return new Date(newest).toISOString().replace(".000Z", "Z");
+}
+
+export const EDITED_COMMENT = "comment edited since plan; run plan again";
+
+/**
+ * The comments that were edited after the plan time, except our own reply of this write.
+ * An edit counts like a new comment: the agent decided on text that has changed.
+ * A time that cannot be read counts as an edit (fail closed).
+ */
+export function editedSince(comments: readonly CommentView[], planAt: string, ownBody: string): readonly CommentView[] {
+  const plan = Date.parse(planAt);
+  return comments.filter((c) => {
+    if (c.editedAt === null || c.body.trim() === ownBody.trim()) {
+      return false;
+    }
+    const edited = Date.parse(c.editedAt);
+    return Number.isNaN(plan) || Number.isNaN(edited) || edited > plan;
+  });
+}
 
 /** The visible reply text for a decision. Null when the text would be empty. */
 export function composeReply(d: Decision, thread: ClassifiedThread, context: WriteContext): string | null {
@@ -224,6 +269,10 @@ export function planWrites(file: DecisionFile, threads: readonly ClassifiedThrea
       refuse("a resolving decision needs lastCommentId: the last comment id that plan printed for this thread");
       continue;
     }
+    if (RESOLVING.has(d.action) && file.planAt === null) {
+      refuse("a resolving decision needs planAt: the time that plan printed, at the top of the decisions file");
+      continue;
+    }
     if ((d.action === "reply-only" || d.action === "reply-resolve" || thread.involvesPerson) && d.reply === "") {
       refuse("a reply text is required for this thread");
       continue;
@@ -248,6 +297,13 @@ export function planWrites(file: DecisionFile, threads: readonly ClassifiedThrea
       }
       if (newer.length > 0) {
         refuse(`${STALE_COMMENT} (${newer.length} newer comment${newer.length === 1 ? "" : "s"}, the first by ${newer[0]?.author ?? "someone"})`);
+        continue;
+      }
+    }
+    if (resolve && !thread.detail.isResolved && file.planAt !== null) {
+      const edited = editedSince(thread.detail.comments, file.planAt, body);
+      if (edited.length > 0) {
+        refuse(`${EDITED_COMMENT} (${edited.length} comment${edited.length === 1 ? "" : "s"}, the first by ${edited[0]?.author ?? "someone"}); the thread was not resolved`);
         continue;
       }
     }

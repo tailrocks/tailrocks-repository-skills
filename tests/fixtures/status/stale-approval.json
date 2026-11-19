@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "capturedAt": "2026-11-18T21:01:00.133Z",
   "repo": "example-org/example-repo",
   "defaultBranch": "main",
@@ -13,6 +13,7 @@
   "body": "Part of #1290\n## Helper-guard bypass fix",
   "baseRef": "main",
   "baseSha": "95de9b704b7e6585dd3b1a66b96d9fd08c8b6cd9",
+  "defaultSha": "95de9b704b7e6585dd3b1a66b96d9fd08c8b6cd9",
   "headRef": "feature/1327",
   "headSha": "c9904932f45f5b3c64f0cf34098e88e4eb8139c9",
   "mergeable": "CONFLICTING",

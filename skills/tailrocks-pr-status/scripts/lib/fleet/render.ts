@@ -67,7 +67,7 @@ export function renderPlan(plan: Plan): string {
   if (plan.actions.length === 0) {
     lines.push("  none");
   }
-  plan.actions.forEach((a, i) => lines.push(`  ${i + 1}. ${a.kind} #${a.number}: ${a.detail}${a.pending === null ? "" : ` [${a.pending}]`}`));
+  plan.actions.forEach((a, i) => lines.push(`  ${i + 1}. ${a.kind} #${a.number}: ${a.detail}`));
   lines.push(`next: ${plan.next}`);
   return lines.join("\n");
 }

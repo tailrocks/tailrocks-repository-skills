@@ -15,7 +15,6 @@ import {
   baseMergeCap,
   entryOf,
   isBehindReady,
-  isCongested,
   isMergeCandidate,
   isRefreshCandidate,
   queueLength,
@@ -26,7 +25,6 @@ import {
 import type { FleetDeps } from "./plan.ts";
 import {
   EXIT,
-  PENDING_REFRESH,
   QUEUE_HEAD,
   type Action,
   type ActionResult,
@@ -56,6 +54,8 @@ function contextFor(deps: FleetDeps, repo: RepoSlug, number: number, lines: stri
     io: deps.io,
     shared: deps.shared,
     say: (line) => void lines.push(line),
+    // The fleet never runs the watch step, so no stop signal handler calls this. Still, end the run when one does.
+    stop: (outcome) => deps.io.exit(outcome.exit),
     confirmed: true,
   };
 }
@@ -183,15 +183,13 @@ async function runMerge(deps: FleetDeps, plan: Plan, action: Action, state: Merg
   const route = evaluated.snapshot.rules.mergeQueue ? "queue" : "direct";
   // The queue grows with the fleet's own enqueues, so the merge budget is read again from this read.
   const length = queueLength([readOf(evaluated)], plan.defaultBranch);
-  const congested = isCongested(evaluated.policy, length);
-  const overBudget =
-    state.started >= baseMergeCap(evaluated.policy, route, congested) || (route === "queue" && queueRoom(evaluated.policy, length) < 1);
+  const overBudget = state.started >= baseMergeCap(evaluated.policy, route) || (route === "queue" && queueRoom(evaluated.policy, length) < 1);
   if (overBudget) {
     return { result: result(action, "skipped", "deferred (merge budget)", "Plan again in a later pass.") };
   }
   if (state.directMerged && isBehindReady(entry, plan.defaultBranch)) {
     // The next PR must be READY on the new base. A PR that is behind needs a base merge.
-    const late: Action = { ...action, kind: "refresh", detail: "behind the new base after a direct merge", late: true, pending: deps.refresh === null ? PENDING_REFRESH : null };
+    const late: Action = { ...action, kind: "refresh", detail: "behind the new base after a direct merge", late: true };
     return { result: result(action, "skipped", "behind the new base after a direct merge; it counts as a refresh candidate, not a merge", NONE), late };
   }
   if (!isMergeCandidate(entry, plan.defaultBranch)) {
@@ -203,6 +201,18 @@ async function runMerge(deps: FleetDeps, plan: Plan, action: Action, state: Merg
     state.started += 1;
     state.directMerged = state.directMerged || route === "direct";
   }
+  if (!landed && outcome.refusal === "high_risk") {
+    // pr-merge refused (exit 3) because the change touches high-risk paths. The fleet never passes --accept-risk.
+    // Only the user can accept the risk, so this is a refusal that needs the user, not a generic stop.
+    return {
+      result: result(
+        action,
+        "stopped",
+        `refused (needs the user's --accept-risk): ${summary(lines, outcome.outcome)}`,
+        `Ask the user. If the user accepts the risk, run tailrocks-pr-merge for PR #${action.number} with --accept-risk. The fleet never does.`,
+      ),
+    };
+  }
   return {
     result: landed
       ? result(action, "done", summary(lines, outcome.outcome), outcome.next)
@@ -212,9 +222,6 @@ async function runMerge(deps: FleetDeps, plan: Plan, action: Action, state: Merg
 
 async function runRefresh(deps: FleetDeps, plan: Plan, action: Action, used: number): Promise<{ readonly result: ActionResult; readonly ran: boolean }> {
   const port = deps.refresh;
-  if (port === null) {
-    return { result: result(action, "pending", PENDING_REFRESH, "None until pr-refresh is available. Report this action to the user."), ran: false };
-  }
   const lines: string[] = [];
   const ctx = contextFor(deps, plan.repo, action.number, lines);
   const fresh = await evaluateFresh(ctx);

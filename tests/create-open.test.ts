@@ -203,6 +203,36 @@ describe("open: a push failure is classified by its cause", () => {
     expect(fake.world.created).toEqual([]);
   });
 
+  test("a rejection with hook words next to a (fetch first) line is exit 4, and the reason shows the cause, not the To line", async () => {
+    const { repos, fake, sha, body } = await setup();
+    const config = configFor(repos, fake);
+    const stderr = [
+      "To https://example.invalid/example-org/example-repo.git",
+      " ! [rejected]        x -> feat/topic (fetch first)",
+      "error: failed to push some refs",
+      "hint: permission denied for the protected branch rule that declined it",
+    ].join("\n");
+    const wrapped = { ...config, runGit: async (args: readonly string[]) => (args[0] === "push" ? { code: 1, stdout: "", stderr } : config.runGit(args)) };
+    const result = await openPr(argsFor("open", "--expect-head", sha, "--body-file", body), wrapped);
+    expect(result.kind === "refused" ? result.code : 0).toBe(4);
+    const reasons = result.kind === "refused" ? result.reasons.join(" ") : "";
+    expect(reasons).toContain("! [rejected]        x -> feat/topic (fetch first)");
+    expect(reasons).not.toContain("To https://");
+  });
+
+  test("a [remote rejected] line is exit 3, even when its reason says non-fast-forward", async () => {
+    const { repos, fake, sha, body } = await setup();
+    const config = configFor(repos, fake);
+    const stderr = "To https://example.invalid/example-org/example-repo.git\n ! [remote rejected] x -> feat/topic (non-fast-forward hook)";
+    const wrapped = { ...config, runGit: async (args: readonly string[]) => (args[0] === "push" ? { code: 1, stdout: "", stderr } : config.runGit(args)) };
+    const result = await openPr(argsFor("open", "--expect-head", sha, "--body-file", body), wrapped);
+    expect(result.kind === "refused" ? result.code : 0).toBe(3);
+    const reasons = result.kind === "refused" ? result.reasons.join(" ") : "";
+    expect(reasons).toContain("[remote rejected]");
+    expect(reasons).not.toContain("To https://");
+    expect(fake.world.created).toEqual([]);
+  });
+
   test("a [remote rejected] line is exit 3", async () => {
     const { repos, fake, sha, body } = await setup();
     const config = configFor(repos, fake);

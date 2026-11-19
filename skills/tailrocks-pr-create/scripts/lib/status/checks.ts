@@ -1,6 +1,7 @@
 // Check findings: required checks from every source, then the failure classes.
 
 import type { Policy } from "../policy/types.ts";
+import { newestOf } from "./attempts.ts";
 import { finding, listCapped, short } from "./findings.ts";
 import type { CheckObservation, Finding, PrSnapshot } from "./types.ts";
 
@@ -31,11 +32,6 @@ export function requiredChecks(snapshot: PrSnapshot, policy: Policy): readonly R
     add(name, null);
   }
   return [...byName].map(([name, appId]) => ({ name, appId }));
-}
-
-function newest(checks: readonly CheckObservation[]): CheckObservation | undefined {
-  const stamp = (c: CheckObservation): string => c.startedAt ?? c.completedAt ?? "";
-  return [...checks].sort((a, b) => stamp(b).localeCompare(stamp(a)))[0];
 }
 
 type Bucket =
@@ -103,7 +99,7 @@ export function checkFindings(snapshot: PrSnapshot, policy: Policy): readonly Fi
       wrongSource.push(`${requirement.name} (rule names app ${requirement.appId}, run is from ${list(candidates.map((c) => String(c.appId ?? "a status context")))})`);
       continue;
     }
-    const chosen = newest(matching);
+    const chosen = newestOf(matching);
     if (chosen === undefined) {
       continue;
     }

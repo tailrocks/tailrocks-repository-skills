@@ -11,7 +11,8 @@ import {
   templatePlaceholders,
   unmappedBoxes,
 } from "../lib/create/body.ts";
-import { branchProblem, inventoryMisses, remoteRepoSlug, unsignedCommits, type CommitInfo } from "../lib/create/checks.ts";
+import { branchProblem, remoteRepoSlug, unsignedCommits, type CommitInfo } from "../lib/create/checks.ts";
+import { inventoryMisses } from "../lib/policy-steps.ts";
 import { EXIT, EXIT_TABLE } from "../lib/create/exit.ts";
 import { secretLineNumbers } from "../lib/proc.ts";
 import { HELP, main } from "../lib/create/cli.ts";

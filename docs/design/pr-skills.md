@@ -74,8 +74,15 @@ repository, organization, and user names. It fails on any match.
 | `tailrocks-pr-create` | Branch, signed commits, policy body, draft by default, correct base, labels, issue link. Runs pre-push checks first. | Branch, commits, one PR |
 | `tailrocks-pr-refresh` | One script, `refresh.ts <mode>`. The mode is required. The skill has no default mode. It maps the request to a mode. `sync` merges the base with sign-off. It then regenerates declared outputs, checks inventories, and runs pre-push checks. It pushes once. It asks for a new review when the merge was not clean. `dco-fix` is the DCO-only exception. `metadata` reconciles the title and body. It needs no checkout and makes no push. A request about the title or body maps to `metadata`. | Commits on the PR branch, comments, PR metadata |
 | `tailrocks-pr-threads` | Triages unresolved review threads: fix or defer under the policy severity rule. Replies with the reason. Resolves. Never resolves a human's open question. | Replies, resolutions, fix commits |
-| `tailrocks-pr-merge` | Steps `ready` (draft to ready), `merge`, and `dequeue`. `merge` requires READY from `pr-status` on a base-branch policy, a body that follows the template, a queue method that equals the policy `merge.method`, and the user's confirmation for high-risk paths (`merge.high_risk_paths`: workflows, release, auth, migrations by default; a rename counts by its old and new path). Enqueues with `expectedHeadOid` (normal or jump by policy; a refused jump is BLOCKED), or squash-merges with `--match-head-commit`. Watches until merged or ejected. On ejection, runs `pr-status`. | Ready state, queue entry, merge |
+| `tailrocks-pr-merge` | Steps `ready` (draft to ready), `merge`, and `dequeue`. `merge` requires READY from `pr-status` on a default-branch policy, a body that follows the template, a queue method that equals the policy `merge.method`, and the user's confirmation for high-risk paths (`merge.high_risk_paths`: workflows, release, auth, migrations by default; a rename counts by its old and new path). Enqueues with `expectedHeadOid` (normal or jump by policy; a refused jump is BLOCKED), or squash-merges with `--match-head-commit`. Watches until merged or ejected. On ejection, runs `pr-status`. | Ready state, queue entry, merge |
 | `tailrocks-pr-fleet` | Runs `pr-status` on all open PRs. Ranks them. Finds stockpiling. Plans refreshes under a CI budget. Honors a freeze switch. Plans the dequeue of UNMERGEABLE entries at the head of the queue. Executes only through the other skills' scripts, and only with `--apply`. | Only through the other skills |
+
+Two limits on what the agent does by hand around `pr-refresh`. The agent edits
+conflicted files only inside a kept worktree (`sync --keep-worktree`), only the
+files that the script lists, and never runs `git` there. A pre-push step or an
+inventory check that fails changes nothing on the remote. The agent fixes the
+cause in its own checkout, pushes the fix by hand as a signed commit (`git
+commit -s`, a plain push), and runs `sync` again.
 
 ### Script behavior each skill replaces
 
@@ -205,10 +212,15 @@ Finding codes:
 
 ## 5. Repository policy file
 
-Path: `.config/pr-policy.toml`, read from the **base branch at its current SHA**
-through `gh api .../contents?ref=<base sha>`. The skills never read the policy
-from the PR head or the working tree. A PR therefore cannot weaken its own gates
-or add commands that the skills then run. `--policy <path>` exists only for
+Path: `.config/pr-policy.toml`, read from the **default branch at its current
+SHA** through `gh api .../contents?ref=<default sha>`. Every skill reads the
+policy from there, for every PR. The base of a stacked PR is another PR's
+branch. A stacked PR therefore never brings the policy of its parent branch,
+and a retarget changes no gate. The skills never read the policy from the PR
+head, from the base of a stacked PR, or from the working tree. A PR therefore
+cannot weaken its own gates or add commands that the skills then run. The
+snapshot carries `defaultSha`, the tip of the default branch when the PR was
+read. The body template (`pr_body.template`) is read at the same commit. `--policy <path>` exists only for
 `validate` and for tests. A verdict computed with a local policy says so, and
 `pr-merge` refuses it.
 
@@ -436,6 +448,81 @@ branch comes from GitHub). Kept against the review: the four reviews per skill
 (an owner requirement) and `inventories.group_depth` (a real inventory rule
 needs it). `ci.single_push` and `fleet.priority_labels` are removed.
 
+### Delivery review follow-ups
+
+The cleanup pull request of release 0.5.0 applied these items from the
+reviews of the delivery pull requests:
+
+- `pr-status`: `queued_while_blocked` ignores `unknown_state` and waits. The
+  latest attempt of a check is the one with the highest check-run database id,
+  not the latest `startedAt`.
+- `pr-threads`: a comment that GitHub shows as edited after the plan time
+  (`lastEditedAt` or `updatedAt`) counts like a new comment and stops the
+  resolve. The decisions file carries the plan time as `planAt`.
+- Every skill reads the policy from the default branch at its current SHA
+  (section 5).
+- `pr-merge`: the settle reads of `watch` count inside the watch deadline. A
+  stop signal prints the final result (JSON with `--json`), removes the
+  temporary comment directory by its exact path, and exits 10.
+- `pr-fleet`: the key `fleet.max_merges_per_pass_congested` is removed. The
+  queue room already gives zero enqueues at the congestion length, so the key
+  had no effect.
+- Vendoring is unchanged: `bun run vendor` copies the whole `lib/` into each
+  script-backed skill, and a test fails when a copy differs.
+
 ## 12. Evidence
 
-Filled in by the delivery pull requests.
+Release 0.5.0. The full tables are in the comments of the release
+pull request; this section keeps the summary.
+
+### Verdicts on a real repository
+
+`pr-status --all` ran read-only over the 94 open pull requests of a
+real repository that uses the process of
+`examples/comment-verdict-merge-queue.toml`. An independent agent
+derived the expected class of each pull request from the facts that
+GitHub reports, without the skill's code.
+
+| Result | Count |
+| --- | --- |
+| BLOCKED (skill / expected) | 72 / 72 |
+| WAITING (skill / expected) | 0 / 0 |
+| READY (skill / expected) | 22 / 22 |
+| State mismatches | 0 |
+
+Ten random matches were checked again by hand. Carry-over across
+clean base merges gave the correct verdict on 2 stacked pull
+requests. It correctly refused 6 others with `review_stale`.
+
+### Agent load test
+
+| Agent | Version | Load method | Skill ran | Verdict seen |
+| --- | --- | --- | --- | --- |
+| Claude Code | 2.1.325 | `--plugin-dir` | yes | BLOCKED `pr_not_open` |
+| Codex | 0.169.0 | marketplace add, plugin add | yes | BLOCKED `pr_not_open` |
+| Grok Build | 1.0.70 | plugin install `--trust` | no: the account had no credits; the skill list showed all 10 skills | none |
+| Muse Code | 1.4.20 | `.agents/skills`, `--trust-workspace` | yes | BLOCKED `pr_not_open` |
+| Kimi Code | 2.6.1 | `--skills-dir` | yes | BLOCKED `pr_not_open` |
+| omp | 18.20.2 | `.agents/skills` | yes | BLOCKED `pr_not_open` |
+| pi | 1.5.2 | `--skill` | yes | BLOCKED `pr_not_open` |
+| Antigravity CLI | 1.5.9 | workspace skills, `--sandbox` | yes | BLOCKED `pr_not_open` |
+
+The test asked each agent to report the readiness of a merged pull
+request. Each test install was removed afterwards.
+
+### Dogfooding
+
+From the pull request that added `pr-status` onward, a READY verdict
+from `pr-status` gated each merge of this series. `pr-merge` merged
+four of them, starting with its own pull request. `pr-threads` resolved review threads on its own pull
+request.
+
+### Known limits
+
+- GitHub reports edit times to the second. An edit to a review
+  comment in the same second as the newest comment that `plan` read
+  is not seen as an edit.
+- The merge queue removal reason is free text from GitHub. The skills
+  report it as given.
+- A stacked pull request reads the policy of the default branch, not
+  of its parent branch.

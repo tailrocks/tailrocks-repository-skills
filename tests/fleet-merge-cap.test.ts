@@ -272,6 +272,72 @@ describe("budgets read again during the pass", () => {
   });
 });
 
+describe("freeze and hold before a dequeue", () => {
+  /** Change the policy during the first read of apply. The plan has read every PR before that. */
+  function changeAtFirstApplyRead(world: ReturnType<typeof makeFleetWorld>, toml: string): void {
+    const planReads = world.prs.size;
+    world.script = (gather, w) => {
+      if (gather === planReads + 1) {
+        w.policyToml = toml;
+        w.defaultSha = sha("e");
+      }
+    };
+  }
+
+  test("a freeze that starts after the plan stops the dequeue before it writes", async () => {
+    const world = makeFleetWorld();
+    world.queueLength = 2;
+    changeAtFirstApplyRead(world, "[fleet]\nfreeze = true");
+    const run = await runFleet(world, ["apply", "--apply"]);
+    expect(world.mutations).toEqual([]);
+    expect(world.comments).toEqual([]);
+    expect(run.out.join("\n")).toContain("refused: dequeue #13: freeze is on");
+    expect(run.code).toBe(3);
+  });
+
+  test("a PR that the policy holds after the plan is not dequeued, and the pass goes on", async () => {
+    const world = makeFleetWorld();
+    world.queueLength = 2;
+    changeAtFirstApplyRead(world, "[fleet]\nhold = [13]");
+    const run = await runFleet(world, ["apply", "--apply"]);
+    expect(world.mutations.some((m) => m.kind === "dequeuePullRequest")).toBe(false);
+    expect(world.comments).toEqual([]);
+    const text = run.out.join("\n");
+    expect(text).toContain("skipped: dequeue #13: held by the policy");
+    expect(text).toContain("done: merge #11");
+  });
+});
+
+describe("queue room in apply", () => {
+  test("room is read again for each enqueue: a queue that grew after the plan gives fewer enqueues than the plan holds", async () => {
+    const world = makeFleetWorld();
+    onlyReady(world, 3);
+    world.queueLength = 2; // threshold 5: the plan sees room for 3 and plans 3 enqueues
+    const planReads = world.prs.size;
+    // Other people enqueue two PRs between the plan and the first write: room 1.
+    world.script = (gather, w) => {
+      if (gather === planReads + 1) w.queueLength = 4;
+    };
+    const run = await runFleet(world, ["apply", "--apply"]);
+    expect(enqueues(world)).toBe(1);
+    expect(world.queueLength).toBe(5);
+    expect(run.out.join("\n")).toContain("skipped: merge #101: deferred (merge budget)");
+  });
+
+  test("a queue that is full when apply reads it gets no enqueue", async () => {
+    const world = makeFleetWorld();
+    onlyReady(world, 2);
+    world.queueLength = 0;
+    const planReads = world.prs.size;
+    world.script = (gather, w) => {
+      if (gather === planReads + 1) w.queueLength = 5;
+    };
+    const run = await runFleet(world, ["apply", "--apply"]);
+    expect(enqueues(world)).toBe(0);
+    expect(run.out.join("\n")).toContain("skipped: merge #100: deferred (merge budget)");
+  });
+});
+
 describe("pass deadline", () => {
   test("a pass that runs past its deadline leaves the remaining actions pending, below the lock bound", async () => {
     const world = makeFleetWorld();

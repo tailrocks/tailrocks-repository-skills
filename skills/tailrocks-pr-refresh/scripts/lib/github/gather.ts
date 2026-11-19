@@ -158,10 +158,10 @@ async function gatherIssues(
   return out;
 }
 
-/** Read the template headings at the base commit. Null when the file is absent or unreadable. */
-export async function gatherBodyTemplate(run: GhRun, repo: RepoSlug, baseSha: string, file: string): Promise<BodyTemplate | null> {
+/** Read the template headings at a commit of the default branch. Null when the file is absent or unreadable. */
+export async function gatherBodyTemplate(run: GhRun, repo: RepoSlug, defaultSha: string, file: string): Promise<BodyTemplate | null> {
   const encoded = file.split("/").map(encodeURIComponent).join("/");
-  const result = await rest(run, `repos/${repo}/contents/${encoded}?ref=${baseSha}`, true);
+  const result = await rest(run, `repos/${repo}/contents/${encoded}?ref=${defaultSha}`, true);
   if (result.code !== 0 || isNotFound(result)) {
     return null;
   }
@@ -221,6 +221,7 @@ async function gather(repo: RepoSlug, number: number, options: GatherOptions): P
   const baseSha = sha(member(pr, "baseRefOid"), "pr.baseRefOid");
   const baseRef = str(member(pr, "baseRefName"), "pr.baseRefName");
   const defaultBranch = str(path(repository, "defaultBranchRef", "name"), "defaultBranchRef");
+  const defaultSha = sha(path(repository, "defaultBranchRef", "target", "oid"), "defaultBranchRef.target.oid");
 
   // Threads
   const threadsConnection = obj(member(pr, "reviewThreads"), "reviewThreads");
@@ -353,7 +354,7 @@ async function gather(repo: RepoSlug, number: number, options: GatherOptions): P
 
   const slug = parseRepoSlug(str(member(repository, "nameWithOwner"), "nameWithOwner"));
   const snapshot: PrSnapshot = {
-    schema: 1,
+    schema: 2,
     capturedAt: (options.now?.() ?? new Date()).toISOString(),
     repo: slug.ok ? slug.value : repo,
     defaultBranch,
@@ -367,6 +368,7 @@ async function gather(repo: RepoSlug, number: number, options: GatherOptions): P
     body,
     baseRef,
     baseSha,
+    defaultSha,
     headRef: str(member(pr, "headRefName"), "pr.headRefName"),
     headSha,
     mergeable: settled.mergeable,

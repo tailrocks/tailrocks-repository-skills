@@ -116,5 +116,3 @@ hold = []
 # queue, 1 for direct merges. A pass also keeps the queue length plus its own
 # enqueues at or below ci.congestion_queue_length.
 max_merges_per_pass = 3
-# The same limit when the queue is at or above ci.congestion_queue_length.
-max_merges_per_pass_congested = 0

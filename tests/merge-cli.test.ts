@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { removeBodyFiles } from "../lib/body-file.ts";
+import { isBodyFilePath, removeBodyFiles, writeBodyFile } from "../lib/body-file.ts";
 import { HELP, main, parseArgs } from "../lib/merge/cli.ts";
 import { EXIT } from "../lib/merge/types.ts";
 import { graphqlError, makeWorld, removeWorlds, type World } from "./helpers/merge-world.ts";
@@ -132,6 +132,27 @@ describe("command line", () => {
     expect(parsed).toMatchObject({ schema: 1, step: "merge", number: 7, exit: 10, outcome: "queued", repo: "example-org/example-repo" });
     expect(parsed).toHaveProperty("verdict.state");
     expect(parsed).toHaveProperty("events");
+  });
+
+  test("a stop signal during a watch prints the JSON result, removes the temporary comment file, and exits 10", async () => {
+    const world = makeWorld();
+    world.queue({});
+    const comment = writeBodyFile("a dequeue comment that was not posted yet");
+    expect(isBodyFilePath(comment)).toBe(true);
+    let sentAt = "";
+    world.script = (gather) => {
+      if (gather === 2) {
+        world.signalHandlers[0]?.("SIGTERM");
+        sentAt = existsSync(comment) ? "file still there" : "file removed";
+      }
+    };
+    const result = await run(world, ["watch", "7", "--confirm", "7", "--json", "--timeout", "400", ...REPO]);
+    expect(sentAt).toBe("file removed");
+    expect(existsSync(comment)).toBe(false);
+    expect(world.exits[0]).toBe(EXIT.waiting);
+    const first: unknown = JSON.parse(result.out[0] ?? "");
+    expect(first).toMatchObject({ schema: 1, step: "watch", number: 7, exit: 10, outcome: "stopped" });
+    expect(JSON.stringify(first)).toContain("stopped by SIGTERM");
   });
 
   test("an invalid policy exits 2 and writes nothing", async () => {

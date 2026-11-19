@@ -302,6 +302,30 @@ describe("fixtures and policy", () => {
     expect(verdict.findings.map((f) => f.code)).toContain("non_required_failing");
   });
 
+  describe("snapshot schemas", () => {
+    const text = readFileSync(join(root, "tests", "fixtures", "status", "stacked.json"), "utf8");
+    const withoutDefault = text.replace(/^\s*"defaultSha": "[0-9a-f]{40}",\n/m, "");
+
+    test("a schema 2 snapshot keeps its defaultSha, which is not the base of a stacked PR", () => {
+      const snapshot = parseSnapshot(text);
+      expect(snapshot.schema).toBe(2);
+      expect(snapshot.defaultSha).not.toBe(snapshot.baseSha);
+    });
+
+    test("a schema 1 snapshot, saved before defaultSha existed, still loads. Its policy was read at the base commit", () => {
+      const old = parseSnapshot(withoutDefault.replace('"schema": 2', '"schema": 1'));
+      expect(old.schema).toBe(2);
+      expect(old.defaultSha).toBe(old.baseSha);
+      // The pure verdict does not depend on defaultSha.
+      expect(evaluate(old, examplePolicy()).findings.map((f) => f.code)).toEqual(evaluate(parseSnapshot(text), examplePolicy()).findings.map((f) => f.code));
+    });
+
+    test("a schema 2 snapshot without defaultSha, and an unknown schema, fail to load", () => {
+      expect(() => parseSnapshot(withoutDefault)).toThrow();
+      expect(() => parseSnapshot(text.replace('"schema": 2', '"schema": 3'))).toThrow();
+    });
+  });
+
   test("a fixture with a wrong shape fails to load", () => {
     expect(() => parseSnapshot('{"schema":1}')).toThrow();
     expect(() => parseSnapshot("nope")).toThrow();

@@ -19,10 +19,9 @@ import {
   requiredHeadings,
   templatePlaceholders,
 } from "./body.ts";
+import { inventoryApplies, inventoryFix, inventoryMisses, runPrepushSteps } from "../policy-steps.ts";
 import {
   branchProblem,
-  inventoryApplies,
-  inventoryMisses,
   remoteRepoSlug,
   unsignedCommits,
 } from "./checks.ts";
@@ -62,7 +61,6 @@ import type {
 
 const MAX_BODY_FILE_BYTES = 262_144;
 const MAX_TITLE_CHARS = 256;
-const TAIL_LINES = 12;
 
 /** Read the body file that the agent wrote. Only a plain file of limited size passes. */
 export async function readBodyFile(path: string): Promise<string> {
@@ -84,10 +82,6 @@ interface Parent {
   readonly number: number;
   readonly ref: string;
   readonly sha: Sha;
-}
-
-function tail(text: string): readonly string[] {
-  return text.split("\n").filter((line) => line.trim() !== "").slice(-TAIL_LINES);
 }
 
 function short(sha: string): string {
@@ -407,9 +401,7 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
         "inventory_miss",
         "blocker",
         `inventory "${inventory.name}" does not name ${misses.length} added file${misses.length === 1 ? "" : "s"}`,
-        inventory.update.length > 0
-          ? `Add them to ${inventory.file} (the policy update command is: ${inventory.update.join(" ")}), commit, and run plan again.`
-          : `Add them to ${inventory.file}, commit, and run plan again.`,
+        inventoryFix(inventory, "commit, and run plan again.").replace(/^add/, "Add"),
         misses.slice(0, 20),
       );
     }
@@ -433,17 +425,14 @@ async function plan(args: CreateArgs, cfg: CreateConfig): Promise<PlanResult> {
       add("prepush_skipped", "info", "the pre-push steps did not run", "Fix the blockers above first. The steps run on the next plan.");
     }
   } else {
-    for (const step of policy.prepush) {
-      if (step.when_changed.length > 0 && !paths.changed.some((file) => matchesAnyGlob(step.when_changed, file))) {
-        continue;
-      }
-      const dir = withinRoot(root, step.cwd) ?? root;
-      const result = await cfg.runCommand(step.run, dir);
-      prepushRan.push(step.name);
-      if (result.code !== 0) {
-        add("prepush_failed", "blocker", `pre-push step "${step.name}" failed (exit ${result.code}); nothing was pushed`, `Fix the cause, then run plan again.`, tail(`${result.stdout}\n${result.stderr}`));
-        break;
-      }
+    const prepush = await runPrepushSteps(policy.prepush, paths.changed, async (step) => {
+      const result = await cfg.runCommand(step.run, withinRoot(root, step.cwd) ?? root);
+      return { code: result.code, output: `${result.stdout}\n${result.stderr}` };
+    });
+    prepushRan.push(...prepush.ran);
+    if (prepush.failure !== null) {
+      const { step, code, tail } = prepush.failure;
+      add("prepush_failed", "blocker", `pre-push step "${step.name}" failed (exit ${code}); nothing was pushed`, `Fix the cause, then run plan again.`, tail);
     }
     if (prepushRan.length > 0 && !blocked()) {
       const after = await readTreeState(git);

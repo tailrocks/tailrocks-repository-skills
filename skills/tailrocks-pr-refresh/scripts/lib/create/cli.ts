@@ -8,7 +8,6 @@
 // See exit.ts for the exit codes.
 
 import { ghMutate } from "../gh.ts";
-import { git } from "../git.ts";
 import { defaultGit } from "../github/git-facts.ts";
 import { defaultGh, type GhRun } from "../github/graphql.ts";
 import { formatPolicyErrors } from "../policy/load.ts";
@@ -20,7 +19,8 @@ import { openPr } from "./open.ts";
 import { signoffRange } from "./signoff.ts";
 import { buildPlan } from "./plan.ts";
 import { openObject, planObject, renderOpenText, renderPlanText, renderRefusalText, renderSignoffText, signoffObject } from "./render.ts";
-import type { CommandRun, CreateConfig, GitEnvRun, MutateRun } from "./types.ts";
+import { guardedGit, type GitRunner } from "../refresh/gitx.ts";
+import type { CommandRun, CreateConfig, MutateRun } from "./types.ts";
 import type { GitRun } from "../github/git-facts.ts";
 
 export { USAGE };
@@ -59,7 +59,7 @@ export interface MainOptions {
   readonly runGh?: GhRun;
   readonly runGit?: GitRun;
   readonly runCommand?: CommandRun;
-  readonly runGitEnv?: GitEnvRun;
+  readonly runRepo?: GitRunner;
   readonly mutate?: MutateRun;
   readonly out?: (line: string) => void;
   readonly err?: (line: string) => void;
@@ -92,7 +92,7 @@ export async function main(argv: readonly string[], options: MainOptions = {}): 
     runGh: options.runGh ?? defaultGh(cwd),
     runGit: options.runGit ?? defaultGit(cwd),
     runCommand: options.runCommand ?? defaultCommand,
-    runGitEnv: options.runGitEnv ?? ((gitArgs, env) => git(gitArgs, { cwd, env })),
+    runRepo: options.runRepo ?? guardedGit,
     mutate: options.mutate ?? ((op) => ghMutate(op, { cwd })),
   };
 

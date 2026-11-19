@@ -1,8 +1,9 @@
 // Pure checks of the plan: branch names, remote URLs, sign-off, inventories.
 
 import { matchesAnyGlob } from "../glob.ts";
-import type { Policy, PolicyInventory } from "../policy/types.ts";
-import { hasSignoff, normalizeLogin } from "../status/text.ts";
+import type { Policy } from "../policy/types.ts";
+import { signoffRequired } from "../policy-steps.ts";
+import { normalizeLogin } from "../status/text.ts";
 import type { Sha } from "../types.ts";
 
 export interface CommitInfo {
@@ -71,47 +72,10 @@ function isBotAuthor(commit: CommitInfo, bots: readonly string[]): boolean {
 
 /** True when the policy wants a Signed-off-by line on this commit and it has none. */
 export function needsSignoff(commit: CommitInfo, policy: Policy): boolean {
-  return (
-    policy.dco.required &&
-    !hasSignoff(commit.message) &&
-    !(policy.dco.bot_commits === "exempt" && isBotAuthor(commit, policy.dco.bot_authors))
-  );
+  return signoffRequired(policy, commit.message, isBotAuthor(commit, policy.dco.bot_authors));
 }
 
 /** Commits without a Signed-off-by trailer that the DCO policy does not exempt. */
 export function unsignedCommits(commits: readonly CommitInfo[], policy: Policy): readonly CommitInfo[] {
   return commits.filter((commit) => needsSignoff(commit, policy));
-}
-
-// ---------- Inventories ----------
-
-const PATH_TOKEN = /[A-Za-z0-9_.@+/-]+/g;
-
-/**
- * Added files that an inventory must name and does not. A file is enforced only
- * when its group (the first `group_depth` path segments) is already listed.
- */
-export function inventoryMisses(inventory: PolicyInventory, added: readonly string[], text: string): readonly string[] {
-  const tokens = new Set(text.match(PATH_TOKEN) ?? []);
-  const listed = [...tokens];
-  const misses: string[] = [];
-  for (const file of added) {
-    if (file === inventory.file || !matchesAnyGlob(inventory.added, file) || matchesAnyGlob(inventory.exclude, file)) {
-      continue;
-    }
-    if (tokens.has(file)) {
-      continue;
-    }
-    const segments = file.split("/");
-    const group = segments.slice(0, Math.min(inventory.group_depth, segments.length - 1)).join("/");
-    if (group !== "" && listed.some((token) => token.startsWith(`${group}/`))) {
-      misses.push(file);
-    }
-  }
-  return misses;
-}
-
-/** True when the inventory covers at least one added file, so a missing inventory file matters. */
-export function inventoryApplies(inventory: PolicyInventory, added: readonly string[]): boolean {
-  return added.some((file) => matchesAnyGlob(inventory.added, file) && !matchesAnyGlob(inventory.exclude, file));
 }

@@ -13,6 +13,7 @@ import type { PolicyError } from "../policy/types.ts";
 import { listOpenPrs, StepError } from "./github.ts";
 import { fetchBranch, gitSha, readTreeState } from "./local.ts";
 import { buildPlan } from "./plan.ts";
+import { classifyPush } from "./push.ts";
 import type { CreateArgs, CreateConfig, Finding, OpenPr, Plan } from "./types.ts";
 
 export interface OpenReport {
@@ -41,10 +42,6 @@ function refused(code: 3 | 4, ...reasons: readonly string[]): OpenResult {
   return { kind: "refused", code, reasons };
 }
 
-// Only a non-fast-forward means that the remote branch moved. A hook, a protected branch, or a
-// permission rejection says "[remote rejected]" and does not change with a new plan.
-const NON_FAST_FORWARD = /non-fast-forward|fetch first|stale info/i;
-const REMOTE_REJECTED = /\[remote rejected\]|protected branch|permission|denied|declined/i;
 const PR_URL = /https?:\/\/\S+\/pull\/\d+/;
 
 export async function openPr(args: CreateArgs, cfg: CreateConfig): Promise<OpenResult> {
@@ -151,10 +148,13 @@ async function open(args: CreateArgs, cfg: CreateConfig): Promise<OpenResult> {
   if (plan.relation !== "same") {
     const result = await cfg.runGit(["push", plan.remote, `${plan.headSha}:refs/heads/${branch}`]);
     if (result.code !== 0) {
-      const reason = `git push failed, nothing was pushed: ${firstLine(result.stderr) || `exit ${result.code}`}`;
-      // Exit 4 needs a non-fast-forward and an unchanged local head. Anything else is not cured by a new plan.
+      // The class comes from git's own ref status lines (see push.ts), never from words in the output.
+      const failure = classifyPush(result.stderr, result.code);
+      const reason = `git push failed, nothing was pushed: ${failure.cause}`;
+      // Exit 4 needs a rejected push (the remote branch moved) and an unchanged local head.
+      // A refusal by the remote (a hook, a protected branch) is not cured by a new plan.
       const headStill = (await gitSha(cfg.runGit, ["rev-parse", "HEAD"])) === plan.headSha;
-      return NON_FAST_FORWARD.test(result.stderr) && !REMOTE_REJECTED.test(result.stderr) && headStill
+      return failure.kind === "moved" && headStill
         ? refused(4, reason, "The remote branch moved. Run plan again.")
         : refused(3, reason);
     }

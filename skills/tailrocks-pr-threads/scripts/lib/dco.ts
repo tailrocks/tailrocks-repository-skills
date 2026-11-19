@@ -359,49 +359,86 @@ export async function executeDcoFix(request: DcoFixRequest): Promise<DcoFixResul
   }
 }
 
-async function rewriteAndPush(request: DcoFixRequest): Promise<DcoFixResult> {
-  const { snapshot, policy, repo } = request;
-  const oldHead = snapshot.headSha;
-  const read = await readRange(repo, oldHead, snapshot.baseSha);
+// ---------- The local rewrite: shared with pr-create, no push ----------
+
+export interface LocalRewriteRequest {
+  /** A repository that holds `head` and `base`. */
+  readonly repo: Repo;
+  readonly head: Sha;
+  /** The range is `head` without `base`. */
+  readonly base: Sha;
+  /** True for a commit that needs a trailer. The rewrite starts at the first such commit. */
+  readonly needsTrailer: (commit: RangeCommit) => boolean;
+  /** Runs on the chosen rewrite set, before any commit is built. A refusal stops the rewrite. */
+  readonly preflight?: (plan: RewritePlan) => Refusal | null;
+}
+
+export type LocalRewriteResult =
+  | { readonly kind: "refused"; readonly refusal: Refusal; readonly details: readonly string[] }
+  | { readonly kind: "unchanged"; readonly mismatched: readonly string[] }
+  | { readonly kind: "aborted"; readonly code: string; readonly headline: string; readonly next: string }
+  | {
+      readonly kind: "built";
+      readonly oldHead: Sha;
+      readonly newHead: Sha;
+      readonly plan: RewritePlan;
+      readonly mapping: ReadonlyMap<Sha, Sha>;
+      readonly trailersAdded: number;
+      readonly reparented: number;
+      readonly mismatched: readonly string[];
+    };
+
+/**
+ * Rebuild the commits from the first one that needs a trailer, verify them as
+ * git stored them (same tree, same author and date, same parents after the
+ * mapping, same message plus one trailer), and stop. It moves no ref and pushes
+ * nothing. The new commits are loose objects until a caller points a ref at them.
+ * pr-refresh dco-fix pushes through the capability below. pr-create signoff
+ * moves a local branch.
+ */
+export async function rewriteLocal(request: LocalRewriteRequest): Promise<LocalRewriteResult> {
+  const { repo, head: oldHead } = request;
+  const read = await readRange(repo, oldHead, request.base);
   if (!read.ok) {
-    return refused({ code: read.code, headline: read.reason, next: "ask the author to add the sign-off in a new commit" });
+    return { kind: "refused", refusal: { code: read.code, headline: read.reason, next: "ask the author to add the sign-off in a new commit" }, details: [] };
   }
   const range = read.commits;
   const mismatched = signoffMismatches(range).map((c) => c.slice(0, 12));
-  const exemptBot = (commit: RangeCommit): boolean => {
-    const login = botLoginOf(snapshot, commit.sha);
-    return policy.dco.bot_commits === "exempt" && login !== null && policy.dco.bot_authors.some((bot) => sameLogin(bot, login));
-  };
-  const needsTrailer = (commit: RangeCommit): boolean =>
-    commit.parents.length <= 1 && !hasSignoff(commit.message) && !exemptBot(commit);
-  const plan = planRewrite(range, needsTrailer);
+  const plan = planRewrite(range, request.needsTrailer);
   if (plan === null) {
-    return { kind: "unchanged", headline: "every commit has a sign-off or is exempt; nothing to rewrite", mismatched };
+    return { kind: "unchanged", mismatched };
   }
   const signedCommits = plan.rewrite.filter((c) => c.signed);
   if (signedCommits.length > 0) {
-    return refused(
-      {
+    return {
+      kind: "refused",
+      refusal: {
         code: "signed_commit",
         headline: "a commit in the rewrite range has a GPG or SSH signature; a rewrite would drop it",
         next: "ask the author to add the sign-off in a new commit, or to re-sign",
       },
-      signedCommits.map((c) => `signed: ${c.sha.slice(0, 12)}`),
-    );
+      details: signedCommits.map((c) => `signed: ${c.sha.slice(0, 12)}`),
+    };
   }
   const odd = plan.rewrite.find((c) => c.unsupportedHeader !== null);
   if (odd !== undefined) {
-    return refused(
-      {
+    return {
+      kind: "refused",
+      refusal: {
         code: "unsupported_commit",
         headline: `commit ${odd.sha.slice(0, 7)} has a "${odd.unsupportedHeader ?? ""}" header that a rewrite would drop`,
         next: "ask the author to add the sign-off in a new commit",
       },
-    );
+      details: [],
+    };
+  }
+  const early = request.preflight?.(plan) ?? null;
+  if (early !== null) {
+    return { kind: "refused", refusal: early, details: [] };
   }
   const trailer = await readIdentity(repo);
   if (trailer === null) {
-    return refused({ code: "no_identity", headline: "git user.name or user.email is not set", next: "set both, then run the mode again" });
+    return { kind: "refused", refusal: { code: "no_identity", headline: "git user.name or user.email is not set", next: "set both, then run the mode again" }, details: [] };
   }
 
   // Rebuild.
@@ -415,20 +452,54 @@ async function rewriteAndPush(request: DcoFixRequest): Promise<DcoFixResult> {
   // Verify the commits as git stored them.
   const rebuilt = new Map<Sha, RangeCommit>();
   for (const newSha of mapping.values()) {
-    const read = await readCommit(repo, newSha);
-    if (!read.ok) {
-      return aborted("verification_failed", `the rewrite failed verification: ${read.reason}; nothing was pushed`, "report this to the maintainers of the skill");
+    const stored = await readCommit(repo, newSha);
+    if (!stored.ok) {
+      return { kind: "aborted", code: "verification_failed", headline: `the rewrite failed verification: ${stored.reason}`, next: "report this to the maintainers of the skill" };
     }
-    rebuilt.set(newSha, read.commit);
+    rebuilt.set(newSha, stored.commit);
   }
   const problem = verifyRewrite(plan, rebuilt, mapping, trailer, oldHead);
   if (problem !== null) {
-    return aborted("verification_failed", `the rewrite failed verification: ${problem}; nothing was pushed`, "report this to the maintainers of the skill");
+    return { kind: "aborted", code: "verification_failed", headline: `the rewrite failed verification: ${problem}`, next: "report this to the maintainers of the skill" };
   }
   const newHead = mapping.get(oldHead);
   if (newHead === undefined || newHead === oldHead) {
-    return aborted("verification_failed", "the rewrite did not produce a new head; nothing was pushed", "report this to the maintainers of the skill");
+    return { kind: "aborted", code: "verification_failed", headline: "the rewrite did not produce a new head", next: "report this to the maintainers of the skill" };
   }
+  return {
+    kind: "built",
+    oldHead,
+    newHead,
+    plan,
+    mapping,
+    trailersAdded: plan.needsTrailer.size,
+    reparented: plan.rewrite.length - plan.needsTrailer.size,
+    mismatched,
+  };
+}
+
+async function rewriteAndPush(request: DcoFixRequest): Promise<DcoFixResult> {
+  const { snapshot, policy, repo } = request;
+  const exemptBot = (commit: RangeCommit): boolean => {
+    const login = botLoginOf(snapshot, commit.sha);
+    return policy.dco.bot_commits === "exempt" && login !== null && policy.dco.bot_authors.some((bot) => sameLogin(bot, login));
+  };
+  const local = await rewriteLocal({
+    repo,
+    head: snapshot.headSha,
+    base: snapshot.baseSha,
+    needsTrailer: (commit) => commit.parents.length <= 1 && !hasSignoff(commit.message) && !exemptBot(commit),
+  });
+  if (local.kind === "refused") {
+    return refused(local.refusal, local.details);
+  }
+  if (local.kind === "unchanged") {
+    return { kind: "unchanged", headline: "every commit has a sign-off or is exempt; nothing to rewrite", mismatched: local.mismatched };
+  }
+  if (local.kind === "aborted") {
+    return aborted(local.code, `${local.headline}; nothing was pushed`, local.next);
+  }
+  const { oldHead, newHead, plan, mismatched } = local;
 
   // The caller re-reads the PR here and may dequeue it.
   const stop = await request.prepare();

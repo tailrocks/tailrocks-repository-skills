@@ -1,4 +1,4 @@
-// Read the full thread state of one PR: the snapshot of pr-status, the base-branch
+// Read the full thread state of one PR: the snapshot of pr-status, the default-branch
 // policy, the threads with their comments, and the classes.
 
 import { gatherPr, type GatherCache } from "../github/gather.ts";
@@ -53,7 +53,7 @@ export async function readThreadState(repo: RepoSlug, number: number, config: Th
     return { ok: false, kind: "unreadable", error: gathered.error };
   }
   const { snapshot } = gathered;
-  const loaded = await fetchBasePolicy(repo, snapshot.baseSha, { cwd: config.cwd, runGh: config.runGh });
+  const loaded = await fetchBasePolicy(repo, snapshot.defaultSha, { cwd: config.cwd, runGh: config.runGh });
   if (!loaded.ok) {
     return { ok: false, kind: "policy", errors: loaded.errors };
   }

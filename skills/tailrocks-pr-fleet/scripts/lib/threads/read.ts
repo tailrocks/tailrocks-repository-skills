@@ -18,7 +18,18 @@ function comment(value: unknown, where: string): CommentView {
     isBotAccount: isObj(author) && member(author, "__typename") === "Bot",
     body: str(member(o, "body"), `${where}.body`),
     url: strOrNull(member(o, "url"), `${where}.url`),
+    editedAt: latest(strOrNull(member(o, "lastEditedAt"), `${where}.lastEditedAt`), strOrNull(member(o, "updatedAt"), `${where}.updatedAt`)),
   };
+}
+
+/** The later of two ISO times. An unreadable time is kept as is, so the edit check sees it and stops (fail closed). */
+function latest(a: string | null, b: string | null): string | null {
+  if (a === null || b === null) {
+    return a ?? b;
+  }
+  const x = Date.parse(a);
+  const y = Date.parse(b);
+  return Number.isNaN(x) || Number.isNaN(y) ? (Number.isNaN(x) ? a : b) : x >= y ? a : b;
 }
 
 interface Connection {

@@ -131,10 +131,10 @@ export type TemplateRead =
   | { readonly kind: "absent" }
   | { readonly kind: "error"; readonly message: string };
 
-/** The body template at the base commit. */
-export async function readTemplate(run: GhRun, repo: RepoSlug, baseSha: Sha, file: string): Promise<TemplateRead> {
+/** The body template on the default branch, at `defaultSha` (its current commit). */
+export async function readTemplate(run: GhRun, repo: RepoSlug, defaultSha: Sha, file: string): Promise<TemplateRead> {
   const encoded = file.split("/").map(encodeURIComponent).join("/");
-  const result = await rest(run, `repos/${repo}/contents/${encoded}?ref=${baseSha}`, true);
+  const result = await rest(run, `repos/${repo}/contents/${encoded}?ref=${defaultSha}`, true);
   if (result.code === 0) {
     return { kind: "found", text: result.stdout };
   }

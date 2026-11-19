@@ -9,7 +9,7 @@ import { exitForApply, renderApplyText } from "../lib/threads/render.ts";
 import { readThreads } from "../lib/threads/read.ts";
 import type { Decision, DecisionFile } from "../lib/threads/types.ts";
 import { sha } from "./helpers/status.ts";
-import { AGENT, FIX_COMMIT, REPO, World, type ThreadSpec } from "./helpers/threads-world.ts";
+import { AGENT, FIX_COMMIT, PLAN_AT, REPO, World, type ThreadSpec } from "./helpers/threads-world.ts";
 
 const noSleep = async (): Promise<void> => undefined;
 
@@ -36,7 +36,7 @@ function d(id: string, action: Decision["action"], reply = "", fixCommit: Decisi
 }
 
 function file(...decisions: Decision[]): DecisionFile {
-  return { expectHead: null, decisions };
+  return { expectHead: null, planAt: PLAN_AT, decisions };
 }
 
 const ALL = file(
@@ -183,7 +183,7 @@ describe("applyDecisions", () => {
 
   test("refuses when the head is not the one the decisions expect", async () => {
     const w = world();
-    const result = await apply(w, { expectHead: sha("9"), decisions: ALL.decisions });
+    const result = await apply(w, { expectHead: sha("9"), planAt: PLAN_AT, decisions: ALL.decisions });
     expect(refused(result)).toContain("expect");
     expect(w.ops).toEqual([]);
   });
@@ -294,6 +294,32 @@ describe("a person's question that GitHub holds", () => {
     const result = await applyDecisions(REPO, 7, stale, config(w));
     expect(refused(result)).toContain("new comment since plan; run plan again");
     expect(w.ops).toEqual([]);
+  });
+
+  test("a comment edited after plan refuses the file before any write", async () => {
+    const w = world();
+    const stale = fill(w, file(d("T-praise", "reply-resolve", "Thanks.", null, true)));
+    const thread = w.threads.find((t) => t.id === "T-praise");
+    if (thread?.comments[0] === undefined) throw new Error("thread");
+    thread.comments[0] = { ...thread.comments[0], editedAt: "2026-01-01T00:05:00Z" };
+    const result = await applyDecisions(REPO, 7, stale, config(w));
+    expect(refused(result)).toContain("comment edited since plan; run plan again");
+    expect(w.ops).toEqual([]);
+  });
+
+  test("a comment edited after the checks stops the resolve, after our reply", async () => {
+    const w = world();
+    w.afterMutation = (self, op) => {
+      if (op.kind === "addPullRequestReviewThreadReply") {
+        const t = self.threads.find((x) => x.id === op.threadId);
+        if (t?.comments[0] !== undefined) t.comments[0] = { ...t.comments[0], editedAt: "2026-01-01T00:05:00Z" };
+      }
+    };
+    const result = written(await apply(w, file(d("T-defer", "defer"))));
+    expect(result.aborted).toContain("comment edited since plan");
+    expect(opNames(w)).toEqual(["addPullRequestReviewThreadReply:T-defer"]);
+    expect(w.threads.find((t) => t.id === "T-defer")?.resolved).toBe(false);
+    expect(result.outcomes[0]?.note).toBe("replied, not resolved");
   });
 
   test("a resolving decision without lastCommentId is refused before any write", async () => {
