@@ -472,4 +472,56 @@ reviews of the delivery pull requests:
 
 ## 12. Evidence
 
-Filled in by the delivery pull requests.
+Release 0.5.0. The full tables are in the comments of the release
+pull request; this section keeps the summary.
+
+### Verdicts on a real repository
+
+`pr-status --all` ran read-only over the 94 open pull requests of a
+real repository that uses the process of
+`examples/comment-verdict-merge-queue.toml`. An independent agent
+derived the expected class of each pull request from the facts that
+GitHub reports, without the skill's code.
+
+| Result | Count |
+| --- | --- |
+| BLOCKED (skill / expected) | 72 / 72 |
+| WAITING (skill / expected) | 0 / 0 |
+| READY (skill / expected) | 22 / 22 |
+| State mismatches | 0 |
+
+Ten random matches were checked again by hand. Carry-over across
+clean base merges gave the correct verdict on 2 stacked pull
+requests. It correctly refused 6 others with `review_stale`.
+
+### Agent load test
+
+| Agent | Version | Load method | Skill ran | Verdict seen |
+| --- | --- | --- | --- | --- |
+| Claude Code | 2.1.325 | `--plugin-dir` | yes | BLOCKED `pr_not_open` |
+| Codex | 0.169.0 | marketplace add, plugin add | yes | BLOCKED `pr_not_open` |
+| Grok Build | 1.0.70 | plugin install `--trust` | no: the account had no credits; the skill list showed all 10 skills | none |
+| Muse Code | 1.4.20 | `.agents/skills`, `--trust-workspace` | yes | BLOCKED `pr_not_open` |
+| Kimi Code | 2.6.1 | `--skills-dir` | yes | BLOCKED `pr_not_open` |
+| omp | 18.20.2 | `.agents/skills` | yes | BLOCKED `pr_not_open` |
+| pi | 1.5.2 | `--skill` | yes | BLOCKED `pr_not_open` |
+| Antigravity CLI | 1.5.9 | workspace skills, `--sandbox` | yes | BLOCKED `pr_not_open` |
+
+The test asked each agent to report the readiness of a merged pull
+request. Each test install was removed afterwards.
+
+### Dogfooding
+
+`pr-status` gated the merge of each pull request of this series.
+`pr-merge` merged five of them. `pr-threads` resolved review threads
+on its own pull request.
+
+### Known limits
+
+- GitHub reports edit times to the second. An edit to a review
+  comment in the same second as the newest comment that `plan` read
+  is not seen as an edit.
+- The merge queue removal reason is free text from GitHub. The skills
+  report it as given.
+- A stacked pull request reads the policy of the default branch, not
+  of its parent branch.
