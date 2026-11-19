@@ -84,6 +84,16 @@ merge, the base has moved. The next PR is read on the new base. A PR that is
 behind it is skipped as a merge and becomes a refresh candidate for this pass,
 within the refresh budget.
 
+## A high-risk refusal of pr-merge
+
+`apply` never passes `--accept-risk`. When `pr-merge` refuses a PR with exit 3
+because the change touches high-risk paths, the action is reported as
+`stopped`, and its detail starts with
+`refused (needs the user's --accept-risk)`. Its `next` line tells the user to run `tailrocks-pr-merge` for that PR with
+`--accept-risk`, after the user accepts the risk. The fleet never does it. Other
+refusals of `pr-merge` and every other failure stay generic stops. The pass goes
+on with the next action, and the exit code is 20.
+
 ## Freeze, hold, and the deadline
 
 Before each write, `apply` reads freeze and hold from the policy of the read

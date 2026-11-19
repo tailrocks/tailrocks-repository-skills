@@ -159,6 +159,25 @@ export function commentsSince(comments: readonly CommentView[], lastCommentId: s
 }
 
 export const STALE_COMMENT = "new comment since plan; run plan again";
+/**
+ * The plan time, on GitHub's clock: the newest `lastEditedAt` or `updatedAt` of
+ * any comment that plan read. A comment that is edited after the plan has a later
+ * time, so the local clock plays no part, and a clock that runs ahead cannot hide
+ * an edit. Without any comment time it is the epoch, so any later time counts.
+ */
+export function planTime(threads: readonly ClassifiedThread[]): string {
+  let newest = 0;
+  for (const thread of threads) {
+    for (const comment of thread.detail.comments) {
+      const at = comment.editedAt === null ? Number.NaN : Date.parse(comment.editedAt);
+      if (!Number.isNaN(at) && at > newest) {
+        newest = at;
+      }
+    }
+  }
+  return new Date(newest).toISOString().replace(".000Z", "Z");
+}
+
 export const EDITED_COMMENT = "comment edited since plan; run plan again";
 
 /**

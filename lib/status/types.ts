@@ -152,12 +152,16 @@ export interface GitFacts {
 }
 
 export interface BodyTemplate {
-  /** Headings of the template file at the base commit. */
+  /** Headings of the template file at the default-branch commit (`defaultSha`). */
   readonly headings: readonly string[];
 }
 
+/**
+ * Snapshot schema 2 added `defaultSha`. A schema 1 file still loads: its policy was read at the
+ * base commit, so `parseSnapshot` sets `defaultSha` to `baseSha` for it. Every snapshot in memory is schema 2.
+ */
 export interface PrSnapshot {
-  readonly schema: 1;
+  readonly schema: 2;
   readonly capturedAt: string;
   readonly repo: RepoSlug;
   readonly defaultBranch: string;

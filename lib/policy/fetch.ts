@@ -35,7 +35,7 @@ export async function fetchBasePolicy(
   ];
   const result = await (options.runGh ?? ((a) => gh(a, { cwd: options.cwd })))(args);
   if (result.code === 0) {
-    return loadPolicy({ text: result.stdout, source: "base-branch" });
+    return loadPolicy({ text: result.stdout, source: "default-branch" });
   }
   if (/\bHTTP 404\b|Not Found/i.test(result.stderr)) {
     return defaultPolicy();

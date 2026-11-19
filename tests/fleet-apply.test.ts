@@ -254,8 +254,11 @@ describe("re-evaluation right before each action", () => {
     world.files = [".github/workflows/ci.yml"];
     const run = await runFleet(world, ["apply", "--apply"]);
     expect(world.mutations.some((m) => m.kind === "enqueuePullRequest")).toBe(false);
-    expect(run.out.join("\n")).toContain("stopped: merge #11");
-    expect(run.out.join("\n")).toContain("high-risk");
+    const text = run.out.join("\n");
+    // Not a generic stop: the user must accept the risk, and the fleet says so.
+    expect(text).toContain("stopped: merge #11: refused (needs the user's --accept-risk)");
+    expect(text).toContain("high-risk");
+    expect(text).toContain("tailrocks-pr-merge for PR #11 with --accept-risk");
     expect(run.code).toBe(20);
   });
 });

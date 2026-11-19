@@ -31,8 +31,8 @@ describe("loadPolicy", () => {
   });
 
   test("schema = 1 gives the documented defaults", () => {
-    const result = loadPolicy({ text: "schema = 1\n", source: "base-branch" });
-    expect(result.ok && result.source).toBe("base-branch");
+    const result = loadPolicy({ text: "schema = 1\n", source: "default-branch" });
+    expect(result.ok && result.source).toBe("default-branch");
     const policy = policyOf(result);
     expect(policy.branches.protected).toEqual(["main"]);
     expect(policy.checks.flaky_reruns).toBe(1);
@@ -50,11 +50,11 @@ describe("loadPolicy", () => {
   });
 
   test("the merge section has the high-risk globs and the watch interval", () => {
-    const policy = policyOf(loadPolicy({ text: "schema = 1\n", source: "base-branch" }));
+    const policy = policyOf(loadPolicy({ text: "schema = 1\n", source: "default-branch" }));
     expect(policy.merge.watch_interval_seconds).toBe(180);
     expect(policy.merge.high_risk_paths).toContain(".github/**");
     expect(policy.merge.high_risk_paths.some((g) => g.includes("migrations"))).toBe(true);
-    const custom = policyOf(loadPolicy({ text: 'schema = 1\n[merge]\nhigh_risk_paths = ["infra/**"]\nwatch_interval_seconds = 5\n', source: "base-branch" }));
+    const custom = policyOf(loadPolicy({ text: 'schema = 1\n[merge]\nhigh_risk_paths = ["infra/**"]\nwatch_interval_seconds = 5\n', source: "default-branch" }));
     expect(custom.merge.high_risk_paths).toEqual(["infra/**"]);
     expect(custom.merge.watch_interval_seconds).toBe(5);
     expect(errorsOf("schema = 1\n[merge]\nwatch_interval_seconds = 4\n")).toHaveLength(1);
@@ -198,7 +198,7 @@ describe("fetchBasePolicy", () => {
         return { code: 0, stdout: "schema = 1\n[merge]\nmethod = 'merge'\n", stderr: "" };
       },
     });
-    expect(result.ok && result.source).toBe("base-branch");
+    expect(result.ok && result.source).toBe("default-branch");
     expect(policyOf(result).merge.method).toBe("merge");
     expect(seen).toEqual([
       "api",

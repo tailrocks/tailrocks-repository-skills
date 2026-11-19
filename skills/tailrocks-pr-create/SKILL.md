@@ -15,6 +15,9 @@ license: Apache-2.0
 
 ## Use this skill
 
+Short names: `pr-X` means the skill `tailrocks-pr-X`, for example `pr-refresh`
+means `tailrocks-pr-refresh`.
+
 A script plans the PR and opens it. The script output is the authority. You do
 not decide from memory the base branch, the branch name rule, the sign-off rule,
 the draft state, the labels, or the issue link. Run the script before any
@@ -42,8 +45,11 @@ cannot change it. You do not read or change the policy.
   the base with `git merge --signoff` to fix a conflict. Write the body file
   outside the clone.
 - Never run `git push`, `gh pr create`, `gh pr edit`, or `gh api` writes
-  yourself. Never force-push. Never rewrite pushed history. Never commit to the
-  base branch. Never push to a branch that another person owns.
+  yourself. Never force-push or rewrite pushed history by hand, and this skill
+  never does it either. The one allowed force-push is the `dco-fix` mode of
+  `tailrocks-pr-refresh`, which only adds sign-off trailers. That skill does it,
+  not this one. Never commit to the base branch. Never push to a branch that
+  another person owns.
 - Never use `--body` for the PR text. The script posts the body file.
 - The policy sets draft or ready, except that pushed commits without a sign-off
   always open a draft. If the user asks for the other state, report the policy
@@ -130,8 +136,10 @@ cannot change it. You do not read or change the policy.
 
 9. Read the result with the exit code table. After exit 20, read each `PROBLEM`
    line. If one is `dco_missing` and its `next:` names `pr-refresh dco-fix <N>`,
-   hand off: run that step and stop. Do not run the plan and `open` again for
-   it: the plan has no blocker, so the loop never ends. For any other problem,
+   hand off: use the skill `tailrocks-pr-refresh` in `dco-fix` mode for PR N,
+   and stop. That skill does the force-push, which is the only one allowed. This
+   skill never does it. Do not run the plan and `open` again for it: the plan
+   has no blocker, so the loop never ends. For any other problem,
    run the plan, then run `open` again. It reuses the pushed branch and the open
    PR. It never creates a second PR.
 10. Report the PR URL, the branch, the base, draft or ready, and the labels.

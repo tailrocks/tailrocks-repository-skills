@@ -75,7 +75,7 @@ export function verdictReview(author: string, body: string, commit: Sha, submitt
 /** A snapshot that the example policy accepts as READY. */
 export function green(patch: Partial<PrSnapshot> = {}): PrSnapshot {
   return {
-    schema: 1,
+    schema: 2,
     capturedAt: "2026-01-02T00:00:00Z",
     repo: must(parseRepoSlug("example-org/example-repo")),
     defaultBranch: "main",

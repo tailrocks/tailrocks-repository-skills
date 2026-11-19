@@ -187,11 +187,13 @@ export function parseSnapshot(source: string): PrSnapshot {
     throw new Error(`repo: ${slug.error}`);
   }
   const decision = member(o, "reviewDecision");
-  if (member(o, "schema") !== 1) {
-    throw new Error("schema: expected 1");
+  const version = member(o, "schema");
+  if (version !== 1 && version !== 2) {
+    throw new Error("schema: expected 1 or 2");
   }
+  const baseSha = sha(member(o, "baseSha"), "baseSha");
   return {
-    schema: 1,
+    schema: 2,
     capturedAt: str(member(o, "capturedAt"), "capturedAt"),
     repo: slug.value,
     defaultBranch: str(member(o, "defaultBranch"), "defaultBranch"),
@@ -204,8 +206,9 @@ export function parseSnapshot(source: string): PrSnapshot {
     title: str(member(o, "title"), "title"),
     body: str(member(o, "body"), "body"),
     baseRef: str(member(o, "baseRef"), "baseRef"),
-    baseSha: sha(member(o, "baseSha"), "baseSha"),
-    defaultSha: sha(member(o, "defaultSha"), "defaultSha"),
+    baseSha,
+    // Schema 1 has no defaultSha: its policy was read at the base commit.
+    defaultSha: version === 1 ? baseSha : sha(member(o, "defaultSha"), "defaultSha"),
     headRef: str(member(o, "headRef"), "headRef"),
     headSha: sha(member(o, "headSha"), "headSha"),
     mergeable: oneOf(member(o, "mergeable"), ["MERGEABLE", "CONFLICTING", "UNKNOWN"], "mergeable"),

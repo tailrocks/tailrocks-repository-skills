@@ -116,6 +116,7 @@ export async function mergeStep(ctx: StepContext, options: MergeOptions): Promis
       `${risk.reason}`,
       "Ask the user to confirm the high-risk change. Then run this step again with --accept-risk.",
       plan,
+      "high_risk",
     );
   }
   if (risk.level === "high") {

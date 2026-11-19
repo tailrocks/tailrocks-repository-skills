@@ -17,7 +17,7 @@ import { parseRepoSlug } from "../lib/types.ts";
 import { builtinPolicy, examplePolicy, green, root, verdictReview } from "./helpers/status.ts";
 
 function evaluated(snapshot: PrSnapshot, policy: Policy = examplePolicy()): Evaluated {
-  return { snapshot, policy, verdict: evaluate(snapshot, policy, "base-branch") };
+  return { snapshot, policy, verdict: evaluate(snapshot, policy, "default-branch") };
 }
 
 function fixture(name: string): PrSnapshot {

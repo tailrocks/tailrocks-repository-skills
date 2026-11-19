@@ -1,4 +1,4 @@
-// Read the full thread state of one PR: the snapshot of pr-status, the base-branch
+// Read the full thread state of one PR: the snapshot of pr-status, the default-branch
 // policy, the threads with their comments, and the classes.
 
 import { gatherPr, type GatherCache } from "../github/gather.ts";

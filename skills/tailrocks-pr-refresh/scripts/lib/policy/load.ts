@@ -126,7 +126,7 @@ function crossChecks(policy: Policy): readonly PolicyError[] {
 
 export interface LoadRequest {
   readonly text: string;
-  readonly source: "base-branch" | "local";
+  readonly source: "default-branch" | "local";
 }
 
 /** Parse, validate, and type a policy file. Never throws on bad input. */

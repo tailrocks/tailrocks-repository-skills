@@ -5,8 +5,9 @@ description: >-
   with evidence and a Ready, Changes required, or Incomplete verdict. Use
   this skill when the user says review, look over, or audit a PR, diff,
   MR, change, CL, or plan. Also use it when the user says check a change
-  or asks if a change is ready to merge. This skill never posts,
-  approves, or merges.
+  or asks if a change is safe to land (code quality). For merge readiness
+  (checks, reviews, queue) use tailrocks-pr-status. This skill never
+  posts, approves, or merges.
 argument-hint: "[PR | branch | range | plan] [--repo OWNER/REPO]"
 disable-model-invocation: false
 license: Apache-2.0

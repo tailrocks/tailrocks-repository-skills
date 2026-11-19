@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { classifyThread } from "../lib/threads/classify.ts";
-import { commitUrl, composeReply, hasReply, parseDecisions, planWrites, replyMarker } from "../lib/threads/decisions.ts";
+import { commitUrl, composeReply, hasReply, parseDecisions, planTime, planWrites, replyMarker } from "../lib/threads/decisions.ts";
 import type { ClassifiedThread, CommentView, Decision, DecisionFile } from "../lib/threads/types.ts";
 import { AGENT, FIX_COMMIT, PLAN_AT, PR_AUTHOR, POLICY_TOML, REPO } from "./helpers/threads-world.ts";
 import { policyFromText } from "./helpers/status.ts";
@@ -55,6 +55,23 @@ function refusal(...decisions: Decision[]): string {
   if (r.ok) throw new Error("expected a refusal");
   return r.refusals.join(" | ");
 }
+
+describe("planTime", () => {
+  const withTimes = (...times: (string | null)[]): ClassifiedThread =>
+    classified("T-time", false, ...times.map((editedAt) => ({ ...c("reviewer-1", "x"), editedAt })));
+
+  test("is the newest comment time of every thread, on GitHub's clock", () => {
+    const a = withTimes("2026-01-01T00:00:00Z", "2026-03-01T10:20:30Z");
+    const b = withTimes("2026-02-01T00:00:00Z");
+    expect(planTime([a, b])).toBe("2026-03-01T10:20:30Z");
+  });
+
+  test("ignores a time that cannot be read, and is the epoch when no comment has one", () => {
+    expect(planTime([withTimes("not a time", "2026-01-02T03:04:05Z")])).toBe("2026-01-02T03:04:05Z");
+    expect(planTime([withTimes(null)])).toBe("1970-01-01T00:00:00Z");
+    expect(planTime([])).toBe("1970-01-01T00:00:00Z");
+  });
+});
 
 describe("parseDecisions", () => {
   const good = JSON.stringify({ schema: 1, expectHead: "a".repeat(40), decisions: [{ id: "T1", action: "fix", reply: " Done ", fixCommit: "b".repeat(40), confirmedNoOpenQuestion: true }] });

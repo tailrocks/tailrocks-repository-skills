@@ -329,7 +329,7 @@ export async function finishAndPush(deps: RefreshDeps, ctx: PrContext, handle: W
     return blocked(
       "worktree_tampered",
       "a policy step changed the worktree git data or the head; nothing was pushed",
-      "check the policy steps of the base branch",
+      "check the policy steps of the default branch",
     );
   }
 

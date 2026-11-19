@@ -1,6 +1,6 @@
 // The policy steps that follow a base merge: regenerate outputs, check
 // inventories, scan sign-offs, run pre-push steps. Commands are argument
-// arrays from the base-branch policy. No command passes through a shell.
+// arrays from the default-branch policy. No command passes through a shell.
 
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, rmSync, statSync } from "node:fs";

@@ -16,6 +16,9 @@ license: Apache-2.0
 
 ## What this skill does
 
+Short names: `pr-X` means the skill `tailrocks-pr-X`, for example `pr-refresh`
+means `tailrocks-pr-refresh`.
+
 One script, `merge.ts`, has four steps: `ready`, `merge`, `dequeue`, and
 `watch`. The script reads the PR with the pr-status logic. It reads the PR again
 right before it writes. A head change in between stops the write. You run the

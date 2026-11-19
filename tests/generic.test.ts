@@ -42,13 +42,14 @@ function escapeRegExp(text: string): string {
 }
 
 /**
- * The only masked tokens: the plugin name and the exact skill ids. A skill id
+ * The only masked tokens: the plugin name, the exact skill ids, and the id pattern with the placeholder X. A skill id
  * is a package identifier, and it carries the plugin prefix. Nothing else is
  * exempt: a display name, a link, or a prose mention of an organization is a hit.
  */
 function maskPattern(): RegExp {
   const pluginName: unknown = JSON.parse(readFileSync(join(root, "plugin.json"), "utf8")).name;
-  const tokens = [...skillIds(), ...(typeof pluginName === "string" ? [pluginName] : [])];
+  // The short-name line of each PR skill spells the id pattern once, with the placeholder X.
+  const tokens = [...skillIds(), `${WORDS[0]}-pr-X`, ...(typeof pluginName === "string" ? [pluginName] : [])];
   // Longest first, so that a longer id is masked whole.
   const sorted = [...tokens].sort((a, b) => b.length - a.length);
   return new RegExp(`(?<![A-Za-z0-9-])(?:${sorted.map(escapeRegExp).join("|")})(?![A-Za-z0-9-])`, "g");

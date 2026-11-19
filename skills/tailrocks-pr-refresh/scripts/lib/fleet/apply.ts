@@ -201,6 +201,18 @@ async function runMerge(deps: FleetDeps, plan: Plan, action: Action, state: Merg
     state.started += 1;
     state.directMerged = state.directMerged || route === "direct";
   }
+  if (!landed && outcome.refusal === "high_risk") {
+    // pr-merge refused (exit 3) because the change touches high-risk paths. The fleet never passes --accept-risk.
+    // Only the user can accept the risk, so this is a refusal that needs the user, not a generic stop.
+    return {
+      result: result(
+        action,
+        "stopped",
+        `refused (needs the user's --accept-risk): ${summary(lines, outcome.outcome)}`,
+        `Ask the user. If the user accepts the risk, run tailrocks-pr-merge for PR #${action.number} with --accept-risk. The fleet never does.`,
+      ),
+    };
+  }
   return {
     result: landed
       ? result(action, "done", summary(lines, outcome.outcome), outcome.next)

@@ -9,7 +9,7 @@ import { BASE, OLD, builtinPolicy, check, green, policyFromText } from "./helper
 afterEach(removeFleetWorlds);
 
 function policyWith(toml: string): Policy {
-  const loaded = loadPolicy({ text: `schema = 1\n${toml}`, source: "base-branch" });
+  const loaded = loadPolicy({ text: `schema = 1\n${toml}`, source: "default-branch" });
   if (!loaded.ok) {
     throw new Error(loaded.errors.map((e) => e.message).join("; "));
   }

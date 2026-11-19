@@ -13,7 +13,7 @@ import { formatPolicyErrors } from "../policy/load.ts";
 import { parseRepoSlug, type Parsed, type RepoSlug } from "../types.ts";
 import { assertBun } from "../version.ts";
 import { applyDecisions, type ApplyConfig, type MutateRun } from "./apply.ts";
-import { parseDecisions } from "./decisions.ts";
+import { parseDecisions, planTime } from "./decisions.ts";
 import { EXIT, EXIT_TABLE } from "./exit.ts";
 import { applyObject, exitForApply, exitForOpen, planObject, renderApplyText, renderPlanText } from "./render.ts";
 import { readThreadState, unresolved, type ThreadsConfig } from "./state.ts";
@@ -147,7 +147,7 @@ export async function main(argv: readonly string[], options: MainOptions = {}): 
       return result.kind === "policy" ? EXIT.usage : EXIT.refused;
     }
     const open = unresolved(result.state);
-    const view = { snapshot: result.state.snapshot, agent: result.state.agent, open, problems: result.state.problems };
+    const view = { snapshot: result.state.snapshot, agent: result.state.agent, open, problems: result.state.problems, planAt: planTime(result.state.threads) };
     const exit = result.state.problems.length > 0 ? EXIT.refused : exitForOpen(open);
     out(args.json ? JSON.stringify(planObject(view, exit), null, 2) : renderPlanText(view));
     return exit;

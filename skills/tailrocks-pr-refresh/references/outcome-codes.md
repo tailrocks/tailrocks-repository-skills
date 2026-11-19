@@ -38,7 +38,7 @@ If a code is not in this file, report the first line, the detail lines, and
 | `base_moved` | continue | The base branch moved after `sync --keep-worktree`, so the kept merge is out of date. The worktree is kept. Nothing was pushed. | Run `abort`, then run `sync --keep-worktree` again. |
 | `merge_not_in_progress` | continue | The merge in the kept worktree was committed or aborted by hand. The worktree stays. | Run `abort <pr> --worktree <path>`, then `sync <pr> --keep-worktree`. Do not run `continue` again: it refuses every time. |
 | `worktree_invalid` | continue, abort | The path is not a worktree that this script kept for this PR, or its recorded state is missing, open to other users, or does not match git. Nothing was deleted. | Use the exact path that `sync --keep-worktree` printed. |
-| `worktree_tampered` | sync, continue | A policy step changed the git data of the worktree or the head. Nothing was pushed. | Check the policy steps on the base branch. |
+| `worktree_tampered` | sync, continue | A policy step changed the git data of the worktree or the head. Nothing was pushed. | Check the policy steps on the default branch. |
 | `regenerate_failed` | sync, continue | A policy regenerate command failed, left a conflict marker, or did not write an output. | Fix the generator or its inputs. Never edit a generated file by hand. |
 | `inventory_miss` | sync, continue | A policy inventory does not name an added file. A moved file counts as added. | Add the files to the inventory with a signed commit and a normal push, then run `sync` again. |
 | `dco_missing` | sync, continue | A commit has no `Signed-off-by`. | Run `dco-fix`, then run `sync` again. |

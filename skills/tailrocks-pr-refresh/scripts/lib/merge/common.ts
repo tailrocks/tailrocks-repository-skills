@@ -5,9 +5,9 @@ import { renderText } from "../status/render.ts";
 import { compareHead, evaluateFresh, verdictExit } from "./evaluate.ts";
 import { EXIT, result, type Evaluated, type StepContext, type StepResult } from "./types.ts";
 
-export function refuse(ctx: StepContext, message: string, next: string, evaluated: Evaluated | null = null): StepResult {
+export function refuse(ctx: StepContext, message: string, next: string, evaluated: Evaluated | null = null, refusal?: "high_risk"): StepResult {
   ctx.say(`refused: ${message}`);
-  return result(EXIT.refused, "refused", next, evaluated);
+  return result(EXIT.refused, "refused", next, evaluated, refusal === undefined ? {} : { refusal });
 }
 
 /** Refusals that hold for every step: a fork PR, and a verdict from a local policy. */
@@ -16,7 +16,7 @@ export function scopeCheck(ctx: StepContext, evaluated: Evaluated): StepResult |
     return refuse(ctx, "the PR head is in a fork; the writing skills do not touch fork PRs", "Ask the user to handle this PR by hand.", evaluated);
   }
   if (evaluated.verdict.policySource === "local") {
-    return refuse(ctx, "the verdict uses a LOCAL policy file; only the base-branch policy is valid", "Run again without a local policy.", evaluated);
+    return refuse(ctx, "the verdict uses a LOCAL policy file; only the default-branch policy is valid", "Run again without a local policy.", evaluated);
   }
   return null;
 }

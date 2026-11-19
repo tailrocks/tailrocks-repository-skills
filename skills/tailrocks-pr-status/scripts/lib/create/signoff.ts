@@ -11,7 +11,7 @@
 import { rewriteLocal, type RangeCommit, type RewritePlan } from "../dco.ts";
 import { ReadError } from "../github/read.ts";
 import type { PolicyError } from "../policy/types.ts";
-import { repoAt } from "../refresh/gitx.ts";
+import { GitFailure, repoAt } from "../refresh/gitx.ts";
 import { parseSha, type Sha } from "../types.ts";
 import { branchProblem, needsSignoff, type CommitInfo } from "./checks.ts";
 import { StepError } from "./github.ts";
@@ -41,11 +41,38 @@ function asInfo(commit: RangeCommit): CommitInfo {
   return { sha: commit.sha, authorName: commit.authorName, authorEmail: commit.authorEmail, subject: commit.message.split("\n")[0] ?? "", message: commit.message };
 }
 
+const label = (commit: RangeCommit): string => commit.sha.slice(0, 7);
+
+/**
+ * The check that runs on the chosen rewrite set before any commit is built. A
+ * commit that the remote branch holds would need a force-push, and a merge or a
+ * root commit cannot be rebuilt on one parent. The commit selection already
+ * leaves pushed commits out, so the first refusal is defense in depth.
+ */
+export function rewriteRefusal(pushed: ReadonlySet<Sha>): (rewrite: RewritePlan) => { readonly code: string; readonly headline: string; readonly next: string } | null {
+  return (rewrite) => {
+    const onRemote = rewrite.rewrite.filter((c) => pushed.has(c.sha));
+    if (onRemote.length > 0) {
+      return {
+        code: "pushed_commit",
+        headline: `${onRemote.map(label).join(", ")} ${onRemote.length === 1 ? "is" : "are"} already on the remote branch; a rewrite would need a force-push`,
+        next: "run tailrocks-pr-refresh in dco-fix mode on the open PR",
+      };
+    }
+    const odd = rewrite.rewrite.filter((c) => c.parents.length !== 1);
+    if (odd.length > 0) {
+      return { code: "merge_commit", headline: `${odd.map(label).join(", ")} ${odd.length === 1 ? "is" : "are"} a merge or a root commit`, next: "sign off by hand" };
+    }
+    return null;
+  };
+}
+
 export async function signoffRange(args: CreateArgs, cfg: CreateConfig): Promise<SignoffResult> {
   try {
     return await signoff(args, cfg);
   } catch (error) {
-    if (error instanceof StepError || error instanceof ReadError) {
+    // The shared rewrite throws GitFailure when git fails. Nothing was moved, so it is a refusal.
+    if (error instanceof StepError || error instanceof ReadError || error instanceof GitFailure) {
       return refused(3, error.message);
     }
     throw error;
@@ -93,22 +120,7 @@ async function signoff(args: CreateArgs, cfg: CreateConfig): Promise<SignoffResu
       }
     }
   }
-  const label = (commit: RangeCommit): string => commit.sha.slice(0, 7);
-  const preflight = (rewrite: RewritePlan): { readonly code: string; readonly headline: string; readonly next: string } | null => {
-    const onRemote = rewrite.rewrite.filter((c) => pushed.has(c.sha));
-    if (onRemote.length > 0) {
-      return {
-        code: "pushed_commit",
-        headline: `${onRemote.map(label).join(", ")} ${onRemote.length === 1 ? "is" : "are"} already on the remote branch; a rewrite would need a force-push`,
-        next: "run pr-refresh dco-fix on the open PR",
-      };
-    }
-    const odd = rewrite.rewrite.filter((c) => c.parents.length !== 1);
-    if (odd.length > 0) {
-      return { code: "merge_commit", headline: `${odd.map(label).join(", ")} ${odd.length === 1 ? "is" : "are"} a merge or a root commit`, next: "sign off by hand" };
-    }
-    return null;
-  };
+  const preflight = rewriteRefusal(pushed);
 
   const rewritten = await rewriteLocal({
     repo: repoAt(cfg.cwd, cfg.runRepo),

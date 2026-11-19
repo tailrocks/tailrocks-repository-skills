@@ -88,7 +88,7 @@ export async function readSnapshot(
   return { ok: true, snapshot: gathered.snapshot };
 }
 
-/** Read the PR, the policy at the base commit, and the gh user. */
+/** Read the PR, the policy at the default-branch commit (`defaultSha`), and the gh user. */
 export async function loadContext(deps: RefreshDeps, repo: RepoSlug, number: number, writesBranch = true): Promise<Loaded> {
   const read = await readSnapshot(deps, repo, number, writesBranch);
   if (!read.ok) {

@@ -46,6 +46,8 @@ export interface StepResult {
   /** The one next action for the agent or the user. */
   readonly next: string;
   readonly verdict: Verdict | null;
+  /** Why a refused step (exit 3) was refused, when a caller needs to tell it from other refusals. */
+  readonly refusal: "high_risk" | null;
 }
 
 /** Everything a step reads and writes goes through this boundary. Tests inject a fake. */
@@ -114,7 +116,7 @@ export function result(
   outcome: Outcome,
   next: string,
   evaluated: Evaluated | null = null,
-  extra: { readonly mergeCommit?: Sha | null } = {},
+  extra: { readonly mergeCommit?: Sha | null; readonly refusal?: "high_risk" } = {},
 ): StepResult {
   return {
     exit,
@@ -123,5 +125,6 @@ export function result(
     mergeCommit: extra.mergeCommit ?? null,
     next,
     verdict: evaluated?.verdict ?? null,
+    refusal: extra.refusal ?? null,
   };
 }

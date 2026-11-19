@@ -61,10 +61,10 @@ describe("merge: the queue route", () => {
     expect(outcome.next).toContain("watch 7");
   });
 
-  test("a base-branch policy file is accepted; the default policy too", async () => {
+  test("a default-branch policy file is accepted; the default policy too", async () => {
     const withFile = makeWorld({ policyToml: "schema = 1\n" });
     const a = await mergeStep(withFile.context(), { acceptRisk: false });
-    expect(a.verdict?.policySource).toBe("base-branch");
+    expect(a.verdict?.policySource).toBe("default-branch");
     expect(a.outcome).toBe("queued");
     const without = makeWorld();
     const b = await mergeStep(without.context(), { acceptRisk: false });
@@ -324,6 +324,16 @@ describe("merge: the route is checked again before the write", () => {
 });
 
 describe("merge: high-risk paths", () => {
+  test("only the high-risk refusal carries the refusal reason that the fleet reads", async () => {
+    const risky = makeWorld({ files: [".github/workflows/ci.yml"] });
+    const high = await mergeStep(risky.context(), { acceptRisk: false });
+    expect([high.exit, high.refusal]).toEqual([EXIT.refused, "high_risk"]);
+    const fork = makeWorld();
+    fork.pr = { isCrossRepository: true, headRepository: { nameWithOwner: "fork-user/example-repo" } };
+    const other = await mergeStep(fork.context(), { acceptRisk: false });
+    expect([other.exit, other.refusal]).toEqual([EXIT.refused, null]);
+  });
+
   test("a rename out of .github is high risk, by the old path", async () => {
     const world = makeWorld({ files: [{ filename: "ci-old/gate.yml", previous_filename: ".github/workflows/gate.yml" }] });
     const outcome = await mergeStep(world.context(), { acceptRisk: false });

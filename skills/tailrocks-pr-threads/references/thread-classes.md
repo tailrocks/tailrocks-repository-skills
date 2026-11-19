@@ -68,7 +68,9 @@ use `reply-only`.
 
 ## lastCommentId and planAt
 
-Plan prints `lastCommentId` for each thread and one `planAt` for the run. A
+Plan prints `lastCommentId` for each thread and one `planAt` for the run.
+`planAt` is on GitHub's clock: the newest comment time that plan read. It never
+comes from the local clock. A
 decision that resolves a thread (`fix`, `defer`, `reply-resolve`) must carry
 `lastCommentId`, and the file must carry `planAt`. They bind the decision, and
 its `confirmedNoOpenQuestion`, to the thread as you read it. The script reads the

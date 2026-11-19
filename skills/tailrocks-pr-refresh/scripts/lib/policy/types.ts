@@ -116,7 +116,7 @@ export interface Policy {
   };
 }
 
-export type PolicySource = "base-branch" | "local" | "default";
+export type PolicySource = "default-branch" | "local" | "default";
 
 export interface PolicyError {
   /** JSON pointer into the policy file ("" is the whole file). */

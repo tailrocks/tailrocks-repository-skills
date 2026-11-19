@@ -354,7 +354,7 @@ async function gather(repo: RepoSlug, number: number, options: GatherOptions): P
 
   const slug = parseRepoSlug(str(member(repository, "nameWithOwner"), "nameWithOwner"));
   const snapshot: PrSnapshot = {
-    schema: 1,
+    schema: 2,
     capturedAt: (options.now?.() ?? new Date()).toISOString(),
     repo: slug.ok ? slug.value : repo,
     defaultBranch,

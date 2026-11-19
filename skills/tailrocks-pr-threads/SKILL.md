@@ -2,9 +2,10 @@
 name: tailrocks-pr-threads
 description: >-
   Triages the unresolved review threads of a GitHub pull request. Use this
-  skill when a PR has unresolved review threads, when pr-status reports
-  threads_unresolved, or when the user asks to fix, answer, defer, or resolve
-  review comments from bots or people. A script lists each thread with a
+  skill when the user asks to fix, answer, defer, or resolve review comments
+  from bots or people, including the threads that pr-status reports as
+  threads_unresolved. Do not use it only because a status report lists them. A
+  script lists each thread with a
   proposed class. You decide per thread. The script then replies and resolves
   under the repository policy. It never resolves a question that a person
   asked. It does not review code, merge, push, or write fixes. You write and
@@ -15,6 +16,9 @@ license: Apache-2.0
 # PR threads
 
 ## Use this skill
+
+Short names: `pr-X` means the skill `tailrocks-pr-X`, for example `pr-refresh`
+means `tailrocks-pr-refresh`.
 
 A script lists the unresolved review threads and applies your decisions. The
 script output is the authority. You do not decide from memory which threads

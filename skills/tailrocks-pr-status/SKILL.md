@@ -16,6 +16,9 @@ license: Apache-2.0
 
 ## What this skill does
 
+Short names: `pr-X` means the skill `tailrocks-pr-X`, for example `pr-refresh`
+means `tailrocks-pr-refresh`.
+
 One script computes the verdict. You run it and report what it prints. You do
 not decide from memory which gates exist. You never conclude READY yourself.
 READY comes only from the script.
