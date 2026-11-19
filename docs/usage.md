@@ -127,6 +127,39 @@ the contract. `examples/` holds example policies. `--policy <file>`
 exists for checks and tests only. A verdict from a local policy file is
 advisory, and `tailrocks-pr-merge` refuses it.
 
+## Example: refresh a pull request
+
+Invoke the refresh owner with a mode and a pull-request number:
+
+```text
+/tailrocks-repository-skills:tailrocks-pr-refresh sync 1663
+```
+
+The skill has the modes `sync`, `dco-fix`, and `metadata`, and the two
+modes `continue` and `abort` that finish or drop a merge that `sync
+--keep-worktree` kept for a conflict. It has no default mode. `sync` merges the base branch in a temporary worktree,
+regenerates the outputs that the repository policy names, runs the
+pre-push checks, and pushes one commit once. `dco-fix` is the only mode
+that force-pushes. It adds missing sign-off trailers and nothing else.
+`metadata` reconciles the title and body with the diff and pushes
+nothing. The reference `outcome-codes.md` in the skill lists every
+blocked outcome.
+
+## Example: open a pull request under the repository policy
+
+Invoke the create owner on a branch that holds committed work:
+
+```text
+/tailrocks-repository-skills:tailrocks-pr-create
+```
+
+The skill runs one script in two steps. `plan` checks the branch name, the
+sign-off of each commit, the inventories, and the pre-push steps. It also
+picks the base branch and prints a body skeleton. `open` pushes the exact
+commit and creates one pull request, as a draft or ready by the policy. It
+reuses an open pull request for the branch. The skill never force-pushes and
+never creates a second pull request.
+
 ## Example: land a pull request
 
 Invoke the merge owner with a pull-request number:

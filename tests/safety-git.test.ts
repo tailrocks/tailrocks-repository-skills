@@ -44,6 +44,7 @@ describe("git allow-list: accepted forms", () => {
     ["worktree", "add", "--detach", "/work/tree/one", A],
     ["worktree", "add", "-b", "feat/x", "/work/tree/one", "origin/main"],
     ["worktree", "remove", "/work/tree/one"],
+    ["worktree", "list", "--porcelain"],
     ["config", "--get", "user.email"],
     ["branch", "--show-current"],
     ["symbolic-ref", "--short", "HEAD"],
@@ -51,6 +52,7 @@ describe("git allow-list: accepted forms", () => {
     ["push", "origin", `${A}:refs/heads/feat/x`],
     // The guard does not know protected branches: `branches.protected` is a later layer.
     ["push", "origin", `${A}:refs/heads/main`],
+    ["update-ref", "refs/heads/feat/x", A, B],
   ];
   for (const args of accepted) {
     test(JSON.stringify(args), () => {
@@ -117,6 +119,15 @@ describe("git allow-list: forbidden forms are refused", () => {
     ["gc", ["gc", "--prune=now"]],
     ["filter-branch", ["filter-branch"]],
     ["update-ref -d", ["update-ref", "-d", "refs/heads/x"]],
+    ["update-ref without the old value", ["update-ref", "refs/heads/x", A]],
+    ["update-ref with a short sha", ["update-ref", "refs/heads/x", A.slice(0, 12), B]],
+    ["update-ref on a tag ref", ["update-ref", "refs/tags/v1", A, B]],
+    ["update-ref on HEAD", ["update-ref", "HEAD", A, B]],
+    ["update-ref with a message flag", ["update-ref", "-m", "x", "refs/heads/x", A, B]],
+    ["update-ref with an all-zero new id (delete)", ["update-ref", "refs/heads/x", "0".repeat(40), A]],
+    ["update-ref with an all-zero old id (create)", ["update-ref", "refs/heads/x", A, "0".repeat(40)]],
+    ["update-ref with the same old and new id", ["update-ref", "refs/heads/x", A, A]],
+    ["update-ref with a bad branch name", ["update-ref", "refs/heads/a..b", A, B]],
     ["cherry-pick", ["cherry-pick", A]],
     ["revert", ["revert", A]],
     ["pull", ["pull"]],
@@ -188,6 +199,9 @@ describe("git allow-list: forbidden forms are refused", () => {
     ["worktree remove dotdot", ["worktree", "remove", "/work/../etc"]],
     ["worktree remove trailing slash", ["worktree", "remove", "/work/tree/"]],
     ["worktree prune", ["worktree", "prune"]],
+    ["worktree list without --porcelain", ["worktree", "list"]],
+    ["worktree list --porcelain -z", ["worktree", "list", "--porcelain", "-z"]],
+    ["worktree list with a path", ["worktree", "list", "--porcelain", "/work/tree/one"]],
     ["worktree add --force", ["worktree", "add", "--force", "/work/tree/one", "main"]],
     ["worktree add relative", ["worktree", "add", "tree", "main"]],
     ["worktree add -B", ["worktree", "add", "-B", "x", "/work/tree/one", "main"]],
