@@ -512,9 +512,11 @@ request. Each test install was removed afterwards.
 
 ### Dogfooding
 
-`pr-status` gated the merge of each pull request of this series.
-`pr-merge` merged five of them. `pr-threads` resolved review threads
-on its own pull request.
+From the pull request that added `pr-status` onward, a READY verdict
+from `pr-status` gated each merge of this series. `pr-merge` merged
+four of them, starting with its own pull request, and merged this
+release. `pr-threads` resolved review threads on its own pull
+request.
 
 ### Known limits
 
