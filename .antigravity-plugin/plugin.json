@@ -1,6 +1,6 @@
 {
   "$schema": "https://antigravity.google/schemas/v1/plugin.json",
   "name": "tailrocks-repository-skills",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Target-bound repository orchestration plus a script-backed pull-request lifecycle: status, create, refresh, review threads, guarded merge, and fleet planning."
 }
