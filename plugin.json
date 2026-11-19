@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "tailrocks-repository-skills",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Target-bound repository orchestration plus a script-backed pull-request lifecycle: status, create, refresh, review threads, guarded merge, and fleet planning.",
   "author": {
     "name": "tailrocks",

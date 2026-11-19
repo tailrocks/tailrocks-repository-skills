@@ -17,7 +17,7 @@ MODEL_REFERENCE = "references/model-routing.md"
 POLICY_PACKAGE = "tailrocks-agent-policy-skills"
 POLICY_DESCRIPTION = "Use only when the user explicitly invokes this skill."
 POLICY_ENTRY = "Proceed only after the user explicitly invokes this skill for the current work."
-MODEL_SHA256 = "5a2dab29c9cb60200b0a84f812af1f50de811ababf933568f2fa94b1ff3f4788"
+MODEL_SHA256 = "b23dddefbf809b3a692e648a627eb418f002e702e0b0b7358d23e4db3aaab748"
 MODELS = (
     "claude-fable-5-2", "claude-opus-5-5", "gpt-6.2-astra", "gpt-6.2-sol",
     "gemini-4-argon", "gemini-4-carbon", "gemini-4-neon", "muse-wonder-1.0",
@@ -310,6 +310,11 @@ def main():
     for relative, m in manifests.items():
         for key in ("name", "version", "description"):
             require(m.get(key) == portable[key], f"{relative}: {key} disagrees with portable manifest")
+    author = portable.get("author")
+    require(isinstance(author, dict) and isinstance(author.get("name"), str)
+            and author["name"].strip(), "portable author name is required")
+    require(manifests[".claude-plugin/plugin.json"].get("author") == author,
+            "Claude author disagrees with portable manifest")
     antigravity = manifests[".antigravity-plugin/plugin.json"]
     require(antigravity.get("$schema") == "https://antigravity.google/schemas/v1/plugin.json", "Antigravity manifest schema differs")
     require(manifests[".kimi-plugin/plugin.json"].get("skills") == "./skills/", "Kimi skills path differs")
