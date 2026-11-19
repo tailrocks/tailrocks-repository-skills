@@ -165,7 +165,7 @@ differences without a write.
 
 ## Policy version and update
 
-- alint: v0.17.0.
+- alint: v0.18.1, the CI pin.
 - Shared profile: `standards/alint/active.yml` at
   tailrocks-skills commit
   `7bdfcdd610aa95bb13f62261cda1a53f0fa870d3`.

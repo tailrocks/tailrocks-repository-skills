@@ -85,11 +85,11 @@ detail lines, and `next` as printed. Do not guess what the code means.
 ## Mode: sync
 
 The script works in a temporary worktree. It never changes your checkout. It
-removes the worktree when it ends, also on failure. The one exception is
-`--keep-worktree` when the merge stops on a conflict: then the worktree stays
-until `continue` or `abort`. It turns off the hooks of
-the repository in that worktree, because the policy pre-push steps replace them.
-It keeps the rest of your git configuration, so commit signing stays as you set it.
+removes the worktree when it ends, also on failure. There is one exception: with
+`--keep-worktree`, when the merge stops on a conflict, the worktree stays until
+`continue` or `abort`. The script turns off the hooks of the repository in that
+worktree, because the policy pre-push steps replace them. It keeps the rest of
+your git configuration, so commit signing stays as you set it.
 
 1. It refuses a fork, a PR of another user, a protected branch, and a queued PR.
 2. It merges the base with sign-off. If the branch already has the base, it
@@ -125,8 +125,10 @@ Use this flow only for a conflict that the script reports as `conflict`.
 2. In that path, edit only the files that the output lists as `conflict:`. Keep
    both sides. Edit files only. Never run `git` there. Never edit a `generated:`
    output: the script regenerates it. If both sides cannot be kept, or you cannot
-   tell what is right, run `abort` and report the conflict to the user. Do not
-   guess.
+   tell what is right, stop. Run `abort <pr> --worktree <path>`, then report the
+   conflict to the user. Do not guess. `abort` deletes the kept worktree, so it
+   also discards every edit that you made there. Nothing was pushed, and your
+   checkout is unchanged.
 3. Run `continue <pr> --worktree <path>`. The script checks that the path is its
    worktree for this PR and that the head is unchanged. It refuses leftover
    conflict markers and any change outside the conflicted files, staged or not,
@@ -134,9 +136,11 @@ Use this flow only for a conflict that the script reports as `conflict`.
    once, asks for a new review, and removes the worktree.
 4. To give up, run `abort <pr> --worktree <path>`.
 5. If `continue` stops for a problem that you can fix (markers, edits outside the
-   set), the worktree stays. Fix it and run `continue` again. If a later check
-   fails, the worktree is removed with the merge in it. Fix the cause, then start
-   again at step 1.
+   set), the worktree stays. Fix it and run `continue` again. To undo an edit
+   outside the conflict set, restore the file by hand to its content before you
+   touched it. When you cannot, run `abort`, then start again at step 1: that
+   discards all edits. If a later check fails, the worktree is removed with the
+   merge in it. Fix the cause, then start again at step 1.
 
 ## Mode: dco-fix
 

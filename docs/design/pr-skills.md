@@ -77,6 +77,13 @@ repository, organization, and user names. It fails on any match.
 | `tailrocks-pr-merge` | Steps `ready` (draft to ready), `merge`, and `dequeue`. `merge` requires READY from `pr-status` on a default-branch policy, a body that follows the template, a queue method that equals the policy `merge.method`, and the user's confirmation for high-risk paths (`merge.high_risk_paths`: workflows, release, auth, migrations by default; a rename counts by its old and new path). Enqueues with `expectedHeadOid` (normal or jump by policy; a refused jump is BLOCKED), or squash-merges with `--match-head-commit`. Watches until merged or ejected. On ejection, runs `pr-status`. | Ready state, queue entry, merge |
 | `tailrocks-pr-fleet` | Runs `pr-status` on all open PRs. Ranks them. Finds stockpiling. Plans refreshes under a CI budget. Honors a freeze switch. Plans the dequeue of UNMERGEABLE entries at the head of the queue. Executes only through the other skills' scripts, and only with `--apply`. | Only through the other skills |
 
+Two limits on what the agent does by hand around `pr-refresh`. The agent edits
+conflicted files only inside a kept worktree (`sync --keep-worktree`), only the
+files that the script lists, and never runs `git` there. A pre-push step or an
+inventory check that fails changes nothing on the remote. The agent fixes the
+cause in its own checkout, pushes the fix by hand as a signed commit (`git
+commit -s`, a plain push), and runs `sync` again.
+
 ### Script behavior each skill replaces
 
 | Script | Behavior | New owner |

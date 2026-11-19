@@ -1,4 +1,4 @@
-# Active skill package alint configuration (alint v0.17.0).
+# Active skill package alint configuration (alint v0.18.1).
 # Extends the shared active profile by immutable URL plus SHA-256 pin.
 # Profile source: tailrocks/tailrocks-skills commit
 # 7bdfcdd610aa95bb13f62261cda1a53f0fa870d3 ("Establish the central

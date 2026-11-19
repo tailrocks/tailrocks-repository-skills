@@ -23,22 +23,18 @@ function walk(directory: string): readonly string[] {
     .map((entry) => join(entry.parentPath, entry.name));
 }
 
-/**
- * The ten skill ids of release 0.5.0. A skill that is not merged yet still has its
- * id named in the kept skills and the guides, so the mask knows the whole release.
- */
+/** The ten skill ids of release 0.5.0, as exact ids. */
 const RELEASE_SKILL_IDS: readonly string[] = [
   "pr-status", "pr-create", "pr-refresh", "pr-threads", "pr-merge", "pr-fleet",
   "review-pr", "pr-template", "repository-merge", "repository-recover",
 ].map((id) => `${WORDS[0]}-${id}`);
 
-/** Directory names under skills/, and the ids of the release. Each one is a skill id. */
+/** Directory names under skills/. Each one is a skill id. */
 function skillIds(): readonly string[] {
   const dir = join(root, "skills");
-  const present = existsSync(dir)
+  return existsSync(dir)
     ? readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)
     : [];
-  return [...new Set([...present, ...RELEASE_SKILL_IDS])];
 }
 
 function escapeRegExp(text: string): string {
@@ -80,6 +76,10 @@ function findings(mask: RegExp = maskPattern()): readonly string[] {
 describe("generic names", () => {
   test("no scanned file names an owner, organization, or repository", () => {
     expect(findings()).toEqual([]);
+  });
+
+  test("the skills directory holds exactly the ten ids of the release, so the mask holds exactly those ids", () => {
+    expect([...skillIds()].sort()).toEqual([...RELEASE_SKILL_IDS].sort());
   });
 
   test("the scan sees the directories it claims to scan", () => {
