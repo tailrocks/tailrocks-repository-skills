@@ -39,11 +39,14 @@ The package expresses user-only entry in three portable ways:
   explicitly asks", and the body keeps the explicit-request rule.
 - `agents/openai.yaml` sets `policy.allow_implicit_invocation: false`.
   Codex enforces this flag. Explicit `$skill` invocation still works.
-- Each client can add its own gate in the user config: Claude Code
-  `skillOverrides` set to `user-invocable-only`, Kimi Code
-  `disableModelInvocation`, Grok Build `disable-model-invocation`, or
-  `permission.skill` set to `ask` on OpenCode v1. The package does not
-  write these keys into the skill files.
+- Claude Code documents a user setting for a hard block:
+  `skillOverrides` set to `user-invocable-only`. OpenCode v1 documents
+  `permission.skill` set to `ask`.
+- Kimi Code and Grok Build hard blocks are frontmatter keys:
+  `disableModelInvocation` (Kimi Code) and `disable-model-invocation`
+  (Grok Build). This package no longer ships these keys. To get the
+  hard block, add the key to a local copy of the skill, if you accept
+  that the local copy then differs from the package.
 
 Amp, Antigravity, and Muse Code cannot enforce per-skill user-only
 entry. Invoke the two skills only through an explicit human command.
@@ -513,10 +516,10 @@ head. The `.grok-plugin/plugin-index.json` file is generated: never
 hand-edit it. Grok reads the Claude catalog with zero-config
 compatibility. The frontmatter of
 all ten skills holds `name`, `description`, and `license` only, so no
-skill sets `disable-model-invocation`. To block automatic invocation
-of the two user-only skills on Grok Build, set that key in your own
-copy of the config. Do not treat `allowed-tools` metadata as an
-enforced tool-permission boundary.
+skill sets `disable-model-invocation`. This package no longer
+ships that key. To block automatic invocation of the two user-only
+skills on Grok Build, add the key to a local copy of each skill. Do not
+treat `allowed-tools` metadata as an enforced tool-permission boundary.
 
 ## Kimi Code
 
@@ -580,10 +583,10 @@ confined to the plugin root. Manifest names match
 `skills` to `./skills/`. Without it, Kimi reads a root SKILL.md
 instead. This package sets it (observed 2026-10-07). Invocation
 nesting caps at three levels. Duplicates resolve Project over User
-over Extra over Built-in. The package sets no
-`disableModelInvocation` key: invoke the two user-only skills only
-with an explicit `/skill:` command, or set that key in your own
-config. Audit enabled plugins: a
+over Extra over Built-in. The package no longer
+ships the frontmatter key `disableModelInvocation`. Invoke the two
+user-only skills only with an explicit `/skill:` command, or add that
+key to a local copy of each skill. Audit enabled plugins: a
 `sessionStart.skill` injection can bypass the gate.
 
 ## Migrate from the old catalog

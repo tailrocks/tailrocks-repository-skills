@@ -20,8 +20,10 @@ Changed:
   user-only. Their description now starts "Use only when the user explicitly
   asks", the body keeps the explicit-request rule, and `agents/openai.yaml`
   keeps `policy.allow_implicit_invocation: false`. Codex enforces that flag.
-  On Claude Code, Kimi Code, and Grok Build, the package no longer sets a
-  frontmatter gate. Set the client key in your own config. See
+  On Claude Code, Kimi Code, Grok Build, and Cursor, the package no longer
+  sets a frontmatter gate. Those keys are frontmatter keys that the package no
+  longer ships. For a hard block, the user adds the key in a local copy of the
+  skill, or on Claude Code sets the `skillOverrides` user setting. See
   `docs/compatibility.md`.
 
 Added:

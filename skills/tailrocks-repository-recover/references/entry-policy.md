@@ -33,12 +33,13 @@ user-only entry in two files:
   2026-10-07, no version shown. Coarse backup: `enabled=false` under
   `[[skills.config]]` in `~/.codex/config.toml`, then restart Codex.
 
-## Routes that need a user config key
+## Routes that need a local frontmatter key
 
 These clients enforce a user-only control, but the package does not
-write it into the skill files, because the key is not portable. Set it
-in your own copy or config. Until you do, the description and the body
-rule are the only gate.
+ship it in the skill files, because the key is not portable. To get
+the hard block, add the key to a local copy of the skill, or use the
+user setting where the client documents one. Until you do, the
+description and the body rule are the only gate.
 
 - **Claude Code.** Frontmatter `disable-model-invocation: true` with
   `user-invocable: true` in your own copy of the skill. Documented
