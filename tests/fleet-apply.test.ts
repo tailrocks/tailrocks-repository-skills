@@ -52,19 +52,21 @@ describe("apply without --apply", () => {
 });
 
 describe("apply --apply", () => {
-  test("dequeues the UNMERGEABLE entry, enqueues READY PRs, and leaves refresh pending without pr-refresh", async () => {
+  test("dequeues the UNMERGEABLE entry, enqueues READY PRs, and refreshes the behind PRs through the port", async () => {
     const world = makeFleetWorld();
     world.queueLength = 2;
-    const run = await runFleet(world, ["apply", "--apply"]);
+    const port = fakeRefresh();
+    const run = await runFleet(world, ["apply", "--apply"], { refresh: port });
     expect(kinds(world)).toEqual(["dequeuePullRequest", "enqueuePullRequest", "enqueuePullRequest"]);
     expect(world.mutations.map(target)).toEqual(["MQE_13", "PR_node_11", "PR_node_19"]);
     const text = run.out.join("\n");
     expect(text).toContain("done: dequeue #13");
     expect(text).toContain("done: merge #11");
-    expect(text).toContain("pending: refresh #14: pending: pr-refresh not available");
-    expect(text).toContain("refreshes run: 0");
-    // 10: nothing failed, and two refreshes are pending.
-    expect(run.code).toBe(10);
+    expect(port.calls).toEqual([14, 17]);
+    expect(text).toContain("done: refresh #14");
+    expect(text).toContain("refreshes run: 2");
+    expect(text).not.toContain("not available");
+    expect(run.code).toBe(0);
     // The dequeue wrote its reason comment.
     expect(world.comments).toHaveLength(1);
     expect(world.comments[0]).toContain("UNMERGEABLE");
@@ -323,14 +325,14 @@ describe("freeze, local policy, and one apply at a time", () => {
 
   test("the lock is released after the run, so the next apply can run", async () => {
     const world = makeFleetWorld();
-    expect((await runFleet(world, ["apply", "--apply"])).code).toBe(10);
+    expect((await runFleet(world, ["apply", "--apply"])).code).toBe(0);
     expect((await runFleet(world, ["apply", "--apply"])).code).not.toBe(3);
   });
 });
 
 describe("rate limit", () => {
   test("the estimate counts 4 reads for an enqueue, 3 for a dequeue, and 6 for a refresh", () => {
-    const action = (kind: "dequeue" | "merge" | "refresh") => ({ kind, number: 1, headSha: sha("a"), detail: "", late: false, pending: null });
+    const action = (kind: "dequeue" | "merge" | "refresh") => ({ kind, number: 1, headSha: sha("a"), detail: "", late: false });
     expect(estimatedReads([action("merge")])).toBe(4);
     expect(estimatedReads([action("dequeue"), action("merge"), action("refresh")])).toBe(13);
     expect(estimatedReads([])).toBe(0);

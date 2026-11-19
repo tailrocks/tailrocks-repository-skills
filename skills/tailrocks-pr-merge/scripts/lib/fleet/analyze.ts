@@ -8,7 +8,6 @@ import type { Policy } from "../policy/types.ts";
 import type { Owner, PrSnapshot, Verdict } from "../status/types.ts";
 import { sortFindings } from "../status/findings.ts";
 import {
-  PENDING_REFRESH,
   QUEUE_HEAD,
   type Action,
   type Entry,
@@ -190,8 +189,6 @@ export interface AnalyzeInput {
   readonly held: readonly number[];
   readonly reads: readonly Read[];
   readonly orphanRuns: OrphanRuns;
-  /** False until pr-refresh is on main: refresh actions then carry the pending note. */
-  readonly refreshAvailable: boolean;
 }
 
 function sortedNumbers(entries: readonly Entry[]): readonly number[] {
@@ -205,12 +202,8 @@ function nextOf(plan: Omit<Plan, "next">, entries: readonly Entry[]): string {
   if (plan.advisory) {
     return "This plan is advisory: it uses a local policy file. Run plan again without --policy to get a plan that apply accepts.";
   }
-  const runnable = plan.actions.filter((a) => a.pending === null);
-  if (runnable.length > 0) {
-    return `Run fleet.ts apply --apply --repo ${plan.repo} when the user asked to apply the plan.`;
-  }
   if (plan.actions.length > 0) {
-    return `${PENDING_REFRESH}. Report the refresh actions to the user.`;
+    return `Run fleet.ts apply --apply --repo ${plan.repo} when the user asked to apply the plan.`;
   }
   const first = entries.find((e) => e.state !== "READY");
   if (first !== undefined) {
@@ -258,13 +251,13 @@ export function analyze(input: AnalyzeInput): Plan {
     for (const h of hygiene.filter((x) => x.planned)) {
       const entry = byNumber.get(h.number);
       if (entry !== undefined && entry.headSha !== null) {
-        actions.push({ kind: "dequeue", number: h.number, headSha: entry.headSha, detail: `the entry is UNMERGEABLE at position ${h.position}`, late: false, pending: null });
+        actions.push({ kind: "dequeue", number: h.number, headSha: entry.headSha, detail: `the entry is UNMERGEABLE at position ${h.position}`, late: false });
       }
     }
     for (const number of mergePlanned) {
       const entry = byNumber.get(number);
       if (entry !== undefined && entry.headSha !== null) {
-        actions.push({ kind: "merge", number, headSha: entry.headSha, detail: "READY: enter the queue, or merge with the policy method", late: false, pending: null });
+        actions.push({ kind: "merge", number, headSha: entry.headSha, detail: "READY: enter the queue, or merge with the policy method", late: false });
       }
     }
     for (const number of planned) {
@@ -276,7 +269,6 @@ export function analyze(input: AnalyzeInput): Plan {
           headSha: entry.headSha,
           detail: "sync with the base branch",
           late: false,
-          pending: input.refreshAvailable ? null : PENDING_REFRESH,
         });
       }
     }

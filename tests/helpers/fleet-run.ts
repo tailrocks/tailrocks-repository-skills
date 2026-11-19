@@ -4,7 +4,7 @@ import type { Plan } from "../../lib/fleet/types.ts";
 import { newShared } from "../../lib/merge/types.ts";
 import { parseRepoSlug } from "../../lib/types.ts";
 import type { FleetWorld } from "./fleet-world.ts";
-import { REPO } from "./fleet-world.ts";
+import { fakeRefresh, REPO } from "./fleet-world.ts";
 
 export interface FleetRun {
   readonly code: number;
@@ -19,6 +19,7 @@ export async function runFleet(world: FleetWorld, argv: readonly string[], optio
     io: world.io,
     cwd: "/",
     env: {},
+    refresh: fakeRefresh(),
     out: (line) => void out.push(line),
     err: (line) => void err.push(line),
     ...options,
@@ -35,7 +36,7 @@ export async function planOf(world: FleetWorld, patch: Partial<FleetDeps> = {}):
   const built = await buildPlan(slug.value, {
     cwd: "/",
     io: world.io,
-    refresh: null,
+    refresh: fakeRefresh(),
     env: {},
     gitDir: null,
     localPolicy: null,

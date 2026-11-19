@@ -45,8 +45,9 @@ cannot change it. You do not read or change the policy.
   yourself. Never force-push. Never rewrite pushed history. Never commit to the
   base branch. Never push to a branch that another person owns.
 - Never use `--body` for the PR text. The script posts the body file.
-- The policy sets draft or ready. If the user asks for the other state, report
-  the policy and stop. Do not work around it.
+- The policy sets draft or ready, except that pushed commits without a sign-off
+  always open a draft. If the user asks for the other state, report the policy
+  and stop. Do not work around it.
 
 ## Steps
 
@@ -94,8 +95,9 @@ cannot change it. You do not read or change the policy.
      an older part of this branch, and the push is a fast-forward. `diverged`:
      the remote holds other commits, which is a refusal.
    - A blocker `dco_missing` means unpushed commits lack a sign-off. Run
-     `create.ts signoff --expect-head <head>` as its `next:` line says. Then run
-     the plan again. Never rewrite the commits by hand.
+     `bun run <skill-dir>/scripts/create.ts signoff --expect-head <head>` as its
+     `next:` line says. Then run the plan again. Never rewrite the commits by
+     hand.
    - An info finding `dco_missing` means pushed commits lack a sign-off. Go on.
      The PR opens as a draft whatever the policy says. `open` exits 20. Run the
      `pr-refresh dco-fix <N>` step that `open` prints.
@@ -127,8 +129,11 @@ cannot change it. You do not read or change the policy.
    ```
 
 9. Read the result with the exit code table. After exit 20, read each `PROBLEM`
-   line. Run the plan, then run `open` again. It reuses the pushed branch and
-   the open PR. It never creates a second PR.
+   line. If one is `dco_missing` and its `next:` names `pr-refresh dco-fix <N>`,
+   hand off: run that step and stop. Do not run the plan and `open` again for
+   it: the plan has no blocker, so the loop never ends. For any other problem,
+   run the plan, then run `open` again. It reuses the pushed branch and the open
+   PR. It never creates a second PR.
 10. Report the PR URL, the branch, the base, draft or ready, and the labels.
     Then run `tailrocks-pr-status` for the PR. A new PR is often BLOCKED or
     WAITING. That is normal.

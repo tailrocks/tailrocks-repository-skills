@@ -56,6 +56,12 @@ branch. It is not queued. Each of its blockers is `behind_base`, `conflict`, or
 `check_stale_base`. Candidates are taken in PR number order, up to the budget.
 The rest is `deferred`.
 
+A refresh is `pr-refresh sync` for one PR, run as a library call in a temporary
+worktree. `apply` maps the outcome object of `sync`: state DONE is a done
+action (also when the branch was already up to date), and any other state is a
+stopped action with the outcome code and its `next` line. A refresh is never
+`dco-fix`.
+
 `apply` reads the queue length again before each refresh. Its own enqueues
 grow the queue, so the budget can shrink during the run. A refresh counts
 against the budget when it starts, whatever its result.
@@ -110,6 +116,6 @@ per repository, so two runs never overlap.
 | --- | --- |
 | done | The action ran. |
 | skipped | The PR no longer matches the plan. Nothing was written. |
-| pending | The action cannot run in this build. Nothing was written. |
+| pending | The pass deadline passed before the action ran. Nothing was written. |
 | stopped | The head moved, or the other skill refused. Nothing was written for it. |
 | refused | A freeze started. Nothing was written for it or for any action after it. |

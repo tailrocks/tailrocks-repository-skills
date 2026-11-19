@@ -2,7 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { run } from "../lib/proc.ts";
-import { appendSignoff, onlyTrailerAdded, parseCommitObject, signoffRange, type SignoffResult } from "../lib/create/signoff.ts";
+import { signoffRange, type SignoffResult } from "../lib/create/signoff.ts";
+import { appendSignoff, onlyTrailerAdded, parseCommitObject } from "../lib/dco.ts";
 import { argsFor, configFor, fakeWorld, makeRepos, newWorld, runCli, type FakeWorld, type Repos, type World } from "./helpers/create.ts";
 
 const made: Repos[] = [];
@@ -149,7 +150,7 @@ describe("signoff", () => {
     const config = configFor(repos, fake);
     const result = await signoffRange(argsFor("signoff", "--expect-head", sha), {
       ...config,
-      runGit: async (args) => (args[0] === "config" ? { code: 1, stdout: "", stderr: "" } : config.runGit(args)),
+      runRepo: async (args, options) => (args[0] === "config" ? { code: 1, stdout: "", stderr: "" } : config.runRepo(args, options)),
     });
     expect(result).toMatchObject({ kind: "refused", code: 3 });
     expect(await repos.head()).toBe(sha);
@@ -162,7 +163,7 @@ describe("signoff", () => {
     const result = await signoffRange(argsFor("signoff", "--expect-head", sha), {
       ...config,
       // A rewrite that changes the author date.
-      runGitEnv: (args, env) => config.runGitEnv(args, { ...env, GIT_AUTHOR_DATE: "1600000000 +0000" }),
+      runRepo: (args, options) => config.runRepo(args, args[0] === "commit-tree" ? { ...options, env: { ...options.env, GIT_AUTHOR_DATE: "1600000000 +0000" } } : options),
     });
     expect(result).toMatchObject({ kind: "refused", code: 3 });
     expect(result.kind === "refused" ? result.reasons[0] : "").toContain("author name, email, or date changed");
@@ -179,9 +180,11 @@ describe("signoff", () => {
     const result = await signoffRange(argsFor("signoff", "--expect-head", tip), {
       ...config,
       // The first rebuilt commit gets another tree. The last one keeps its own, so only the per-commit check can see it.
-      runGitEnv: (args, env) => {
+      runRepo: (args, options) => {
+        if (args[0] !== "commit-tree") return config.runRepo(args, options);
         calls += 1;
-        return config.runGitEnv(calls === 1 ? [args[0] ?? "", other, ...args.slice(2)] : args, env);
+        // The tree is the last argument of `git commit-tree`.
+        return config.runRepo(calls === 1 ? [...args.slice(0, -1), other] : args, options);
       },
     });
     expect(result).toMatchObject({ kind: "refused", code: 3 });
@@ -195,7 +198,8 @@ describe("signoff", () => {
     const config = configFor(repos, fake);
     const result = await signoffRange(argsFor("signoff", "--expect-head", sha), {
       ...config,
-      runGitEnv: (args, env) => config.runGitEnv(args.map((a) => a.replace("feat: add a", "feat: changed a")), env),
+      runRepo: (args, options) =>
+        config.runRepo(args, args[0] === "commit-tree" && options.stdin !== undefined ? { ...options, stdin: options.stdin.replace("feat: add a", "feat: changed a") } : options),
     });
     expect(result).toMatchObject({ kind: "refused", code: 3 });
     expect(result.kind === "refused" ? result.reasons[0] : "").toContain("more than the added trailer");
@@ -210,13 +214,14 @@ describe("signoff", () => {
     let calls = 0;
     const result = await signoffRange(argsFor("signoff", "--expect-head", tip), {
       ...config,
-      runGitEnv: (args, env) => {
+      runRepo: (args, options) => {
+        if (args[0] !== "commit-tree") return config.runRepo(args, options);
         calls += 1;
-        return config.runGitEnv(calls === 2 ? args.map((a) => a.replace("feat: add b", "feat: add B")) : args, env);
+        return config.runRepo(args, calls === 2 && options.stdin !== undefined ? { ...options, stdin: options.stdin.replace("feat: add b", "feat: add B") } : options);
       },
     });
     expect(result).toMatchObject({ kind: "refused", code: 3 });
-    expect(result.kind === "refused" ? result.reasons[0] : "").toContain("more than the added trailer");
+    expect(result.kind === "refused" ? result.reasons[0] : "").toContain("the message changed on a commit that needs no trailer");
     expect(await repos.head()).toBe(tip);
   });
 

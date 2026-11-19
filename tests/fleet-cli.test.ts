@@ -85,7 +85,7 @@ describe("output", () => {
     const world = makeFleetWorld();
     const run = await runFleet(world, ["apply", "--apply", "--json"]);
     const data: unknown = JSON.parse(run.out.join("\n"));
-    expect(data).toMatchObject({ mode: "apply", exit: 10 });
+    expect(data).toMatchObject({ mode: "apply", exit: 0 });
     expect(data).toMatchObject({ results: expect.arrayContaining([expect.objectContaining({ kind: "done", action: "dequeue", number: 13 })]) });
   });
 

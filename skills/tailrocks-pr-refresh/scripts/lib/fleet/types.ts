@@ -4,7 +4,7 @@
 //   0   done: `plan` printed the plan; `apply --apply` ran every planned action,
 //       or nothing was planned
 //   10  waiting: `apply --apply` stopped no action, but at least one action did not
-//       run (pending: pr-refresh not available, or the pass deadline passed)
+//       run because the pass deadline passed
 //   20  blocked: `apply --apply` ran, and at least one action was stopped by a
 //       re-read (head moved, GitHub refused, a gate failed)
 //   3   refused: freeze, a local policy file, or a second apply that holds the
@@ -32,8 +32,6 @@ export interface Action {
   readonly detail: string;
   /** A refresh that a direct merge made necessary during this pass. The plan never holds one. */
   readonly late: boolean;
-  /** Set when the action cannot run in this build, for example "pending: pr-refresh not available". */
-  readonly pending: string | null;
 }
 
 export interface QueueSlot {
@@ -147,13 +145,11 @@ export type RefreshResult =
   | { readonly ok: true; readonly note: string }
   | { readonly ok: false; readonly note: string; readonly next: string };
 
-/** The refresh library, as the fleet sees it. Absent until pr-refresh is on main. */
+/** The refresh library, as the fleet sees it (lib/fleet/refresh-port.ts wires pr-refresh `sync`). */
 export interface RefreshPort {
-  /** Run `sync` for one PR. The port counts as one refresh, even when it pushes nothing. */
+  /** Run `sync` for one PR, never `dco-fix`. The port counts as one refresh, even when it pushes nothing. */
   readonly sync: (number: number, expectedHead: Sha) => Promise<RefreshResult>;
 }
-
-export const PENDING_REFRESH = "pending: pr-refresh not available";
 
 export type ResultKind = "done" | "skipped" | "pending" | "stopped" | "refused";
 

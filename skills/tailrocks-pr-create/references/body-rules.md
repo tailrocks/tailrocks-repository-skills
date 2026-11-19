@@ -1,8 +1,9 @@
 # PR body rules
 
-The plan prints a skeleton. It comes from the body template of the repository at
-the base commit. Without a template it comes from `pr_body.sections` of the
-policy. Fill that skeleton. Do not use a template from memory.
+The plan prints a skeleton. It comes from the body template on the default
+branch at its current commit, also for a stacked PR. Without a template it comes
+from `pr_body.sections` of the policy. Fill that skeleton. Do not use a template
+from memory.
 
 ## Sections
 

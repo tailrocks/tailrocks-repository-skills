@@ -25,7 +25,6 @@ import {
 import type { FleetDeps } from "./plan.ts";
 import {
   EXIT,
-  PENDING_REFRESH,
   QUEUE_HEAD,
   type Action,
   type ActionResult,
@@ -190,7 +189,7 @@ async function runMerge(deps: FleetDeps, plan: Plan, action: Action, state: Merg
   }
   if (state.directMerged && isBehindReady(entry, plan.defaultBranch)) {
     // The next PR must be READY on the new base. A PR that is behind needs a base merge.
-    const late: Action = { ...action, kind: "refresh", detail: "behind the new base after a direct merge", late: true, pending: deps.refresh === null ? PENDING_REFRESH : null };
+    const late: Action = { ...action, kind: "refresh", detail: "behind the new base after a direct merge", late: true };
     return { result: result(action, "skipped", "behind the new base after a direct merge; it counts as a refresh candidate, not a merge", NONE), late };
   }
   if (!isMergeCandidate(entry, plan.defaultBranch)) {
@@ -211,9 +210,6 @@ async function runMerge(deps: FleetDeps, plan: Plan, action: Action, state: Merg
 
 async function runRefresh(deps: FleetDeps, plan: Plan, action: Action, used: number): Promise<{ readonly result: ActionResult; readonly ran: boolean }> {
   const port = deps.refresh;
-  if (port === null) {
-    return { result: result(action, "pending", PENDING_REFRESH, "None until pr-refresh is available. Report this action to the user."), ran: false };
-  }
   const lines: string[] = [];
   const ctx = contextFor(deps, plan.repo, action.number, lines);
   const fresh = await evaluateFresh(ctx);

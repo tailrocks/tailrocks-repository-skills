@@ -17,8 +17,8 @@ import { EXIT, type Plan, type RefreshPort } from "./types.ts";
 export interface FleetDeps {
   readonly cwd: string;
   readonly io: MergeIo;
-  /** Absent until pr-refresh is on main. Refresh actions are then pending. */
-  readonly refresh: RefreshPort | null;
+  /** pr-refresh `sync`, as a library. */
+  readonly refresh: RefreshPort;
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly gitDir: string | null;
   /** A local policy file. The plan is then advisory and apply refuses it. */
@@ -126,7 +126,6 @@ export async function buildPlan(repo: RepoSlug, deps: FleetDeps): Promise<PlanRe
     held,
     reads: collected.reads,
     orphanRuns,
-    refreshAvailable: deps.refresh !== null,
   });
   return { ok: true, plan, reads: collected.reads };
 }
