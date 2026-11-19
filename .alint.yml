@@ -2,7 +2,7 @@
 # Update the immutable profile revision and SHA-256 together.
 version: 1
 extends:
-  - https://raw.githubusercontent.com/tailrocks/tailrocks-skills/5b2fc308a6f5a48d0c0e85c18e8db43c97e06433/standards/alint/active.yml#sha256-731e31c34fb41049206f69d7182f3059d16bf3e30c1c49cd16190121af89fe57
+  - https://raw.githubusercontent.com/tailrocks/tailrocks-skills/d7ace6576342d796094ab6f52cd2f6f5a4823ede/standards/alint/active.yml#sha256-f03da2d70a7606a0dbba386265e42dd0346cd43dd98edba9df833f3cb4aecd15
 # Narrow ignore for rule reference-names-portable (exact path, one file).
 # Reason: tailrocks-pr-template manages the exact upstream filename
 # PULL_REQUEST_TEMPLATE.md, and its SKILL.md links this reference copy.

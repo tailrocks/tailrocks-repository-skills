@@ -11,6 +11,7 @@ host requirements. The central catalog records the exact source revision.
 | `skills/<id>/references/model-routing.md` | Shared model and effort guidance |
 | `skills/<id>/references/` and `skills/<id>/assets/` | Skills' supporting files |
 | `.antigravity-plugin/plugin.json` | Antigravity package metadata |
+| `bun.lock` | Resolved dependency graph maintained with Bun 1.4.4 |
 | `package.json` | Private ESM package, OpenCode server export, and pi skills path |
 | `adapters/opencode/index.js` | OpenCode V2 skill registration |
 | `index.js` | Amp directory plugin registration |
