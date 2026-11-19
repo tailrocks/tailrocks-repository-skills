@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.4 - 2026-11-20
+
+- Complete the shared model API controls and reasoning-state guidance.
+- State the native discovery limits for user-invoked workflows.
+- Preserve the portable author in the Claude manifest and validate that match.
+- Use the shared release procedure with full commit pins and optional tags.
+
 ## 0.6.3 - 2026-11-20
 
 - Refresh the shared validator for user-invoked policy packages and the

@@ -1,6 +1,6 @@
 # Installation
 
-`tailrocks-repository-skills` version `0.6.3` contains 10 skills.
+`tailrocks-repository-skills` version `0.6.4` contains 10 skills.
 The package source is [tailrocks/tailrocks-repository-skills][package].
 The [Tailrocks catalog][catalog] pins one upstream commit per package.
 

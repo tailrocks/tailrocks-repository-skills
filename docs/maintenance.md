@@ -102,21 +102,25 @@ regenerate the workflow after either input changes.
 
 ## Release and migration
 
-Update the version and description in `plugin.json` when the release requires
-it. Use the central generator to sync equivalent host metadata and the shared
-files. From the catalog checkout, point the generator at the directory that
-contains the plugin checkouts.
+Update the version in `plugin.json` when shipped files change. Update its
+description only when the package purpose changes. From the catalog checkout,
+generate the shared files in the directory that contains the package checkouts.
 
 ```sh
 python3 scripts/sync-packages.py --workspace /path/to/plugin-checkouts
 python3 scripts/sync-packages.py --workspace /path/to/plugin-checkouts --check
 ```
 
-Review changes from `standards/native/` and `standards/models/model-routing.md`
-in the catalog checkout. Update `CHANGELOG.md`. Run the package checks and regenerate
-CI when its inputs change. Tag the verified release commit, publish it, and
-record its exact revision in the central catalog. Regenerate the central native
-catalogs after that revision is available. Check the published tag and catalog pin.
+Review changes from `standards/native/` and `standards/models/model-routing.md`.
+Update `CHANGELOG.md`. Run the package checks. Regenerate CI when its inputs
+change. Merge the verified package change, then read its manifest at that
+commit. Record the full commit, version, description, and visibility in the
+central catalog. Regenerate and validate the native catalogs.
+
+Existing immutable commits are sufficient for native installation. A release
+tag is optional. If you publish one, point it at the verified commit and keep
+the catalog pinned to that commit. Keep private package content private.
+
 Use [installation](installation.md) to migrate or remove an installed version.
 
 ## Prohibited evaluation content
