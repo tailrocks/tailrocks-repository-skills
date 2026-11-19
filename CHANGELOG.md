@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1 - 2026-11-20
+
+- Replace backtracking in package validation with bounded parsing.
+- Commit and ship the resolved dependency graph with pinned Bun 1.4.4.
+
 ## 0.6.0 - 2026-11-20
 
 - Documented pinned native installs across the Tailrocks hosts, including

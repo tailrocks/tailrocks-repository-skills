@@ -66,3 +66,11 @@ limits.
 Bun 1.4.4 completed a frozen dependency installation and TypeScript checking.
 All 1,389 existing tests passed with 4,158 assertions across 45 files.
 The vendored runtime consistency tests passed within that suite.
+
+### Package integrity correction, 2026-11-20
+
+The shared validator now uses bounded parsing for keys, fences, and link targets.
+Malformed-input scaling checks and existing resource rejection cases passed.
+The package commits and ships its Bun 1.4.4 dependency lockfile.
+Frozen offline verification passed without changes or dependency lifecycle scripts.
+The skill instructions and native registrar behavior remain as measured above.
