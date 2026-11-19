@@ -1,6 +1,6 @@
 # Compatibility and verification
 
-`tailrocks-repository-skills` version `0.6.2` publishes 10 skills from
+`tailrocks-repository-skills` version `0.6.3` publishes 10 skills from
 one `skills/<id>/SKILL.md` tree. Each skill keeps its references, scripts,
 and assets in the installed package.
 
